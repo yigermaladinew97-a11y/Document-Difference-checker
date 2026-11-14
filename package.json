@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "build": "cd client && npm run build",
     "dev": "node --watch server.js",
+    "client:dev": "cd client && npm run dev",
     "test:parsers": "node test-parsers.js",
     "test:comparator": "node test-comparator.js",
     "test:ai": "node test-ai.js",
