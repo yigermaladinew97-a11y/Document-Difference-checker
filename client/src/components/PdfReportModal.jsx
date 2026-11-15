@@ -159,7 +159,7 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
             </div>
 
             {/* Executive Summary Callout */}
-            <div className="p-5 rounded-xl bg-[#FFF9F6] border border-[#FFE7DD] space-y-1.5">
+            <div className="p-5 rounded-xl bg-[#FFF9F6] border border-[#FFE7DD] space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-[11px] font-black text-[#FF5E1E] uppercase tracking-wider">Executive Findings</h4>
                 {contextAnalysis.toneShift && (
@@ -168,9 +168,22 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
                   </span>
                 )}
               </div>
+              {contextAnalysis.verdictHeadline && (
+                <p className="text-xs font-black text-slate-900">{contextAnalysis.verdictHeadline}</p>
+              )}
               <p className="text-xs text-slate-800 leading-relaxed font-medium">
                 {contextAnalysis.executiveSummary || summary.headline}
               </p>
+              {contextAnalysis.explanations && contextAnalysis.explanations.length > 0 && (
+                <div className="pt-2 border-t border-[#FFE7DD] space-y-1">
+                  <span className="text-[10px] font-bold text-[#FF5E1E] uppercase tracking-wider block">Key Strategic Explanations:</span>
+                  <ul className="text-[11px] text-slate-700 space-y-1 pl-3.5 list-disc leading-relaxed font-medium">
+                    {contextAnalysis.explanations.map((exp, idx) => (
+                      <li key={idx}><strong>{exp.title}:</strong> {exp.detail}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             {/* Critical Alerts (if any) */}

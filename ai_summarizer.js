@@ -39,45 +39,120 @@ function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) 
   const moved = sectionReports.filter(s => s.status === 'MOVED');
   const added = sectionReports.filter(s => s.status === 'ADDED');
   const deleted = sectionReports.filter(s => s.status === 'DELETED');
+  const unchanged = sectionReports.filter(s => s.status === 'UNCHANGED');
 
+  // Structural breakdown counts
+  const structuralBreakdown = {
+    modifiedCount: modified.length,
+    addedCount: added.length,
+    deletedCount: deleted.length,
+    movedCount: moved.length,
+    unchangedCount: unchanged.length
+  };
+
+  // 1. Executive Verdict Headline
+  let verdictHeadline = '';
   if (stats.similarityPercent === 100) {
-    return {
-      mode: 'local_fallback',
-      contextSimilarityPercent: 100,
-      executiveSummary: 'Both documents are 100% word-for-word and structurally identical. No additions, deletions, edits, or relocated sections were detected.',
-      keySemanticChanges: ['Document content is completely unchanged.'],
-      criticalAlerts: [],
-      toneShift: 'Identical structure and tone.'
-    };
+    verdictHeadline = 'Documents are 100% Identical in Content & Structure';
+  } else if (stats.similarityPercent >= 85) {
+    verdictHeadline = `High Content Alignment (${stats.similarityPercent}% Match) with Targeted Edits`;
+  } else if (stats.similarityPercent >= 50) {
+    verdictHeadline = `Moderate Content Alignment (${stats.similarityPercent}% Match) with Wording Updates`;
+  } else if (stats.similarityPercent >= 25) {
+    verdictHeadline = `Substantial Revisions Detected (${stats.similarityPercent}% Match)`;
+  } else {
+    verdictHeadline = `Major Structural Rewrite & Low Alignment (${stats.similarityPercent}% Match)`;
   }
 
-  // 1. Synthesize rich narrative Executive Summary
-  const narrativeParts = [];
-  narrativeParts.push(`The comparison between the two documents reveals a ${stats.similarityPercent}% overall alignment.`);
+  // 2. High-level Executive Takeaway Narrative
+  let executiveSummary = '';
+  if (stats.similarityPercent === 100) {
+    executiveSummary = 'Both documents are completely identical in text, sequence, and structure. No additions, deletions, edits, or relocated sections were detected.';
+  } else if (stats.similarityPercent < 25 && (added.length > 0 || deleted.length > 0)) {
+    executiveSummary = `Document B represents a significant restructuring of Document A: ${deleted.length} baseline section(s) were removed and replaced with ${added.length} newly introduced section(s). Total diff reflects +${stats.addedWords} words added and -${stats.deletedWords} words removed across ${stats.totalWordsB} total words.`;
+  } else {
+    const structuralNotes = [];
+    if (moved.length > 0) structuralNotes.push(`${moved.length} section(s) relocated to new positions`);
+    if (modified.length > 0) structuralNotes.push(`${modified.length} section(s) contain textual revisions`);
+    if (added.length > 0) structuralNotes.push(`${added.length} new section(s) introduced`);
+    if (deleted.length > 0) structuralNotes.push(`${deleted.length} section(s) removed`);
 
-  const structuralPoints = [];
+    executiveSummary = `The comparison between the two documents reveals a ${stats.similarityPercent}% overall alignment. Key updates include: ${structuralNotes.join('; ')}. Overall diff reflects +${stats.addedWords} words added and -${stats.deletedWords} words removed across ${stats.totalWordsB} total words in Document B.`;
+  }
+
+  // 3. Structured Explanations & Key Insights List (For rich visual presentation)
+  const explanations = [];
+
+  // Item 1: Alignment & Retention Insight
+  if (stats.similarityPercent === 100) {
+    explanations.push({
+      title: 'Full Content & Layout Parity',
+      detail: 'Every word, section sequence, and paragraph matches exactly between Document A and Document B.',
+      type: 'success'
+    });
+  } else if (stats.similarityPercent >= 80) {
+    explanations.push({
+      title: 'Strong Core Consistency',
+      detail: `Over ${stats.similarityPercent}% of baseline content is retained verbatim, reflecting a focused polish rather than a fundamental rewrite.`,
+      type: 'info'
+    });
+  } else if (stats.similarityPercent >= 50) {
+    explanations.push({
+      title: 'Moderate Revision Density',
+      detail: `Approximately ${stats.similarityPercent}% of text remains aligned, but key phrasing, terminology, or structural sections have been updated.`,
+      type: 'warning'
+    });
+  } else {
+    explanations.push({
+      title: 'Extensive Restructuring & Scope Shift',
+      detail: `Low alignment (${stats.similarityPercent}% match) indicates extensive revisions, new sections, or substantial rewriting between versions.`,
+      type: 'warning'
+    });
+  }
+
+  // Item 2: Section Turnover (Added & Deleted)
+  if (added.length > 0 || deleted.length > 0) {
+    const turnoverDetails = [];
+    if (added.length > 0) turnoverDetails.push(`${added.length} new section(s) added to Document B`);
+    if (deleted.length > 0) turnoverDetails.push(`${deleted.length} section(s) omitted from Document A`);
+    explanations.push({
+      title: 'Section Composition Shift',
+      detail: `Structural changes detected: ${turnoverDetails.join(', while ')}.`,
+      type: deleted.length > 5 ? 'warning' : 'info'
+    });
+  }
+
+  // Item 3: Relocated Sections
   if (moved.length > 0) {
-    structuralPoints.push(`${moved.length} section(s) were relocated to new positions (e.g. ${moved.slice(0, 2).map(m => `${m.movedFrom} ➔ ${m.movedTo}`).join(', ')})`);
-  }
-  if (modified.length > 0) {
-    structuralPoints.push(`${modified.length} section(s) contain textual revisions`);
-  }
-  if (added.length > 0) {
-    structuralPoints.push(`${added.length} new section(s) were introduced`);
-  }
-  if (deleted.length > 0) {
-    structuralPoints.push(`${deleted.length} section(s) were removed`);
+    explanations.push({
+      title: `${moved.length} Relocated ${moved.length === 1 ? 'Section' : 'Sections'} Detected`,
+      detail: `Slide and section content was preserved but rearranged in sequence (e.g. ${moved.slice(0, 2).map(m => `"${m.movedFrom}" ➔ "${m.movedTo}"`).join(', ')}).`,
+      type: 'info'
+    });
   }
 
-  if (structuralPoints.length > 0) {
-    narrativeParts.push(`Key updates include: ${structuralPoints.join('; ')}.`);
+  // Item 4: Net Volume Impact
+  if (stats.addedWords > 0 || stats.deletedWords > 0) {
+    const netGrowth = stats.addedWords - stats.deletedWords;
+    const netDesc = netGrowth > 0 ? `Net expansion of +${netGrowth} words` : netGrowth < 0 ? `Net reduction of ${Math.abs(netGrowth)} words` : 'Zero net word count change';
+    explanations.push({
+      title: 'Word Volume & Net Expansion',
+      detail: `${netDesc} (+${stats.addedWords} added vs -${stats.deletedWords} removed) across ${stats.totalWordsB} total words in Document B.`,
+      type: 'info'
+    });
   }
 
-  narrativeParts.push(`Overall diff reflects +${stats.addedWords} words added and -${stats.deletedWords} words removed across ${stats.totalWordsB} total words in Document B.`);
+  // Item 5: Numerical / Quantitative Updates
+  const numChanges = modified.filter(m => m.description && m.description.includes('Updated values:'));
+  if (numChanges.length > 0) {
+    explanations.push({
+      title: 'Quantitative & Financial Figures Altered',
+      detail: `Specific metrics, monetary figures, or milestones were revised in ${numChanges.slice(0, 3).map(s => s.title).join(', ')}.`,
+      type: 'warning'
+    });
+  }
 
-  const executiveSummary = narrativeParts.join(' ');
-
-  // 2. High-value key changes with exact contextual descriptions
+  // 4. High-value key changes with exact contextual descriptions
   for (const m of moved.slice(0, 4)) {
     changes.push(`[Relocated] ${m.title}: ${m.description}`);
   }
@@ -91,17 +166,16 @@ function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) 
     changes.push(`[Removed] ${d.title}: ${d.description}`);
   }
 
-  // 3. Scan for critical alerts (e.g. omitted sections, metric updates)
+  // 5. Scan for critical alerts (e.g. omitted sections, metric updates)
   if (deleted.length > 0) {
     alerts.push(`Omitted Content: ${deleted.length} section(s) from Document A are missing in Document B (${deleted.slice(0, 3).map(d => `"${d.title}"`).join(', ')}).`);
   }
 
-  const numChanges = modified.filter(m => m.description && m.description.includes('Updated values:'));
   if (numChanges.length > 0) {
     alerts.push(`Numerical / Metric Discrepancies: Quantitative figures were revised in ${numChanges.map(s => s.title).join(', ')}.`);
   }
 
-  // 4. Tone shift & length comparison
+  // 6. Tone shift & length comparison
   let toneShift = 'Consistent with original content.';
   if (stats.totalWordsA > 0 && stats.totalWordsB > 0) {
     const diffRatio = (stats.totalWordsB - stats.totalWordsA) / stats.totalWordsA;
@@ -121,7 +195,10 @@ function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) 
   return {
     mode: 'local_fallback',
     contextSimilarityPercent: contextScore,
+    verdictHeadline,
     executiveSummary,
+    explanations,
+    structuralBreakdown,
     keySemanticChanges: changes.length > 0 ? changes : ['Minor text adjustments across the document.'],
     criticalAlerts: alerts,
     toneShift
@@ -198,11 +275,17 @@ Return a STRICT JSON object matching this exact schema:
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
     const parsed = JSON.parse(cleanJsonResponse(responseText));
+    const localFallback = generateLocalContextAnalysis(stats, sectionReports, summary);
 
     return {
       mode: 'ai',
       contextSimilarityPercent: Math.min(100, Math.max(0, Number(parsed.contextSimilarityPercent) || stats.similarityPercent)),
+      verdictHeadline: parsed.verdictHeadline || localFallback.verdictHeadline,
       executiveSummary: parsed.executiveSummary || 'AI analysis completed.',
+      explanations: (Array.isArray(parsed.explanations) && parsed.explanations.length > 0)
+        ? parsed.explanations
+        : localFallback.explanations,
+      structuralBreakdown: localFallback.structuralBreakdown,
       keySemanticChanges: Array.isArray(parsed.keySemanticChanges) ? parsed.keySemanticChanges : [],
       criticalAlerts: Array.isArray(parsed.criticalAlerts) ? parsed.criticalAlerts : [],
       toneShift: parsed.toneShift || 'Neutral'

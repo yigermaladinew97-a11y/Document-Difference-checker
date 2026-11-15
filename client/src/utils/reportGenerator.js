@@ -565,10 +565,25 @@ export function generateStandaloneReportHtml(data) {
     <!-- Executive Summary -->
     <div class="executive-box">
       <div class="executive-header">
-        <span class="executive-title">Executive Summary & Analysis</span>
+        <span class="executive-title">Executive Summary & Strategic Analysis</span>
         ${contextAnalysis.toneShift ? `<span class="badge badge-slate">Tone: ${escapeHtml(contextAnalysis.toneShift)}</span>` : ''}
       </div>
+      ${contextAnalysis.verdictHeadline ? `<p class="executive-text" style="font-weight: 800; font-size: 14px; margin-bottom: 8px; color: #0F172A;">${escapeHtml(contextAnalysis.verdictHeadline)}</p>` : ''}
       <p class="executive-text">${escapeHtml(contextAnalysis.executiveSummary || summary.headline || 'Detailed document analysis completed.')}</p>
+
+      ${contextAnalysis.explanations && contextAnalysis.explanations.length > 0 ? `
+      <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid #FFE7DD;">
+        <div style="font-size: 11px; font-weight: 800; color: #FF5E1E; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em;">Key Takeaways & Explanations:</div>
+        <ul style="list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+          ${contextAnalysis.explanations.map(exp => `
+            <li style="display: flex; gap: 8px; line-height: 1.4;">
+              <span style="color: #FF5E1E; font-weight: 900;">•</span>
+              <div><strong>${escapeHtml(exp.title)}:</strong> ${escapeHtml(exp.detail)}</div>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+      ` : ''}
     </div>
 
     <!-- Critical Alerts (if any) -->
