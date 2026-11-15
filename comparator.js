@@ -236,8 +236,16 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
   for (let i = 1; i <= n; i++) {
     for (let j = 1; j <= m; j++) {
       const sim = simMatrix[i - 1][j - 1];
-      // Reward matching pairs (>= 0.35); penalize incompatible pairs (< 0.35)
-      const matchScore = sim >= 0.35 ? (sim * 2.0 - 0.2) : -1.0;
+      // Apply positional distance penalty to prevent false distant anchor jumps in sequential alignment.
+      // Truly relocated/moved sections are handled cleanly in Phase 2 without distorting sequential order.
+      const dist = Math.abs((i - 1) - (j - 1));
+      const distPenalty = dist > 2 ? Math.min(1.2, (dist - 2) * 0.08) : 0;
+      const effectiveSim = sim - distPenalty;
+
+      // Reward matching pairs; penalize incompatible or distant pairs
+      const matchScore = (sim >= 0.35 && effectiveSim >= 0.25) 
+        ? (effectiveSim * 2.0 - 0.2) 
+        : -1.0;
 
       const diag = dp[i - 1][j - 1] + matchScore;
       const up = dp[i - 1][j] + GAP_PENALTY;

@@ -9,9 +9,11 @@ import {
   Download,
   WrapText,
   FileText,
-  SlidersHorizontal
+  SlidersHorizontal,
+  FileEdit
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
+import MergeResolver from './MergeResolver';
 
 export default function DiffViewer({
   diffTokens,
@@ -133,6 +135,18 @@ export default function DiffViewer({
               <AlignLeft className="w-3.5 h-3.5" />
               <span>Unified Redline</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('merge')}
+              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'merge'
+                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              title="Track changes: Accept / Reject individual changes and export clean document"
+            >
+              <FileEdit className="w-3.5 h-3.5" />
+              <span>Merge &amp; Resolve</span>
+            </button>
           </div>
 
           <button
@@ -240,25 +254,31 @@ export default function DiffViewer({
       )}
 
       {/* Legend & Status */}
-      <div className="px-6 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-        <div className="flex items-center space-x-6">
-          <span className="flex items-center space-x-2">
-            <span className="w-3.5 h-2 rounded bg-rose-100 dark:bg-rose-950/60 border-b-2 border-rose-500 inline-block" />
-            <span>Deleted text (Doc A)</span>
-          </span>
-          <span className="flex items-center space-x-2">
-            <span className="w-3.5 h-2 rounded bg-emerald-100 dark:bg-emerald-950/60 border-b-2 border-emerald-500 inline-block" />
-            <span>Added text (Doc B)</span>
-          </span>
+      {viewMode !== 'merge' && (
+        <div className="px-6 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+          <div className="flex items-center space-x-6">
+            <span className="flex items-center space-x-2">
+              <span className="w-3.5 h-2 rounded bg-rose-100 dark:bg-rose-950/60 border-b-2 border-rose-500 inline-block" />
+              <span>Deleted text (Doc A)</span>
+            </span>
+            <span className="flex items-center space-x-2">
+              <span className="w-3.5 h-2 rounded bg-emerald-100 dark:bg-emerald-950/60 border-b-2 border-emerald-500 inline-block" />
+              <span>Added text (Doc B)</span>
+            </span>
+          </div>
+          <div className="hidden sm:flex items-center space-x-1.5 text-slate-400 font-mono text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Synchronized scroll active</span>
+          </div>
         </div>
-        <div className="hidden sm:flex items-center space-x-1.5 text-slate-400 font-mono text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Synchronized scroll active</span>
-        </div>
-      </div>
+      )}
 
       {/* Content Panes */}
-      {viewMode === 'sideBySide' ? (
+      {viewMode === 'merge' ? (
+        <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
+          <MergeResolver diffTokens={diffTokens} meta={meta} />
+        </div>
+      ) : viewMode === 'sideBySide' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/[0.08]">
           {/* Doc A */}
           <div className="flex flex-col bg-slate-50/30 dark:bg-transparent">

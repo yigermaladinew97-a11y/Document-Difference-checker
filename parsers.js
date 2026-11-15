@@ -18,6 +18,7 @@ function normalizeText(text) {
   return text
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
+  
     // Remove zero-width spaces, byte-order marks, soft hyphens
     .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
     // Normalize all Unicode space variants (non-breaking space, thin space, em space, etc.) to standard space
