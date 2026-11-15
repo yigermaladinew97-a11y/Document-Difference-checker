@@ -288,8 +288,42 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
     }
   }
 
-  const deletedA = unmatchedA.filter(a => !claimedA.has(a._idx));
-  const addedB = unmatchedB.filter(b => !claimedB.has(b._idx));
+  const initialDeletedA = unmatchedA.filter(a => !claimedA.has(a._idx));
+  const initialAddedB = unmatchedB.filter(b => !claimedB.has(b._idx));
+
+  // Validate in-sequence pairs: if two paired sections have < 20% word similarity,
+  // split them into a deleted section and an added section (eliminating false 0% pairings)
+  const inSequencePairsValid = [];
+  const deletedA = [...initialDeletedA];
+  const addedB = [...initialAddedB];
+
+  for (const pair of inSequencePairs) {
+    const contentA = filterText(pair.a.content, filterOpts);
+    const contentB = filterText(pair.b.content, filterOpts);
+    const isExact = contentA.trim() === contentB.trim() || 
+      (filterOpts.ignoreCase && contentA.trim().toLowerCase() === contentB.trim().toLowerCase());
+
+    if (isExact) {
+      inSequencePairsValid.push(pair);
+      continue;
+    }
+
+    const diffOpts = {};
+    if (filterOpts.ignoreCase) diffOpts.ignoreCase = true;
+    const diffs = Diff.diffWords(contentA, contentB, diffOpts);
+    const stats = calculateWordSimilarity(contentA, contentB, diffs);
+
+    if (stats.similarityPercent >= 20) {
+      inSequencePairsValid.push(pair);
+    } else {
+      // Split false pairing into separate deletion and addition
+      deletedA.push(pair.a);
+      addedB.push(pair.b);
+    }
+  }
+
+  deletedA.sort((x, y) => x._idx - y._idx);
+  addedB.sort((x, y) => x._idx - y._idx);
 
   // Extract clear human-readable snippet explaining the exact changes
   function summarizeDiffTokens(diffTokens = []) {
@@ -467,7 +501,7 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
   // 4. Assemble final section reports in natural reading order
   const aReports = [];
   for (const a of taggedA) {
-    const inSeq = inSequencePairs.find(p => p.a._idx === a._idx);
+    const inSeq = inSequencePairsValid.find(p => p.a._idx === a._idx);
     if (inSeq) {
       aReports.push({ rep: createSectionReport(inSeq.a, inSeq.b, false), origA: a._idx });
       continue;
