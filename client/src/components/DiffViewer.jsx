@@ -8,15 +8,29 @@ import {
   Check, 
   Download, 
   WrapText, 
-  FileText 
+  FileText,
+  SlidersHorizontal
 } from 'lucide-react';
+import NoiseFiltersBar from './NoiseFiltersBar';
 
-export default function DiffViewer({ diffTokens, meta, stats, onExportPdf }) {
+export default function DiffViewer({ 
+  diffTokens, 
+  meta, 
+  stats, 
+  filters, 
+  onFilterChange, 
+  onApplyFilters, 
+  isComparing = false,
+  onExportPdf 
+}) {
   const [viewMode, setViewMode] = useState('sideBySide');
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
   const [wrapText, setWrapText] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showFilterTray, setShowFilterTray] = useState(false);
+
+  const activeFilterCount = filters ? Object.values(filters).filter(Boolean).length : 0;
 
   const leftPaneRef = useRef(null);
   const rightPaneRef = useRef(null);
@@ -140,6 +154,24 @@ export default function DiffViewer({ diffTokens, meta, stats, onExportPdf }) {
             <WrapText className="w-3.5 h-3.5" />
             <span>Wrap</span>
           </button>
+
+          {filters && onFilterChange && (
+            <button
+              type="button"
+              onClick={() => setShowFilterTray(!showFilterTray)}
+              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
+                showFilterTray
+                  ? 'bg-[#FF5E1E] text-white border-transparent shadow-xs scale-105'
+                  : activeFilterCount > 0
+                    ? 'bg-[#FF5E1E]/10 text-[#FF5E1E] border-[#FF5E1E]/30 shadow-xs'
+                    : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:text-slate-900 shadow-xs'
+              }`}
+              title="Toggle Smart Noise Filters"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Filters ({activeFilterCount})</span>
+            </button>
+          )}
         </div>
 
         {/* Right: Search, Export & Copy */}
@@ -188,6 +220,20 @@ export default function DiffViewer({ diffTokens, meta, stats, onExportPdf }) {
           )}
         </div>
       </div>
+
+      {/* Expandable Smart Noise Filters Tray */}
+      {showFilterTray && filters && onFilterChange && (
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-white/[0.08] animate-in fade-in duration-200">
+          <NoiseFiltersBar
+            filters={filters}
+            onFilterChange={onFilterChange}
+            onApply={onApplyFilters}
+            isComparing={isComparing}
+            showApplyButton={true}
+            compact={true}
+          />
+        </div>
+      )}
 
       {/* Legend & Status */}
       <div className="px-6 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">

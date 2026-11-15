@@ -66,7 +66,7 @@ function CircularGauge({ value, label, sublabel, strokeColor, size = 140 }) {
   );
 }
 
-export default function Scoreboard({ metrics, stats, summary, meta, onExportPdf }) {
+export default function Scoreboard({ metrics, stats, summary, meta, filters, onExportPdf }) {
   if (!metrics || !stats) return null;
 
   const getCategoryBadge = (category) => {
@@ -98,6 +98,37 @@ export default function Scoreboard({ metrics, stats, summary, meta, onExportPdf 
             </span>
           </div>
           <p className="text-base text-slate-800 dark:text-slate-200 mt-2 font-bold leading-relaxed">{summary?.headline}</p>
+
+          {/* Active Noise Filter Badges */}
+          {filters && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+              {filters.ignoreCase && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF5E1E]/10 text-[#FF5E1E] border border-[#FF5E1E]/20">
+                  Aa Case Insensitive
+                </span>
+              )}
+              {filters.ignorePunctuation && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                  .,; Punctuation Filtered
+                </span>
+              )}
+              {filters.ignoreWhitespace && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                  ␣ Whitespace Normalized
+                </span>
+              )}
+              {filters.ignoreNumbers && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                  # Numbers Filtered
+                </span>
+              )}
+              {filters.trimLines && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  ✂️ Lines Trimmed
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">

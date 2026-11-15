@@ -21,6 +21,7 @@ export function generateStandaloneReportHtml(data) {
   const contextAnalysis = data?.contextAnalysis || {};
   const sectionReports = data?.sectionReports || [];
   const diffTokens = data?.diffTokens || [];
+  const filters = data?.filters || {};
 
   const docA = meta.docA || { filename: 'Document A', format: 'unknown', wordCount: 0 };
   const docB = meta.docB || { filename: 'Document B', format: 'unknown', wordCount: 0 };
@@ -511,6 +512,19 @@ export function generateStandaloneReportHtml(data) {
         <div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>
         <div><strong>Status:</strong> <span class="badge ${summary?.category === 'IDENTICAL' ? 'badge-emerald' : 'badge-amber'}">${escapeHtml(summary?.category || 'AUDITED')}</span></div>
         <div><strong>Engine:</strong> ${escapeHtml(metrics.analysisMode === 'ai' ? 'Gemini 2.5 Flash' : 'Algorithmic Sequence Matcher')}</div>
+        ${Object.values(filters).some(Boolean) ? `
+        <div style="margin-top: 4px; font-size: 11px; color: var(--primary);">
+          <strong>Filters Applied:</strong> ${
+            [
+              filters.ignoreCase && 'Case Insensitive',
+              filters.ignorePunctuation && 'Punctuation Filtered',
+              filters.ignoreWhitespace && 'Whitespace Normalized',
+              filters.ignoreNumbers && 'Numbers Filtered',
+              filters.trimLines && 'Lines Trimmed'
+            ].filter(Boolean).join(', ')
+          }
+        </div>
+        ` : ''}
       </div>
     </div>
 

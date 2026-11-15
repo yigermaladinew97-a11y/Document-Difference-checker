@@ -63,6 +63,15 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
+  // Smart Noise Filtering options
+  const [filters, setFilters] = useState({
+    ignoreCase: false,
+    ignorePunctuation: false,
+    ignoreWhitespace: true,
+    ignoreNumbers: false,
+    trimLines: false
+  });
+
   const resultsRef = useRef(null);
 
   useEffect(() => {
@@ -99,9 +108,14 @@ export default function App() {
     });
   };
 
-  const handleCompare = async () => {
+  const handleCompare = async (overrideFilters) => {
     setIsComparing(true);
     setErrorMessage(null);
+
+    const activeFilters = overrideFilters || filters;
+    if (overrideFilters) {
+      setFilters(overrideFilters);
+    }
 
     try {
       const formData = new FormData();
@@ -121,6 +135,13 @@ export default function App() {
       if (apiKey) {
         formData.append('apiKey', apiKey);
       }
+
+      // Append Smart Noise Filtering options
+      formData.append('ignoreCase', activeFilters.ignoreCase);
+      formData.append('ignorePunctuation', activeFilters.ignorePunctuation);
+      formData.append('ignoreWhitespace', activeFilters.ignoreWhitespace);
+      formData.append('ignoreNumbers', activeFilters.ignoreNumbers);
+      formData.append('trimLines', activeFilters.trimLines);
 
       const response = await fetch('/api/compare', {
         method: 'POST',
@@ -247,6 +268,8 @@ export default function App() {
           onCompare={handleCompare}
           isComparing={isComparing}
           onLoadSample={handleLoadSample}
+          filters={filters}
+          onFilterChange={setFilters}
         />
 
         {/* Comparison Results Section */}
@@ -274,12 +297,13 @@ export default function App() {
               </button>
             </div>
 
-            {/* 1. Scoreboard (Dual Animated Count-Up Gauges & Tilt Stat Cards) */}
+            {/* 1. Scoreboard (Dual Animated Count-Up Gauges, Tilt Stat Cards & Noise Filter Indicators) */}
             <Scoreboard
               metrics={comparisonResult.metrics}
               stats={comparisonResult.stats}
               summary={comparisonResult.summary}
               meta={comparisonResult.meta}
+              filters={comparisonResult.filters || filters}
               onExportPdf={() => setIsPdfModalOpen(true)}
             />
 
@@ -295,11 +319,15 @@ export default function App() {
               meta={comparisonResult.meta}
             />
 
-            {/* 4. Interactive Diff Viewer with Micro-Hover Tokens */}
+            {/* 4. Interactive Diff Viewer with Micro-Hover Tokens & Smart Noise Filter Toolbar */}
             <DiffViewer
               diffTokens={comparisonResult.diffTokens}
               meta={comparisonResult.meta}
               stats={comparisonResult.stats}
+              filters={filters}
+              onFilterChange={setFilters}
+              onApplyFilters={handleCompare}
+              isComparing={isComparing}
               onExportPdf={() => setIsPdfModalOpen(true)}
             />
 

@@ -1,6 +1,49 @@
 import * as Diff from 'diff';
 
 /**
+ * Smart Noise Filtering Utility:
+ * Pre-processes text based on user-selected filtering options:
+ * - ignoreCase: Handled in Diff engine ({ ignoreCase: true })
+ * - ignoreWhitespace: Collapses multiple spaces, tabs, and trims empty lines
+ * - ignorePunctuation: Replaces punctuation with space so adjacent words don't merge
+ * - ignoreNumbers: Masks standalone numbers, currency, and dates so numeric changes are ignored
+ * - trimLines: Trims whitespace from start and end of every line
+ */
+export function filterText(text = '', options = {}) {
+  if (!text) return '';
+  let res = String(text);
+
+  // 1. Normalize line endings (\r\n -> \n)
+  res = res.replace(/\r\n/g, '\n');
+
+  // 2. Ignore Numbers & Dates
+  if (options.ignoreNumbers) {
+    // Matches currency amounts, standalone numbers, decimals, percentages, dates
+    res = res.replace(/[$€£¥]?\b\d+(?:[.,/]\d+)*%?\b/g, '[#NUM]');
+  }
+
+  // 3. Ignore Punctuation
+  if (options.ignorePunctuation) {
+    res = res.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’“”«»[\]{}]/g, ' ');
+  }
+
+  // 4. Ignore Whitespace / Normalize Whitespace
+  if (options.ignoreWhitespace) {
+    res = res.replace(/[ \t]+/g, ' ')
+             .replace(/ *\n */g, '\n')
+             .replace(/\n{2,}/g, '\n')
+             .trim();
+  }
+
+  // 5. Trim Lines
+  if (options.trimLines) {
+    res = res.split('\n').map(line => line.trim()).filter(Boolean).join('\n');
+  }
+
+  return res;
+}
+
+/**
  * Tokenize text into words (alphanumeric sequences and standard punctuation)
  */
 function tokenizeWords(text) {
@@ -64,10 +107,10 @@ export function calculateWordSimilarity(textA, textB, wordDiffs) {
 /**
  * Compute lexical token similarity between two section contents
  */
-function computeSectionSimilarity(textA = '', textB = '') {
-  const tA = textA.trim();
-  const tB = textB.trim();
-  if (tA === tB) return 1.0;
+function computeSectionSimilarity(textA = '', textB = '', filterOpts = {}) {
+  const tA = filterText(textA, filterOpts).trim();
+  const tB = filterText(textB, filterOpts).trim();
+  if (filterOpts.ignoreCase ? tA.toLowerCase() === tB.toLowerCase() : tA === tB) return 1.0;
   if (!tA || !tB) return 0.0;
 
   const wordsA = tokenizeWords(tA.toLowerCase());
@@ -92,7 +135,7 @@ function computeSectionSimilarity(textA = '', textB = '') {
  * 3. Second-Pass Relocation Scanner: Detects moved slides (e.g. Slide 2 moved to Slide 15)
  *    and prevents false "deleted + re-added" reports.
  */
-function compareSections(sectionsA = [], sectionsB = []) {
+function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
   const n = sectionsA.length;
   const m = sectionsB.length;
 
@@ -136,7 +179,7 @@ function compareSections(sectionsA = [], sectionsB = []) {
   const simMatrix = Array.from({ length: n }, () => new Float32Array(m));
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      simMatrix[i][j] = computeSectionSimilarity(taggedA[i].content, taggedB[j].content);
+      simMatrix[i][j] = computeSectionSimilarity(taggedA[i].content, taggedB[j].content, filterOpts);
     }
   }
 
@@ -301,10 +344,17 @@ function compareSections(sectionsA = [], sectionsB = []) {
   // Helper to format detailed report object for a pair
   function createSectionReport(secA, secB, isMoved = false) {
     if (secA && secB) {
-      const isExact = secA.content.trim() === secB.content.trim();
-      const diffs = Diff.diffWords(secA.content, secB.content);
-      const diffsWithSpace = Diff.diffWordsWithSpace(secA.content, secB.content);
-      const stats = calculateWordSimilarity(secA.content, secB.content, diffs);
+      const contentA = filterText(secA.content, filterOpts);
+      const contentB = filterText(secB.content, filterOpts);
+      const isExact = contentA.trim() === contentB.trim() ||
+        (filterOpts.ignoreCase && contentA.trim().toLowerCase() === contentB.trim().toLowerCase());
+
+      const diffOpts = {};
+      if (filterOpts.ignoreCase) diffOpts.ignoreCase = true;
+
+      const diffs = Diff.diffWords(contentA, contentB, diffOpts);
+      const diffsWithSpace = Diff.diffWordsWithSpace(contentA, contentB, diffOpts);
+      const stats = calculateWordSimilarity(contentA, contentB, diffs);
 
       let status = isMoved 
         ? 'MOVED' 
@@ -344,6 +394,8 @@ function compareSections(sectionsA = [], sectionsB = []) {
         movedTo: isMoved ? secB.title : null,
         contentA: secA.content,
         contentB: secB.content,
+        filteredContentA: contentA,
+        filteredContentB: contentB,
         stats: {
           ...stats,
           similarityPercent
@@ -354,7 +406,8 @@ function compareSections(sectionsA = [], sectionsB = []) {
         }))
       };
     } else if (secA && !secB) {
-      const wordsCount = tokenizeWords(secA.content).length;
+      const filteredA = filterText(secA.content, filterOpts);
+      const wordsCount = tokenizeWords(filteredA).length;
       const previewA = secA.content.trim().slice(0, 35);
       const cleanPrev = previewA ? ` (was: "${previewA}${secA.content.length > 35 ? '...' : ''}")` : '';
       return {
@@ -368,6 +421,8 @@ function compareSections(sectionsA = [], sectionsB = []) {
         movedTo: null,
         contentA: secA.content,
         contentB: '',
+        filteredContentA: filteredA,
+        filteredContentB: '',
         stats: {
           totalWordsA: wordsCount,
           totalWordsB: 0,
@@ -379,7 +434,8 @@ function compareSections(sectionsA = [], sectionsB = []) {
         diffTokens: [{ value: secA.content, type: 'removed' }]
       };
     } else {
-      const wordsCount = tokenizeWords(secB.content).length;
+      const filteredB = filterText(secB.content, filterOpts);
+      const wordsCount = tokenizeWords(filteredB).length;
       const previewB = secB.content.trim().slice(0, 35);
       const cleanPrev = previewB ? ` ("${previewB}${secB.content.length > 35 ? '...' : ''}")` : '';
       return {
@@ -393,6 +449,8 @@ function compareSections(sectionsA = [], sectionsB = []) {
         movedTo: null,
         contentA: '',
         contentB: secB.content,
+        filteredContentA: '',
+        filteredContentB: filteredB,
         stats: {
           totalWordsA: 0,
           totalWordsB: wordsCount,
@@ -438,7 +496,7 @@ function compareSections(sectionsA = [], sectionsB = []) {
 /**
  * Generate a descriptive classification badge and human-readable summary
  */
-function generateSummaryDescription(similarityPercent, stats, sectionReports) {
+function generateSummaryDescription(similarityPercent, stats, sectionReports, filterOpts = {}) {
   let category = 'IDENTICAL';
   let badgeColor = 'green';
   let headline = '';
@@ -478,6 +536,18 @@ function generateSummaryDescription(similarityPercent, stats, sectionReports) {
   if (addedSections.length > 0) keyPoints.push(`${addedSections.length} new sections added`);
   if (deletedSections.length > 0) keyPoints.push(`${deletedSections.length} sections removed`);
 
+  // Highlight active noise filters in audit summary
+  const activeFilters = [];
+  if (filterOpts.ignoreCase) activeFilters.push('Case Insensitive');
+  if (filterOpts.ignorePunctuation) activeFilters.push('Punctuation Filtered');
+  if (filterOpts.ignoreWhitespace) activeFilters.push('Whitespace Normalized');
+  if (filterOpts.ignoreNumbers) activeFilters.push('Numbers Filtered');
+  if (filterOpts.trimLines) activeFilters.push('Lines Trimmed');
+
+  if (activeFilters.length > 0) {
+    keyPoints.push(`Smart noise filters applied: ${activeFilters.join(', ')}`);
+  }
+
   return {
     category,
     badgeColor,
@@ -491,13 +561,30 @@ function generateSummaryDescription(similarityPercent, stats, sectionReports) {
  * Compare two extracted document objects
  * @param {Object} docA - Extracted content of Document A { text, sections, format, filename }
  * @param {Object} docB - Extracted content of Document B { text, sections, format, filename }
+ * @param {Object} options - Smart Noise Filtering options { ignoreCase, ignorePunctuation, ignoreWhitespace, ignoreNumbers, trimLines }
  */
-export function compareDocuments(docA, docB) {
-  const textA = docA.text || '';
-  const textB = docB.text || '';
+export function compareDocuments(docA, docB, options = {}) {
+  const filterOpts = {
+    ignoreCase: options.ignoreCase === true || options.ignoreCase === 'true',
+    ignorePunctuation: options.ignorePunctuation === true || options.ignorePunctuation === 'true',
+    ignoreWhitespace: options.ignoreWhitespace === true || options.ignoreWhitespace === 'true',
+    ignoreNumbers: options.ignoreNumbers === true || options.ignoreNumbers === 'true',
+    trimLines: options.trimLines === true || options.trimLines === 'true'
+  };
 
-  // 1. Detailed Word-level Diffs with whitespace preservation
-  const wordDiffs = Diff.diffWordsWithSpace(textA, textB);
+  const rawTextA = docA.text || '';
+  const rawTextB = docB.text || '';
+
+  const textA = filterText(rawTextA, filterOpts);
+  const textB = filterText(rawTextB, filterOpts);
+
+  const diffOpts = {};
+  if (filterOpts.ignoreCase) {
+    diffOpts.ignoreCase = true;
+  }
+
+  // 1. Detailed Word-level Diffs with options
+  const wordDiffs = Diff.diffWordsWithSpace(textA, textB, diffOpts);
 
   // Format diff tokens for easy frontend rendering
   const formattedDiffs = wordDiffs.map(part => ({
@@ -508,11 +595,11 @@ export function compareDocuments(docA, docB) {
   // 2. Compute similarity stats & percentages
   const stats = calculateWordSimilarity(textA, textB, wordDiffs);
 
-  // 3. Section by section comparison
-  const sectionReports = compareSections(docA.sections, docB.sections);
+  // 3. Section by section comparison with filters
+  const sectionReports = compareSections(docA.sections, docB.sections, filterOpts);
 
   // 4. Generate local structured summary
-  const summary = generateSummaryDescription(stats.similarityPercent, stats, sectionReports);
+  const summary = generateSummaryDescription(stats.similarityPercent, stats, sectionReports, filterOpts);
 
   return {
     isIdentical: stats.similarityPercent === 100,
@@ -521,6 +608,7 @@ export function compareDocuments(docA, docB) {
     summary,
     sectionReports,
     diffTokens: formattedDiffs,
+    filters: filterOpts,
     meta: {
       docA: { filename: docA.filename, format: docA.format, wordCount: docA.wordCount },
       docB: { filename: docB.filename, format: docB.format, wordCount: docB.wordCount }

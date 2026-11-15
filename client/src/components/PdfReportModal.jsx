@@ -22,6 +22,7 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
   const contextAnalysis = data.contextAnalysis || {};
   const sectionReports = data.sectionReports || [];
   const diffTokens = data.diffTokens || [];
+  const filters = data.filters || {};
 
   const docA = meta.docA || { filename: 'Document A', format: 'unknown', wordCount: 0 };
   const docB = meta.docB || { filename: 'Document B', format: 'unknown', wordCount: 0 };
@@ -109,6 +110,17 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
               <div className="text-right text-xs text-slate-500 space-y-0.5">
                 <p><strong>Generated:</strong> {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 <p><strong>Engine:</strong> {metrics.analysisMode === 'ai' ? 'Gemini 2.5 Flash' : 'Algorithmic Matcher'}</p>
+                {Object.values(filters).some(Boolean) && (
+                  <p className="text-[10px] font-bold text-[#FF5E1E]">
+                    Filters: {[
+                      filters.ignoreCase && 'Case',
+                      filters.ignorePunctuation && 'Punctuation',
+                      filters.ignoreWhitespace && 'Spaces',
+                      filters.ignoreNumbers && 'Numbers',
+                      filters.trimLines && 'Trim'
+                    ].filter(Boolean).join(' • ')}
+                  </p>
+                )}
               </div>
             </div>
 

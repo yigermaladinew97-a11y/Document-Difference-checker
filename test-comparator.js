@@ -150,6 +150,43 @@ async function runComparatorTests() {
     console.log(`   - ${sec.title}: [${sec.status}] -> ${sec.description} (${sec.similarityPercent}% match)`);
   });
 
+  // Test Case 6: Smart Noise Filters (Ignore Case, Punctuation, Numbers, Whitespace)
+  console.log('\n[Test 6/6] Testing Smart Noise Filters (Ignore Case, Punctuation, Numbers, Whitespace)...');
+  const noisyDocA = {
+    filename: 'contract_v1.docx',
+    format: 'docx',
+    wordCount: 20,
+    text: 'Agreement made with ACME Corp., dated March 15, 2025: Provider shall receive $10,000 USD within 30 days.',
+    sections: [
+      { title: 'Section 1', content: 'Agreement made with ACME Corp., dated March 15, 2025: Provider shall receive $10,000 USD within 30 days.' }
+    ]
+  };
+
+  const noisyDocB = {
+    filename: 'contract_v2.docx',
+    format: 'docx',
+    wordCount: 20,
+    text: 'agreement made with ACME Corp dated March 18, 2026: Provider shall receive $25,000 USD within 60 days.',
+    sections: [
+      { title: 'Section 1', content: 'agreement made with ACME Corp dated March 18, 2026: Provider shall receive $25,000 USD within 60 days.' }
+    ]
+  };
+
+  // Compare without filters
+  const rawCompare = compareDocuments(noisyDocA, noisyDocB);
+  console.log(`✓ Without Filters: ${rawCompare.similarityPercent}% match (Added=${rawCompare.stats.addedWords}, Removed=${rawCompare.stats.deletedWords})`);
+
+  // Compare with Smart Noise Filters (Case + Punctuation + Numbers + Whitespace)
+  const filteredCompare = compareDocuments(noisyDocA, noisyDocB, {
+    ignoreCase: true,
+    ignorePunctuation: true,
+    ignoreNumbers: true,
+    ignoreWhitespace: true
+  });
+  console.log(`✓ With Smart Filters: ${filteredCompare.similarityPercent}% match (Added=${filteredCompare.stats.addedWords}, Removed=${filteredCompare.stats.deletedWords})`);
+  console.log(`✓ Is Identical with Filters: ${filteredCompare.isIdentical}`);
+  console.log(`✓ Active Filters Logged: ${filteredCompare.summary.keyPoints.find(k => k.includes('Smart noise filters')) || 'none'}`);
+
   console.log('\n=======================================');
   console.log('🎉 STEP 2 VERIFICATION COMPLETE: COMPARATOR WORKING ACCURATELY!');
   console.log('=======================================');

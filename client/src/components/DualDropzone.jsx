@@ -15,6 +15,7 @@ import {
   Zap
 } from 'lucide-react';
 import TiltCard from './TiltCard';
+import NoiseFiltersBar from './NoiseFiltersBar';
 
 export default function DualDropzone({
   fileA,
@@ -27,7 +28,9 @@ export default function DualDropzone({
   setTextB,
   onCompare,
   isComparing,
-  onLoadSample
+  onLoadSample,
+  filters,
+  onFilterChange
 }) {
   const [tabA, setTabA] = useState('file');
   const [tabB, setTabB] = useState('file');
@@ -377,6 +380,17 @@ export default function DualDropzone({
           </div>
         </TiltCard>
       </div>
+
+      {/* Smart Noise Filters Control Strip */}
+      {filters && onFilterChange && (
+        <div className="pt-1">
+          <NoiseFiltersBar
+            filters={filters}
+            onFilterChange={onFilterChange}
+            isComparing={isComparing}
+          />
+        </div>
+      )}
 
       {/* Main Compare Action with Animated Glow & Ripple */}
       <div className="flex flex-col items-center justify-center pt-3 space-y-3">

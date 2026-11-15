@@ -61,6 +61,26 @@ async function runServerTest() {
   console.log(`✓ File B (${fileCompData.meta.docB.format}): ${fileCompData.meta.docB.filename}`);
   console.log(`✓ Result: ${fileCompData.metrics.lexicalSimilarityPercent}% word match, category: ${fileCompData.summary.category}`);
 
+  // 4. Test Smart Noise Filters over API
+  console.log('\n[4/4] Testing POST /api/compare with Smart Noise Filters (Case + Punctuation + Numbers)...');
+  const filterForm = new FormData();
+  filterForm.append('textA', 'Invoice #101: Total $5,000.00 USD due within 30 days.');
+  filterForm.append('textB', 'invoice #202: total $9,500.00 usd due within 60 days');
+  filterForm.append('ignoreCase', 'true');
+  filterForm.append('ignorePunctuation', 'true');
+  filterForm.append('ignoreNumbers', 'true');
+  filterForm.append('ignoreWhitespace', 'true');
+
+  const filterRes = await fetch('http://localhost:3099/api/compare', {
+    method: 'POST',
+    body: filterForm
+  });
+  const filterData = await filterRes.json();
+  console.log(`✓ Filtered response status: ${filterRes.status}`);
+  console.log(`✓ Lexical Similarity with filters: ${filterData.metrics.lexicalSimilarityPercent}%`);
+  console.log(`✓ Is Identical with filters: ${filterData.metrics.isIdentical}`);
+  console.log(`✓ Filters applied in response:`, filterData.filters);
+
   console.log('\n=======================================');
   console.log('🎉 STEP 4 VERIFICATION COMPLETE: SERVER & API ENDPOINTS FULLY OPERATIONAL!');
   console.log('=======================================');

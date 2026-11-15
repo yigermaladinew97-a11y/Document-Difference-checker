@@ -106,10 +106,19 @@ app.post(
         });
       }
 
-      // 3. Perform Word-by-Word Lexical Comparison & Diffing
-      const comparison = compareDocuments(docAContent, docBContent);
+      // 3. Extract Smart Noise Filtering Options
+      const filterOptions = {
+        ignoreCase: req.body.ignoreCase === 'true' || req.body.ignoreCase === true,
+        ignorePunctuation: req.body.ignorePunctuation === 'true' || req.body.ignorePunctuation === true,
+        ignoreWhitespace: req.body.ignoreWhitespace === 'true' || req.body.ignoreWhitespace === true,
+        ignoreNumbers: req.body.ignoreNumbers === 'true' || req.body.ignoreNumbers === true,
+        trimLines: req.body.trimLines === 'true' || req.body.trimLines === true
+      };
 
-      // 4. Perform Contextual & Semantic Analysis (AI or Local Fallback)
+      // 4. Perform Word-by-Word Lexical Comparison & Diffing with Smart Filters
+      const comparison = compareDocuments(docAContent, docBContent, filterOptions);
+
+      // 5. Perform Contextual & Semantic Analysis (AI or Local Fallback)
       const contextAnalysis = await analyzeDocumentContext({
         textA: docAContent.text,
         textB: docBContent.text,
@@ -119,9 +128,10 @@ app.post(
         apiKey: userApiKey
       });
 
-      // 5. Build Unified Result Payload
+      // 6. Build Unified Result Payload
       res.json({
         success: true,
+        filters: comparison.filters,
         meta: {
           docA: {
             filename: docAContent.filename,
