@@ -10,7 +10,8 @@ import {
   MinusCircle, 
   CheckCircle2,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  ArrowRightLeft
 } from 'lucide-react';
 
 export default function SectionInspectModal({ section, onClose, meta }) {
@@ -48,6 +49,13 @@ export default function SectionInspectModal({ section, onClose, meta }) {
         return (
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
             100% IDENTICAL
+          </span>
+        );
+      case 'MOVED':
+        return (
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center space-x-1.5">
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            <span>MOVED ({section.movedFrom} ➔ {section.movedTo} • {section.similarityPercent}% MATCH)</span>
           </span>
         );
       case 'MODIFIED':
@@ -160,6 +168,20 @@ export default function SectionInspectModal({ section, onClose, meta }) {
             </button>
           </div>
         </div>
+
+        {/* Relocation info banner if section was moved */}
+        {section.status === 'MOVED' && (
+          <div className="px-6 py-3 bg-purple-50/90 dark:bg-purple-950/40 border-b border-purple-100 dark:border-purple-900/40 flex items-center space-x-3 text-xs text-purple-900 dark:text-purple-200">
+            <div className="w-6 h-6 rounded-full bg-purple-200 dark:bg-purple-800 flex items-center justify-center shrink-0">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-purple-700 dark:text-purple-200" />
+            </div>
+            <div>
+              <span className="font-extrabold uppercase tracking-wide">Relocated Content:</span> This content originally appeared in Document A at{' '}
+              <span className="font-bold underline decoration-purple-400">{section.movedFrom}</span> and was moved to{' '}
+              <span className="font-bold underline decoration-purple-400">{section.movedTo}</span> in Document B.
+            </div>
+          </div>
+        )}
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto">

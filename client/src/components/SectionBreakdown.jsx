@@ -8,7 +8,8 @@ import {
   Plus, 
   Minus,
   Search,
-  ArrowUpRight
+  ArrowUpRight,
+  ArrowRightLeft
 } from 'lucide-react';
 import SectionInspectModal from './SectionInspectModal';
 
@@ -25,6 +26,13 @@ export default function SectionBreakdown({ sectionReports, meta }) {
           <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
             <Check className="w-3 h-3" />
             <span>100% MATCH</span>
+          </span>
+        );
+      case 'MOVED':
+        return (
+          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+            <ArrowRightLeft className="w-3 h-3" />
+            <span>MOVED ({pct}%)</span>
           </span>
         );
       case 'MODIFIED':
@@ -101,7 +109,9 @@ export default function SectionBreakdown({ sectionReports, meta }) {
                   key={idx}
                   onClick={() => setInspectedSection(sec)}
                   className={`group relative p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3 ${
-                    sec.status !== 'UNCHANGED'
+                    sec.status === 'MOVED'
+                      ? 'bg-purple-50/30 dark:bg-purple-950/20 border-purple-200/80 dark:border-purple-800/40 hover:border-purple-500 hover:bg-white dark:hover:bg-slate-900 hover:shadow-lg hover:-translate-y-1'
+                      : sec.status !== 'UNCHANGED'
                       ? 'bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-white/[0.08] hover:border-[#FF5E1E] hover:bg-white dark:hover:bg-slate-900 hover:shadow-lg hover:-translate-y-1'
                       : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/50 dark:border-white/[0.04] hover:border-slate-300 hover:bg-white hover:shadow-sm'
                   }`}
@@ -118,7 +128,9 @@ export default function SectionBreakdown({ sectionReports, meta }) {
                   <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full transition-all duration-700 ${
-                        sec.similarityPercent === 100
+                        sec.status === 'MOVED'
+                          ? 'bg-purple-500'
+                          : sec.similarityPercent === 100
                           ? 'bg-emerald-500'
                           : sec.similarityPercent > 60
                           ? 'bg-[#FF5E1E]'

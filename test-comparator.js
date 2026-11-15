@@ -113,6 +113,43 @@ async function runComparatorTests() {
     console.log(`   - ${sec.title}: [${sec.status}] -> ${sec.description} (${sec.similarityPercent}% match)`);
   });
 
+  // Test Case 5: Slide Relocation (User's feature request: Slide 2 moved to Slide 4)
+  console.log('\n[Test 5/5] Comparing Presentations where 1 slide was MOVED to another position...');
+  const pptxOriginal = {
+    filename: 'quarterly_v1.pptx',
+    format: 'pptx',
+    wordCount: 24,
+    text: 'Overview and agenda for quarterly planning.\n\nFinancial budget: $500,000 for marketing.\n\nTechnical architecture and security roadmap.\n\nExecutive team and closing remarks.',
+    sections: [
+      { title: 'Slide 1', content: 'Overview and agenda for quarterly planning.' },
+      { title: 'Slide 2', content: 'Financial budget: $500,000 for marketing.' },
+      { title: 'Slide 3', content: 'Technical architecture and security roadmap.' },
+      { title: 'Slide 4', content: 'Executive team and closing remarks.' }
+    ]
+  };
+
+  const pptxMoved = {
+    filename: 'quarterly_v2.pptx',
+    format: 'pptx',
+    wordCount: 24,
+    text: 'Overview and agenda for quarterly planning.\n\nTechnical architecture and security roadmap.\n\nExecutive team and closing remarks.\n\nFinancial budget: $500,000 for marketing.',
+    sections: [
+      { title: 'Slide 1', content: 'Overview and agenda for quarterly planning.' },
+      { title: 'Slide 2', content: 'Technical architecture and security roadmap.' },
+      { title: 'Slide 3', content: 'Executive team and closing remarks.' },
+      { title: 'Slide 4', content: 'Financial budget: $500,000 for marketing.' }
+    ]
+  };
+
+  const res5 = compareDocuments(pptxOriginal, pptxMoved);
+  console.log(`✓ Overall Similarity: ${res5.similarityPercent}%`);
+  console.log(`✓ Headline: "${res5.summary.headline}"`);
+  console.log(`✓ Key Points: ${res5.summary.keyPoints.join(' | ')}`);
+  console.log('✓ Section Reports:');
+  res5.sectionReports.forEach(sec => {
+    console.log(`   - ${sec.title}: [${sec.status}] -> ${sec.description} (${sec.similarityPercent}% match)`);
+  });
+
   console.log('\n=======================================');
   console.log('🎉 STEP 2 VERIFICATION COMPLETE: COMPARATOR WORKING ACCURATELY!');
   console.log('=======================================');
