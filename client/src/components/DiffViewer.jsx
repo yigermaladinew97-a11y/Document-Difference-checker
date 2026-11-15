@@ -16,12 +16,20 @@ import {
   ChevronUp,
   ChevronDown,
   X,
-  Table
+  Table,
+  Layers,
+  Volume2,
+  VolumeX,
+  Keyboard
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
 import MergeResolver from './MergeResolver';
 import InlineChangeAction from './InlineChangeAction';
 import SpreadsheetGridDiff from './SpreadsheetGridDiff';
+import DiffMiniMap from './DiffMiniMap';
+import CurtainSwipeDiff from './CurtainSwipeDiff';
+import KeyboardShortcutsModal from './KeyboardShortcutsModal';
+import { soundEffects } from '../utils/audioFeedback';
 import { extractChangeBlocks, tagTokensWithChangeIds, exportRedlineDocx } from '../utils/mergeExporter';
 
 export default function DiffViewer({
@@ -45,11 +53,18 @@ export default function DiffViewer({
   const [copied, setCopied] = useState(false);
   const [showFilterTray, setShowFilterTray] = useState(false);
   const [isExportingWord, setIsExportingWord] = useState(false);
+  const [isKeyboardModalOpen, setIsKeyboardModalOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.isSoundEnabled());
 
   // In-line change decision state shared across Side-by-Side, Unified, and MergeResolver
   const [decisions, setDecisions] = useState(() => initialDecisions || {});
   const [hoveredChangeId, setHoveredChangeId] = useState(null);
   const [currentChangeIndex, setCurrentChangeIndex] = useState(0);
+
+  const toggleSound = () => {
+    const next = soundEffects.toggleSound();
+    setSoundEnabled(next);
+  };
 
   const handleExportRedlineWord = async () => {
     try {
@@ -109,8 +124,12 @@ export default function DiffViewer({
   const resolvedCount = acceptedCount + rejectedCount;
   const percentResolved = totalChanges > 0 ? Math.round((resolvedCount / totalChanges) * 100) : 100;
 
-  // Single change decision handler
+  // Single change decision handler with audio haptics
   const handleInlineDecision = (changeId, choice) => {
+    if (choice === 'accepted') soundEffects.playAccept();
+    else if (choice === 'rejected') soundEffects.playReject();
+    else soundEffects.playTick();
+
     setDecisions(prev => {
       const next = { ...prev, [changeId]: choice };
       if (onDecisionsChange) onDecisionsChange(next);
@@ -118,8 +137,9 @@ export default function DiffViewer({
     });
   };
 
-  // Bulk decision handlers
+  // Bulk decision handlers with audio haptics
   const handleAcceptAll = () => {
+    soundEffects.playAccept();
     const next = {};
     changeBlocks.forEach(b => { next[b.id] = 'accepted'; });
     setDecisions(next);
@@ -127,6 +147,7 @@ export default function DiffViewer({
   };
 
   const handleRejectAll = () => {
+    soundEffects.playReject();
     const next = {};
     changeBlocks.forEach(b => { next[b.id] = 'rejected'; });
     setDecisions(next);
@@ -134,6 +155,7 @@ export default function DiffViewer({
   };
 
   const handleResetAll = () => {
+    soundEffects.playTick();
     setDecisions({});
     if (onDecisionsChange) onDecisionsChange({});
   };
@@ -141,6 +163,7 @@ export default function DiffViewer({
   // Smooth jump to next/previous change
   const jumpToChange = (direction) => {
     if (totalChanges === 0) return;
+    soundEffects.playTick();
     let nextIdx = direction === 'next' ? currentChangeIndex + 1 : currentChangeIndex - 1;
     if (nextIdx >= totalChanges) nextIdx = 0;
     if (nextIdx < 0) nextIdx = totalChanges - 1;
@@ -155,6 +178,67 @@ export default function DiffViewer({
       }
     }
   };
+
+  // Keyboard Navigation Listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+        return;
+      }
+
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        jumpToChange('next');
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        jumpToChange('prev');
+      } else if (e.key === 'a' || e.key === 'A') {
+        if (changeBlocks[currentChangeIndex]) {
+          e.preventDefault();
+          handleInlineDecision(changeBlocks[currentChangeIndex].id, 'accepted');
+        }
+      } else if (e.key === 'r' || e.key === 'R') {
+        if (changeBlocks[currentChangeIndex]) {
+          e.preventDefault();
+          handleInlineDecision(changeBlocks[currentChangeIndex].id, 'rejected');
+        }
+      } else if (e.key === 'z' || e.key === 'Z') {
+        if (changeBlocks[currentChangeIndex]) {
+          e.preventDefault();
+          handleInlineDecision(changeBlocks[currentChangeIndex].id, 'pending');
+        }
+      } else if (e.key === '1') {
+        setViewMode('sideBySide');
+      } else if (e.key === '2') {
+        setViewMode('unified');
+      } else if (e.key === '3') {
+        setViewMode('curtain');
+      } else if (e.key === '4') {
+        setViewMode('merge');
+      } else if (e.key === '5' && hasSpreadsheet) {
+        setViewMode('spreadsheet');
+      } else if (e.key === 'm' || e.key === 'M') {
+        toggleSound();
+      } else if (e.key === '?') {
+        e.preventDefault();
+        setIsKeyboardModalOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [changeBlocks, currentChangeIndex, hasSpreadsheet]);
+
+  // Audio Celebration when 100% of revisions resolved
+  const hasCelebratedRef = useRef(false);
+  useEffect(() => {
+    if (totalChanges > 0 && resolvedCount === totalChanges && !hasCelebratedRef.current) {
+      hasCelebratedRef.current = true;
+      soundEffects.playCelebration();
+    } else if (resolvedCount < totalChanges) {
+      hasCelebratedRef.current = false;
+    }
+  }, [resolvedCount, totalChanges]);
 
   if (!diffTokens || diffTokens.length === 0) return null;
 
@@ -250,6 +334,18 @@ export default function DiffViewer({
             >
               <AlignLeft className="w-3.5 h-3.5" />
               <span>Unified Redline</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('curtain')}
+              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'curtain'
+                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              title="Curtain swipe split slider lens [3]"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Curtain Swipe</span>
             </button>
             <button
               type="button"
@@ -363,6 +459,30 @@ export default function DiffViewer({
             <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>{isExportingWord ? 'Exporting...' : 'Redline Word'}</span>
           </button>
+
+          {/* Sound Feedback Toggle */}
+          <button
+            type="button"
+            onClick={toggleSound}
+            className={`p-2 rounded-full border transition hover:scale-105 active:scale-95 shadow-xs ${
+              soundEnabled
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
+                : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-white/[0.08] text-slate-400'
+            }`}
+            title={soundEnabled ? 'Audio Chimes Enabled [M] (Click to Mute)' : 'Audio Chimes Muted [M] (Click to Enable)'}
+          >
+            {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Keyboard Shortcuts Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsKeyboardModalOpen(true)}
+            className="p-2 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-slate-500 hover:text-[#FF5E1E] transition hover:scale-105 active:scale-95 shadow-xs"
+            title="Keyboard Shortcuts Cheat Sheet [?]"
+          >
+            <Keyboard className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -381,7 +501,7 @@ export default function DiffViewer({
       )}
 
       {/* Quick In-Line Resolver & Jump Navigation Bar */}
-      {viewMode !== 'merge' && viewMode !== 'spreadsheet' && totalChanges > 0 && (
+      {viewMode !== 'merge' && viewMode !== 'spreadsheet' && viewMode !== 'curtain' && totalChanges > 0 && (
         <div className="px-6 py-2.5 bg-slate-50/90 dark:bg-slate-900/80 border-b border-slate-100 dark:border-white/[0.04] flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Left: Progress info */}
           <div className="flex items-center space-x-3">
@@ -459,7 +579,7 @@ export default function DiffViewer({
       )}
 
       {/* Legend & Status */}
-      {viewMode !== 'merge' && viewMode !== 'spreadsheet' && (
+      {viewMode !== 'merge' && viewMode !== 'spreadsheet' && viewMode !== 'curtain' && (
         <div className="px-6 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
           <div className="flex items-center space-x-6">
             <span className="flex items-center space-x-2">
@@ -486,6 +606,15 @@ export default function DiffViewer({
         <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
           <SpreadsheetGridDiff spreadsheetDiff={spreadsheetDiff} meta={meta} />
         </div>
+      ) : viewMode === 'curtain' ? (
+        <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
+          <CurtainSwipeDiff
+            tokensDocA={tokensDocA}
+            tokensDocB={tokensDocB}
+            meta={meta}
+            wrapText={wrapText}
+          />
+        </div>
       ) : viewMode === 'merge' ? (
         <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
           <MergeResolver
@@ -498,8 +627,11 @@ export default function DiffViewer({
             onResetAll={handleResetAll}
           />
         </div>
-      ) : viewMode === 'sideBySide' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/[0.08]">
+      ) : (
+        <div className="relative flex">
+          <div className="flex-1 min-w-0">
+            {viewMode === 'sideBySide' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/[0.08]">
           {/* Doc A */}
           <div className="flex flex-col bg-slate-50/30 dark:bg-transparent">
             <div className="px-6 py-3.5 bg-slate-100/70 dark:bg-slate-900/80 border-b border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-xs font-semibold">
@@ -835,6 +967,35 @@ export default function DiffViewer({
           })}
         </div>
       )}
+          </div>
+
+          {/* Diff Mini-Map Change Radar Gutter */}
+          {totalChanges > 0 && (
+            <div className="hidden md:flex shrink-0 border-l border-slate-100 dark:border-white/[0.06] bg-slate-50/50 dark:bg-slate-900/40 items-center justify-center">
+              <DiffMiniMap
+                changeBlocks={changeBlocks}
+                currentChangeIndex={currentChangeIndex}
+                decisions={decisions}
+                onJumpToChange={(idx) => {
+                  setCurrentChangeIndex(idx);
+                  const target = changeBlocks[idx];
+                  if (target) {
+                    setHoveredChangeId(target.id);
+                    const el = document.getElementById(`diff-change-${target.id}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={isKeyboardModalOpen}
+        onClose={() => setIsKeyboardModalOpen(false)}
+      />
     </div>
   );
 }

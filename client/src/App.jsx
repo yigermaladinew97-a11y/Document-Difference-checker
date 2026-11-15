@@ -26,7 +26,10 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 
-const SAMPLE_DOC_A = `# Master Services Agreement (v1.0)
+const SAMPLES = {
+  contract: {
+    name: 'Legal Contract (MSA)',
+    a: `# Master Services Agreement (v1.0)
 Section 1: Scope of Services
 Provider agrees to deliver cloud architecture consulting and software engineering services as defined in Schedule A. All deliverables must meet standard ISO-27001 compliance standards.
 
@@ -37,9 +40,8 @@ Section 3: Warranty & Support
 Provider warrants all software deliverables for 30 days from client sign-off. Support includes bug fixes and critical patching within 24 business hours.
 
 Section 4: Confidentiality & IP
-All intellectual property developed exclusively for the Client shall transfer upon full payment. Provider retains core framework licenses.`;
-
-const SAMPLE_DOC_B = `# Master Services Agreement (v2.1 - Revised)
+All intellectual property developed exclusively for the Client shall transfer upon full payment. Provider retains core framework licenses.`,
+    b: `# Master Services Agreement (v2.1 - Revised)
 Section 1: Scope of Services
 Provider agrees to deliver cloud architecture consulting, software engineering, and continuous 24/7 DevOps deployment services as defined in Schedule A. All deliverables must meet SOC-2 Type II compliance standards.
 
@@ -50,7 +52,43 @@ Section 3: Warranty & Support
 Provider warrants all software deliverables for 90 days from client sign-off. Support includes ongoing maintenance, SLA response within 4 hours, and emergency weekend patching.
 
 Section 4: Confidentiality & IP
-All intellectual property developed exclusively for the Client shall transfer immediately upon project kickoff. Provider waives all retained licensing rights and indemnifies Client against infringement.`;
+All intellectual property developed exclusively for the Client shall transfer immediately upon project kickoff. Provider waives all retained licensing rights and indemnifies Client against infringement.`
+  },
+  spreadsheet: {
+    name: 'Financial Ledger (Excel/CSV)',
+    a: `Product SKU,Category,Unit Price,Q1 Volume,Total Revenue
+SKU-1001,Hardware,$450.00,100,$45,000.00
+SKU-1002,Software License,$120.00,500,$60,000.00
+SKU-1003,Professional Services,$250.00,80,$20,000.00
+SKU-1004,Legacy Maintenance,$50.00,10,$500.00`,
+    b: `Product SKU,Category,Unit Price,Q1 Volume,Total Revenue
+SKU-1001,Hardware,$495.00,100,$49,500.00
+SKU-1002,Cloud SaaS,$120.00,650,$78,000.00
+SKU-1003,Professional Services,$250.00,80,$20,000.00
+SKU-1005,Enterprise AI Platform,$899.00,25,$22,475.00`
+  },
+  tech: {
+    name: 'API Architecture Spec',
+    a: `# API v1.0 Architecture Specification
+GET /api/v1/auth/login
+Returns JWT bearer token valid for 24 hours.
+
+POST /api/v1/data/sync
+Syncs local SQLite databases with central cluster. Deprecated after Q2 2026.
+
+DELETE /api/v1/users/{id}
+Soft deletes user account and flags status as inactive. Data retained for 90 days.`,
+    b: `# API v2.0 Architecture Specification (Zero-Trust Security)
+POST /api/v2/auth/oauth/token
+Returns short-lived ephemeral token (15 minutes) with mandatory PKCE and mTLS handshake.
+
+POST /api/v2/data/stream
+Real-time bi-directional WebSocket streaming replication backed by Apache Kafka.
+
+DELETE /api/v2/users/{id}
+Executes cryptographically verified GDPR right-to-be-forgotten purge within 24 hours.`
+  }
+};
 
 export default function App() {
   const [fileA, setFileA] = useState(null);
@@ -127,11 +165,12 @@ export default function App() {
     }
   };
 
-  const handleLoadSample = () => {
+  const handleLoadSample = (key = 'contract') => {
+    const sample = SAMPLES[key] || SAMPLES.contract;
     setFileA(null);
     setFileB(null);
-    setTextA(SAMPLE_DOC_A);
-    setTextB(SAMPLE_DOC_B);
+    setTextA(sample.a);
+    setTextB(sample.b);
     setErrorMessage(null);
   };
 
