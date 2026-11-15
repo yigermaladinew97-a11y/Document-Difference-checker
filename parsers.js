@@ -69,7 +69,7 @@ async function parseDocx(buffer) {
   const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
   const sections = paragraphs.map((para, idx) => ({
     title: `Section ${idx + 1}`,
-    content: para.trim()
+    content: para
   }));
 
   return {
@@ -199,7 +199,7 @@ function extractSlideXmlText(xml) {
     if (tMatches.length > 0) {
       const pText = tMatches.map(m => decodeXmlEntities(m[1])).join('');
       if (pText.trim().length > 0) {
-        paragraphs.push(pText.trim());
+        paragraphs.push(pText);
       }
     }
   }

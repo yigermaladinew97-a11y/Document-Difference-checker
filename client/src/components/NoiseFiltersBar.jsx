@@ -75,10 +75,16 @@ export default function NoiseFiltersBar({
   const toggleFilter = (key) => {
     const next = { ...filters, [key]: !filters[key] };
     onFilterChange(next);
+    if (onApply) {
+      onApply(next);
+    }
   };
 
   const applyPreset = (preset) => {
     onFilterChange(preset.filters);
+    if (onApply) {
+      onApply(preset.filters);
+    }
   };
 
   // Find active preset if matches exactly
@@ -266,7 +272,7 @@ export default function NoiseFiltersBar({
 
           <button
             type="button"
-            onClick={onApply}
+            onClick={() => onApply && onApply(filters)}
             disabled={isComparing}
             className="flex items-center space-x-1.5 px-4 py-1.5 rounded-full bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-xs hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
           >

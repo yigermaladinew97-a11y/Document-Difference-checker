@@ -8,6 +8,7 @@ import ExecutiveSummary from './components/ExecutiveSummary';
 import SectionBreakdown from './components/SectionBreakdown';
 import DiffViewer from './components/DiffViewer';
 import PdfReportModal from './components/PdfReportModal';
+import NoiseFiltersBar from './components/NoiseFiltersBar';
 import { 
   Sparkles, 
   AlertCircle, 
@@ -19,7 +20,8 @@ import {
   Layers,
   ArrowRight,
   TrendingUp,
-  Award
+  Award,
+  SlidersHorizontal
 } from 'lucide-react';
 
 const SAMPLE_DOC_A = `# Master Services Agreement (v1.0)
@@ -112,8 +114,15 @@ export default function App() {
     setIsComparing(true);
     setErrorMessage(null);
 
-    const activeFilters = overrideFilters || filters;
-    if (overrideFilters) {
+    // Validate overrideFilters is an actual filters object and not a SyntheticEvent
+    const isFilterObject = overrideFilters && 
+      typeof overrideFilters === 'object' && 
+      !overrideFilters.nativeEvent && 
+      !overrideFilters.target &&
+      typeof overrideFilters.ignoreWhitespace !== 'undefined';
+
+    const activeFilters = isFilterObject ? overrideFilters : filters;
+    if (isFilterObject) {
       setFilters(overrideFilters);
     }
 
@@ -136,12 +145,12 @@ export default function App() {
         formData.append('apiKey', apiKey);
       }
 
-      // Append Smart Noise Filtering options
-      formData.append('ignoreCase', activeFilters.ignoreCase);
-      formData.append('ignorePunctuation', activeFilters.ignorePunctuation);
-      formData.append('ignoreWhitespace', activeFilters.ignoreWhitespace);
-      formData.append('ignoreNumbers', activeFilters.ignoreNumbers);
-      formData.append('trimLines', activeFilters.trimLines);
+      // Append Smart Noise Filtering options with strict boolean values
+      formData.append('ignoreCase', String(Boolean(activeFilters.ignoreCase)));
+      formData.append('ignorePunctuation', String(Boolean(activeFilters.ignorePunctuation)));
+      formData.append('ignoreWhitespace', String(Boolean(activeFilters.ignoreWhitespace)));
+      formData.append('ignoreNumbers', String(Boolean(activeFilters.ignoreNumbers)));
+      formData.append('trimLines', String(Boolean(activeFilters.trimLines)));
 
       const response = await fetch('/api/compare', {
         method: 'POST',
@@ -265,7 +274,7 @@ export default function App() {
           setFileB={setFileB}
           textB={textB}
           setTextB={setTextB}
-          onCompare={handleCompare}
+          onCompare={(f) => handleCompare(f)}
           isComparing={isComparing}
           onLoadSample={handleLoadSample}
           filters={filters}
@@ -295,6 +304,25 @@ export default function App() {
                 <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
                 <span>Compare Another Pair</span>
               </button>
+            </div>
+
+            {/* Real-time Smart Noise Filters on Results Screen */}
+            <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06] gap-2">
+                <span className="text-xs font-black text-slate-900 dark:text-white flex items-center space-x-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#FF5E1E]" />
+                  <span>Real-Time Comparison Rules</span>
+                </span>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  Toggle "Normalize Spaces" below to instantly switch between ignoring spaces and detecting exact whitespace
+                </span>
+              </div>
+              <NoiseFiltersBar
+                filters={filters}
+                onFilterChange={setFilters}
+                onApply={(newFilters) => handleCompare(newFilters)}
+                isComparing={isComparing}
+              />
             </div>
 
             {/* 1. Scoreboard (Dual Animated Count-Up Gauges, Tilt Stat Cards & Noise Filter Indicators) */}

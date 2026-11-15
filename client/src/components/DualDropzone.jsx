@@ -387,6 +387,7 @@ export default function DualDropzone({
           <NoiseFiltersBar
             filters={filters}
             onFilterChange={onFilterChange}
+            onApply={(newFilters) => onCompare && onCompare(newFilters)}
             isComparing={isComparing}
           />
         </div>
@@ -396,7 +397,7 @@ export default function DualDropzone({
       <div className="flex flex-col items-center justify-center pt-3 space-y-3">
         <button
           type="button"
-          onClick={onCompare}
+          onClick={() => onCompare && onCompare()}
           disabled={!isReady || isComparing}
           className={`group relative inline-flex items-center space-x-4 px-9 py-4 rounded-full font-bold text-sm transition-all duration-300 overflow-hidden ${
             isReady && !isComparing

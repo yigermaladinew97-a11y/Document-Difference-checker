@@ -1,27 +1,27 @@
 import React, { useState, useRef } from 'react';
-import { 
-  Columns, 
-  AlignLeft, 
-  Filter, 
-  Search, 
-  Copy, 
-  Check, 
-  Download, 
-  WrapText, 
+import {
+  Columns,
+  AlignLeft,
+  Filter,
+  Search,
+  Copy,
+  Check,
+  Download,
+  WrapText,
   FileText,
   SlidersHorizontal
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
 
-export default function DiffViewer({ 
-  diffTokens, 
-  meta, 
-  stats, 
-  filters, 
-  onFilterChange, 
-  onApplyFilters, 
+export default function DiffViewer({
+  diffTokens,
+  meta,
+  stats,
+  filters,
+  onFilterChange,
+  onApplyFilters,
   isComparing = false,
-  onExportPdf 
+  onExportPdf
 }) {
   const [viewMode, setViewMode] = useState('sideBySide');
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
@@ -114,11 +114,10 @@ export default function DiffViewer({
             <button
               type="button"
               onClick={() => setViewMode('sideBySide')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${
-                viewMode === 'sideBySide' 
-                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100' 
+              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'sideBySide'
+                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
+                }`}
             >
               <Columns className="w-3.5 h-3.5" />
               <span>Side-by-Side</span>
@@ -126,11 +125,10 @@ export default function DiffViewer({
             <button
               type="button"
               onClick={() => setViewMode('unified')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${
-                viewMode === 'unified' 
-                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100' 
+              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'unified'
+                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
+                }`}
             >
               <AlignLeft className="w-3.5 h-3.5" />
               <span>Unified Redline</span>
@@ -140,11 +138,10 @@ export default function DiffViewer({
           <button
             type="button"
             onClick={() => setFilterChangesOnly(!filterChangesOnly)}
-            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
-              filterChangesOnly
+            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${filterChangesOnly
                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 shadow-sm scale-105'
                 : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:text-slate-900 shadow-sm hover:scale-105'
-            }`}
+              }`}
           >
             <Filter className="w-3.5 h-3.5" />
             <span>Changes Only</span>
@@ -153,11 +150,10 @@ export default function DiffViewer({
           <button
             type="button"
             onClick={() => setWrapText(!wrapText)}
-            className={`hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${
-              wrapText
+            className={`hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${wrapText
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-white border-transparent'
                 : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-500 hover:text-slate-900'
-            }`}
+              }`}
             title="Toggle word wrap"
           >
             <WrapText className="w-3.5 h-3.5" />
@@ -168,13 +164,12 @@ export default function DiffViewer({
             <button
               type="button"
               onClick={() => setShowFilterTray(!showFilterTray)}
-              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
-                showFilterTray
+              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${showFilterTray
                   ? 'bg-[#FF5E1E] text-white border-transparent shadow-xs scale-105'
                   : activeFilterCount > 0
                     ? 'bg-[#FF5E1E]/10 text-[#FF5E1E] border-[#FF5E1E]/30 shadow-xs'
                     : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:text-slate-900 shadow-xs'
-              }`}
+                }`}
               title="Toggle Smart Noise Filters"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -279,9 +274,8 @@ export default function DiffViewer({
             <div
               ref={leftPaneRef}
               onScroll={() => handleScroll('left')}
-              className={`p-6 sm:p-8 max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${
-                wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'
-              }`}
+              className={`p-6 sm:p-8 max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'
+                }`}
             >
               {tokensDocA.map((token, idx) => {
                 if (token.type === 'removed') {
@@ -326,9 +320,8 @@ export default function DiffViewer({
             <div
               ref={rightPaneRef}
               onScroll={() => handleScroll('right')}
-              className={`p-6 sm:p-8 max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${
-                wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'
-              }`}
+              className={`p-6 sm:p-8 max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'
+                }`}
             >
               {tokensDocB.map((token, idx) => {
                 if (token.type === 'added') {

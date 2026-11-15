@@ -110,7 +110,7 @@ app.post(
       const filterOptions = {
         ignoreCase: req.body.ignoreCase === 'true' || req.body.ignoreCase === true,
         ignorePunctuation: req.body.ignorePunctuation === 'true' || req.body.ignorePunctuation === true,
-        ignoreWhitespace: req.body.ignoreWhitespace === 'true' || req.body.ignoreWhitespace === true,
+        ignoreWhitespace: typeof req.body.ignoreWhitespace !== 'undefined' ? (req.body.ignoreWhitespace === 'true' || req.body.ignoreWhitespace === true) : true,
         ignoreNumbers: req.body.ignoreNumbers === 'true' || req.body.ignoreNumbers === true,
         trimLines: req.body.trimLines === 'true' || req.body.trimLines === true
       };
