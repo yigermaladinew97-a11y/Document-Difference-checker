@@ -7,6 +7,7 @@ import Scoreboard from './components/Scoreboard';
 import ExecutiveSummary from './components/ExecutiveSummary';
 import SectionBreakdown from './components/SectionBreakdown';
 import DiffViewer from './components/DiffViewer';
+import PdfReportModal from './components/PdfReportModal';
 import { 
   Sparkles, 
   AlertCircle, 
@@ -60,6 +61,7 @@ export default function App() {
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   const resultsRef = useRef(null);
 
@@ -278,6 +280,7 @@ export default function App() {
               stats={comparisonResult.stats}
               summary={comparisonResult.summary}
               meta={comparisonResult.meta}
+              onExportPdf={() => setIsPdfModalOpen(true)}
             />
 
             {/* 2. Executive Difference Summary (AI / Heuristic) */}
@@ -297,6 +300,14 @@ export default function App() {
               diffTokens={comparisonResult.diffTokens}
               meta={comparisonResult.meta}
               stats={comparisonResult.stats}
+              onExportPdf={() => setIsPdfModalOpen(true)}
+            />
+
+            {/* 5. Executive PDF Audit Report Modal */}
+            <PdfReportModal
+              isOpen={isPdfModalOpen}
+              onClose={() => setIsPdfModalOpen(false)}
+              data={comparisonResult}
             />
           </div>
         )}

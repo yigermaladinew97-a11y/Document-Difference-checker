@@ -11,7 +11,7 @@ import {
   FileText 
 } from 'lucide-react';
 
-export default function DiffViewer({ diffTokens, meta, stats }) {
+export default function DiffViewer({ diffTokens, meta, stats, onExportPdf }) {
   const [viewMode, setViewMode] = useState('sideBySide');
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
   const [wrapText, setWrapText] = useState(true);
@@ -174,6 +174,18 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
             <Download className="w-3.5 h-3.5 text-slate-400" />
             <span className="hidden sm:inline">Export</span>
           </button>
+
+          {onExportPdf && (
+            <button
+              type="button"
+              onClick={onExportPdf}
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#FF5E1E]/10 hover:bg-[#FF5E1E]/20 text-[#FF5E1E] border border-[#FF5E1E]/30 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition"
+              title="Export Executive PDF Audit Report"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>PDF Report</span>
+            </button>
+          )}
         </div>
       </div>
 

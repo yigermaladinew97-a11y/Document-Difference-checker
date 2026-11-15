@@ -66,7 +66,7 @@ function CircularGauge({ value, label, sublabel, strokeColor, size = 140 }) {
   );
 }
 
-export default function Scoreboard({ metrics, stats, summary, meta }) {
+export default function Scoreboard({ metrics, stats, summary, meta, onExportPdf }) {
   if (!metrics || !stats) return null;
 
   const getCategoryBadge = (category) => {
@@ -100,13 +100,27 @@ export default function Scoreboard({ metrics, stats, summary, meta }) {
           <p className="text-base text-slate-800 dark:text-slate-200 mt-2 font-bold leading-relaxed">{summary?.headline}</p>
         </div>
 
-        <div className="text-xs font-medium text-slate-500 sm:text-right shrink-0 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/60 dark:border-white/[0.06] shadow-sm">
-          <p className="font-bold text-slate-800 dark:text-slate-200">
-            {meta?.docA?.filename} <span className="text-[#FF5E1E]">&harr;</span> {meta?.docB?.filename}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {meta?.docA?.format?.toUpperCase()} ({meta?.docA?.wordCount} words) vs {meta?.docB?.format?.toUpperCase()} ({meta?.docB?.wordCount} words)
-          </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+          {onExportPdf && (
+            <button
+              type="button"
+              onClick={onExportPdf}
+              className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95 shrink-0"
+              title="Generate Branded PDF Audit Report"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>PDF Audit Report</span>
+            </button>
+          )}
+
+          <div className="text-xs font-medium text-slate-500 sm:text-right shrink-0 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/60 dark:border-white/[0.06] shadow-sm">
+            <p className="font-bold text-slate-800 dark:text-slate-200">
+              {meta?.docA?.filename} <span className="text-[#FF5E1E]">&harr;</span> {meta?.docB?.filename}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {meta?.docA?.format?.toUpperCase()} ({meta?.docA?.wordCount} words) vs {meta?.docB?.format?.toUpperCase()} ({meta?.docB?.wordCount} words)
+            </p>
+          </div>
         </div>
       </div>
 
