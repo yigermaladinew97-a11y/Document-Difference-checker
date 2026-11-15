@@ -6,13 +6,13 @@ import {
   Search, 
   Copy, 
   Check, 
-  Download,
-  WrapText,
-  FileText
+  Download, 
+  WrapText, 
+  FileText 
 } from 'lucide-react';
 
 export default function DiffViewer({ diffTokens, meta, stats }) {
-  const [viewMode, setViewMode] = useState('sideBySide'); // 'sideBySide' | 'unified'
+  const [viewMode, setViewMode] = useState('sideBySide');
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
   const [wrapText, setWrapText] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +82,7 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
   };
 
   return (
-    <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card overflow-hidden">
+    <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card hover:shadow-clean-hover transition-shadow duration-300 overflow-hidden">
       {/* Top Toolbar */}
       <div className="p-5 bg-slate-50/70 dark:bg-slate-900/60 border-b border-slate-100 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
         {/* Left: View Mode Controls */}
@@ -91,9 +91,9 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
             <button
               type="button"
               onClick={() => setViewMode('sideBySide')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition ${
+              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${
                 viewMode === 'sideBySide' 
-                  ? 'bg-[#FF5E1E] text-white shadow-sm' 
+                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100' 
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -103,9 +103,9 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
             <button
               type="button"
               onClick={() => setViewMode('unified')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition ${
+              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${
                 viewMode === 'unified' 
-                  ? 'bg-[#FF5E1E] text-white shadow-sm' 
+                  ? 'bg-[#FF5E1E] text-white shadow-sm scale-100' 
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -117,10 +117,10 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
           <button
             type="button"
             onClick={() => setFilterChangesOnly(!filterChangesOnly)}
-            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition ${
+            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
               filterChangesOnly
-                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300'
-                : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:text-slate-900 shadow-sm'
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 shadow-sm scale-105'
+                : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:text-slate-900 shadow-sm hover:scale-105'
             }`}
           >
             <Filter className="w-3.5 h-3.5" />
@@ -133,7 +133,7 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
             className={`hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${
               wrapText
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-white border-transparent'
-                : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-500'
+                : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-500 hover:text-slate-900'
             }`}
             title="Toggle word wrap"
           >
@@ -150,7 +150,7 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search diff..."
+              placeholder="Search in diff..."
               className="pl-9 pr-3.5 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] rounded-full text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30 w-36 sm:w-48 shadow-sm font-mono"
             />
           </div>
@@ -158,7 +158,7 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition"
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 active:scale-95 transition"
             title="Copy diff to clipboard"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
@@ -168,7 +168,7 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
           <button
             type="button"
             onClick={handleExportReport}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition"
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 active:scale-95 transition"
             title="Export JSON report"
           >
             <Download className="w-3.5 h-3.5 text-slate-400" />
@@ -182,16 +182,16 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
         <div className="flex items-center space-x-6">
           <span className="flex items-center space-x-2">
             <span className="w-3.5 h-2 rounded bg-rose-100 dark:bg-rose-950/60 border-b-2 border-rose-500 inline-block" />
-            <span>Deleted words (Document A)</span>
+            <span>Deleted text (Doc A)</span>
           </span>
           <span className="flex items-center space-x-2">
             <span className="w-3.5 h-2 rounded bg-emerald-100 dark:bg-emerald-950/60 border-b-2 border-emerald-500 inline-block" />
-            <span>Added words (Document B)</span>
+            <span>Added text (Doc B)</span>
           </span>
         </div>
         <div className="hidden sm:flex items-center space-x-1.5 text-slate-400 font-mono text-[11px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span>Sync scroll active</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Synchronized scroll active</span>
         </div>
       </div>
 
@@ -221,7 +221,8 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
                   return (
                     <mark
                       key={idx}
-                      className="bg-rose-100/90 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1 py-0.5 rounded-sm border-b-2 border-rose-500 font-bold line-through decoration-rose-500/60 mr-1 inline-block"
+                      className="diff-token bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded-md border-b-2 border-rose-500 font-bold line-through decoration-rose-500/60 mr-1"
+                      title="Deleted word"
                     >
                       {token.value}
                     </mark>
@@ -255,7 +256,8 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
                   return (
                     <mark
                       key={idx}
-                      className="bg-emerald-100/90 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1 py-0.5 rounded-sm border-b-2 border-emerald-500 font-bold mr-1 inline-block"
+                      className="diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md border-b-2 border-emerald-500 font-bold mr-1"
+                      title="Added word"
                     >
                       {token.value}
                     </mark>
@@ -274,7 +276,7 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
               return (
                 <mark
                   key={idx}
-                  className="bg-emerald-100/90 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-sm border-b-2 border-emerald-500 font-bold mr-1 inline-block"
+                  className="diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md border-b-2 border-emerald-500 font-bold mr-1"
                 >
                   +{token.value}
                 </mark>
@@ -284,7 +286,7 @@ export default function DiffViewer({ diffTokens, meta, stats }) {
               return (
                 <mark
                   key={idx}
-                  className="bg-rose-100/90 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded-sm border-b-2 border-rose-500 font-bold line-through decoration-rose-500/60 mr-1 inline-block"
+                  className="diff-token bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded-md border-b-2 border-rose-500 font-bold line-through decoration-rose-500/60 mr-1"
                 >
                   -{token.value}
                 </mark>

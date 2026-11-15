@@ -25,7 +25,7 @@
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 94, 30, 0.6);
+  background: rgba(255, 94, 30, 0.7);
 }
 
 .dark ::-webkit-scrollbar-thumb {
@@ -34,10 +34,102 @@
 
 /* Subtle dot pattern background like Cambased */
 .bg-dot-pattern {
-  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1.2px, transparent 1.2px);
+  background-size: 28px 28px;
 }
 .dark .bg-dot-pattern {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1.2px, transparent 1.2px);
+  background-size: 28px 28px;
+}
+
+/* --- CRAZY DELIGHTFUL KEYFRAME ANIMATIONS --- */
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(1.5deg);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(10px) rotate(-1.5deg);
+  }
+}
+
+@keyframes shimmerGlow {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 25px -5px rgba(255, 94, 30, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 50px 5px rgba(255, 94, 30, 0.7);
+  }
+}
+
+@keyframes rippleWave {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.animate-float {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatReverse 7s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  background-size: 200% 100%;
+  animation: shimmerGlow 2.5s infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+.animate-ripple {
+  animation: rippleWave 2s ease-in-out infinite;
+}
+
+/* 3D Perspective Container */
+.perspective-container {
+  perspective: 1200px;
+}
+
+/* Interactive diff token hover */
+.diff-token {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-block;
+  cursor: default;
+}
+.diff-token:hover {
+  transform: translateY(-2px) scale(1.04);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }

@@ -11,8 +11,10 @@ import {
   FileCode,
   ArrowRight,
   Shield,
-  Layers
+  Layers,
+  Zap
 } from 'lucide-react';
+import TiltCard from './TiltCard';
 
 export default function DualDropzone({
   fileA,
@@ -115,45 +117,49 @@ export default function DualDropzone({
       {/* Sample Quick Action Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-2">
         <div className="flex items-center space-x-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-[#FF5E1E]" />
-          <span>Upload two documents of any format (<span className="text-slate-900 dark:text-white font-semibold">PDF, Word, Excel, PPTX, or TXT</span>) to begin.</span>
+          <span className="w-2 h-2 rounded-full bg-[#FF5E1E] animate-ping" />
+          <span>Upload any pair of files (<span className="text-slate-900 dark:text-white font-semibold">PDF, Word, Excel, PPTX, or TXT</span>) to compare.</span>
         </div>
 
         <button
           type="button"
           onClick={onLoadSample}
-          className="group inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E]/50 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] transition-all shadow-sm"
+          className="group relative inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E]/50 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
         >
-          <Sparkles className="w-3.5 h-3.5 text-[#FF5E1E]" />
+          <Sparkles className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-45 transition-transform duration-300" />
           <span>Try Sample Contract (v1 vs v2)</span>
         </button>
       </div>
 
-      {/* Dual Cards Container */}
+      {/* Dual 3D Tilt Cards Container */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-        {/* Central Floating Swap Button */}
+        {/* Central Floating Swap Button with Hover Physics */}
         <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
           <button
             type="button"
             onClick={handleSwap}
             title="Swap Document A and Document B"
-            className="p-4 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.15] text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] hover:border-[#FF5E1E]/50 hover:shadow-xl transition-all shadow-md group"
+            className="p-4 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.15] text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] hover:border-[#FF5E1E]/50 hover:shadow-xl hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg group cursor-pointer"
           >
             <ArrowLeftRight className={`w-5 h-5 transition-transform duration-500 ${swapRotating ? 'rotate-180 text-[#FF5E1E]' : ''}`} />
           </button>
         </div>
 
-        {/* --- DOCUMENT A (ORIGINAL) --- */}
-        <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-all duration-300 flex flex-col justify-between">
+        {/* --- DOCUMENT A (ORIGINAL) 3D TILT CARD --- */}
+        <TiltCard
+          maxTilt={4}
+          glowColor="rgba(255, 94, 30, 0.08)"
+          className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-shadow duration-300 flex flex-col justify-between"
+        >
           <div>
             {/* Header */}
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center space-x-3">
-                <span className="w-8 h-8 rounded-xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] font-black text-xs flex items-center justify-center font-mono">
+                <span className="w-8 h-8 rounded-xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] font-black text-xs flex items-center justify-center font-mono shadow-sm">
                   A
                 </span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document A (Original Base)</h3>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document A &bull; Original Base</h3>
                   <p className="text-[11px] text-slate-400 font-medium">Original baseline document</p>
                 </div>
               </div>
@@ -163,9 +169,9 @@ export default function DualDropzone({
                 <button
                   type="button"
                   onClick={() => setTabA('file')}
-                  className={`px-3.5 py-1 rounded-full transition ${
+                  className={`px-3.5 py-1 rounded-full transition-all duration-200 ${
                     tabA === 'file' 
-                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm scale-100' 
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
@@ -174,9 +180,9 @@ export default function DualDropzone({
                 <button
                   type="button"
                   onClick={() => setTabA('text')}
-                  className={`px-3.5 py-1 rounded-full transition ${
+                  className={`px-3.5 py-1 rounded-full transition-all duration-200 ${
                     tabA === 'text' 
-                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm scale-100' 
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
@@ -188,7 +194,7 @@ export default function DualDropzone({
             {/* Content Area */}
             {tabA === 'file' ? (
               fileA ? (
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between">
+                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between shadow-sm animate-in fade-in zoom-in-95 duration-200">
                   <div className="flex items-center space-x-3.5 truncate">
                     <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-sm">
                       {getFormatIcon(fileA.name)}
@@ -207,7 +213,7 @@ export default function DualDropzone({
                       setFileA(null);
                       if (fileInputRefA.current) fileInputRefA.current.value = '';
                     }}
-                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition hover:scale-110"
                     title="Remove file"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -219,10 +225,10 @@ export default function DualDropzone({
                   onDragLeave={() => setDragOverA(false)}
                   onDrop={(e) => handleDrop(e, 'A')}
                   onClick={() => fileInputRefA.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 ${
+                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300 group ${
                     dragOverA
-                      ? 'border-[#FF5E1E] bg-[#FFF4EF] dark:bg-[#FF5E1E]/10 scale-[1.01]'
-                      : 'border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E] bg-slate-50/50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900/70'
+                      ? 'border-[#FF5E1E] bg-[#FFF4EF] dark:bg-[#FF5E1E]/10 scale-[1.02] shadow-orange-soft'
+                      : 'border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E] bg-slate-50/50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900/70 hover:shadow-md'
                   }`}
                 >
                   <input
@@ -234,11 +240,11 @@ export default function DualDropzone({
                       if (e.target.files && e.target.files[0]) setFileA(e.target.files[0]);
                     }}
                   />
-                  <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 flex items-center justify-center text-[#FF5E1E] shadow-sm">
+                  <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 flex items-center justify-center text-[#FF5E1E] shadow-sm group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300">
                     <Upload className="w-6 h-6 stroke-[2.2]" />
                   </div>
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                    Drop original document here, or <span className="text-[#FF5E1E] underline underline-offset-4">browse</span>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#FF5E1E] transition-colors">
+                    Drop original document here, or <span className="underline underline-offset-4">browse</span>
                   </p>
                   <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, or TXT</p>
                 </div>
@@ -253,19 +259,23 @@ export default function DualDropzone({
               />
             )}
           </div>
-        </div>
+        </TiltCard>
 
-        {/* --- DOCUMENT B (MODIFIED / COMPARISON) --- */}
-        <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-all duration-300 flex flex-col justify-between">
+        {/* --- DOCUMENT B (COMPARISON) 3D TILT CARD --- */}
+        <TiltCard
+          maxTilt={4}
+          glowColor="rgba(255, 94, 30, 0.08)"
+          className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-shadow duration-300 flex flex-col justify-between"
+        >
           <div>
             {/* Header */}
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center space-x-3">
-                <span className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black text-xs flex items-center justify-center font-mono">
+                <span className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black text-xs flex items-center justify-center font-mono shadow-sm">
                   B
                 </span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document B (Comparison Target)</h3>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document B &bull; Comparison Target</h3>
                   <p className="text-[11px] text-slate-400 font-medium">Revised candidate document</p>
                 </div>
               </div>
@@ -275,9 +285,9 @@ export default function DualDropzone({
                 <button
                   type="button"
                   onClick={() => setTabB('file')}
-                  className={`px-3.5 py-1 rounded-full transition ${
+                  className={`px-3.5 py-1 rounded-full transition-all duration-200 ${
                     tabB === 'file' 
-                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm scale-100' 
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
@@ -286,9 +296,9 @@ export default function DualDropzone({
                 <button
                   type="button"
                   onClick={() => setTabB('text')}
-                  className={`px-3.5 py-1 rounded-full transition ${
+                  className={`px-3.5 py-1 rounded-full transition-all duration-200 ${
                     tabB === 'text' 
-                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm scale-100' 
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
@@ -300,7 +310,7 @@ export default function DualDropzone({
             {/* Content Area */}
             {tabB === 'file' ? (
               fileB ? (
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between">
+                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between shadow-sm animate-in fade-in zoom-in-95 duration-200">
                   <div className="flex items-center space-x-3.5 truncate">
                     <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-sm">
                       {getFormatIcon(fileB.name)}
@@ -319,7 +329,7 @@ export default function DualDropzone({
                       setFileB(null);
                       if (fileInputRefB.current) fileInputRefB.current.value = '';
                     }}
-                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition hover:scale-110"
                     title="Remove file"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -331,10 +341,10 @@ export default function DualDropzone({
                   onDragLeave={() => setDragOverB(false)}
                   onDrop={(e) => handleDrop(e, 'B')}
                   onClick={() => fileInputRefB.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 ${
+                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300 group ${
                     dragOverB
-                      ? 'border-[#FF5E1E] bg-[#FFF4EF] dark:bg-[#FF5E1E]/10 scale-[1.01]'
-                      : 'border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E] bg-slate-50/50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900/70'
+                      ? 'border-[#FF5E1E] bg-[#FFF4EF] dark:bg-[#FF5E1E]/10 scale-[1.02] shadow-orange-soft'
+                      : 'border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E] bg-slate-50/50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900/70 hover:shadow-md'
                   }`}
                 >
                   <input
@@ -346,11 +356,11 @@ export default function DualDropzone({
                       if (e.target.files && e.target.files[0]) setFileB(e.target.files[0]);
                     }}
                   />
-                  <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 flex items-center justify-center text-[#FF5E1E] shadow-sm">
+                  <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 flex items-center justify-center text-[#FF5E1E] shadow-sm group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300">
                     <Upload className="w-6 h-6 stroke-[2.2]" />
                   </div>
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                    Drop revised document here, or <span className="text-[#FF5E1E] underline underline-offset-4">browse</span>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#FF5E1E] transition-colors">
+                    Drop revised document here, or <span className="underline underline-offset-4">browse</span>
                   </p>
                   <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, or TXT</p>
                 </div>
@@ -365,21 +375,26 @@ export default function DualDropzone({
               />
             )}
           </div>
-        </div>
+        </TiltCard>
       </div>
 
-      {/* Main Compare Action (Cambased Pill Button Style) */}
+      {/* Main Compare Action with Animated Glow & Ripple */}
       <div className="flex flex-col items-center justify-center pt-3 space-y-3">
         <button
           type="button"
           onClick={onCompare}
           disabled={!isReady || isComparing}
-          className={`group inline-flex items-center space-x-4 px-8 py-4 rounded-full font-bold text-sm transition-all duration-300 shadow-orange-soft ${
+          className={`group relative inline-flex items-center space-x-4 px-9 py-4 rounded-full font-bold text-sm transition-all duration-300 overflow-hidden ${
             isReady && !isComparing
-              ? 'bg-[#FF5E1E] hover:bg-[#E04A0E] text-white hover:scale-[1.02] cursor-pointer'
+              ? 'bg-[#FF5E1E] hover:bg-[#E04A0E] text-white hover:scale-105 active:scale-95 shadow-orange-soft hover:shadow-orange-glow cursor-pointer'
               : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none'
           }`}
         >
+          {/* Subtle Light Shimmer Sweep */}
+          {isReady && !isComparing && (
+            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+          )}
+
           {isComparing ? (
             <>
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -387,8 +402,9 @@ export default function DualDropzone({
             </>
           ) : (
             <>
+              <Zap className="w-4 h-4 text-white group-hover:rotate-12 transition-transform" />
               <span>Execute Deep Comparison</span>
-              <span className="w-8 h-8 rounded-full bg-white text-[#FF5E1E] flex items-center justify-center shadow-md group-hover:translate-x-1 transition-transform">
+              <span className="w-8 h-8 rounded-full bg-white text-[#FF5E1E] flex items-center justify-center shadow-md group-hover:translate-x-1.5 transition-transform duration-200">
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </span>
             </>

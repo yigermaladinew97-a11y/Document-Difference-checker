@@ -9,17 +9,19 @@ import {
   Hash,
   ArrowUpRight
 } from 'lucide-react';
+import CountUp from './CountUp';
+import TiltCard from './TiltCard';
 
 function CircularGauge({ value, label, sublabel, strokeColor, size = 140 }) {
-  const strokeWidth = 10;
+  const strokeWidth = 11;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (value / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center group">
       <div className="relative" style={{ width: size, height: size }}>
-        <svg className="w-full h-full -rotate-90 drop-shadow-sm" viewBox={`0 0 ${size} ${size}`}>
+        <svg className="w-full h-full -rotate-90 drop-shadow-md" viewBox={`0 0 ${size} ${size}`}>
           {/* Background track */}
           <circle
             cx={size / 2}
@@ -30,7 +32,7 @@ function CircularGauge({ value, label, sublabel, strokeColor, size = 140 }) {
             strokeWidth={strokeWidth}
             className="text-slate-100 dark:text-slate-800"
           />
-          {/* Active progress */}
+          {/* Active progress with spring animation */}
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -41,14 +43,14 @@ function CircularGauge({ value, label, sublabel, strokeColor, size = 140 }) {
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="transition-all duration-1000 ease-out"
+            className="transition-all duration-1000 ease-out group-hover:stroke-width-[12px]"
           />
         </svg>
 
-        {/* Center score */}
+        {/* Center animated score */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
           <span className="text-3xl font-black tracking-tight text-slate-900 dark:text-white font-mono">
-            {value}%
+            <CountUp end={value} suffix="%" />
           </span>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
             MATCH
@@ -83,12 +85,12 @@ export default function Scoreboard({ metrics, stats, summary, meta }) {
   };
 
   return (
-    <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 sm:p-9 shadow-card space-y-7">
+    <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 sm:p-9 shadow-card space-y-7 transition-all">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-slate-100 dark:border-white/[0.06] gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${getCategoryBadge(summary?.category)}`}>
+            <span className={`px-3.5 py-1 rounded-full text-xs font-bold border uppercase tracking-wider animate-in fade-in duration-500 ${getCategoryBadge(summary?.category)}`}>
               {summary?.category?.replace('_', ' ') || 'COMPARISON COMPLETE'}
             </span>
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -98,7 +100,7 @@ export default function Scoreboard({ metrics, stats, summary, meta }) {
           <p className="text-base text-slate-800 dark:text-slate-200 mt-2 font-bold leading-relaxed">{summary?.headline}</p>
         </div>
 
-        <div className="text-xs font-medium text-slate-500 sm:text-right shrink-0 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/60 dark:border-white/[0.06]">
+        <div className="text-xs font-medium text-slate-500 sm:text-right shrink-0 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/60 dark:border-white/[0.06] shadow-sm">
           <p className="font-bold text-slate-800 dark:text-slate-200">
             {meta?.docA?.filename} <span className="text-[#FF5E1E]">&harr;</span> {meta?.docB?.filename}
           </p>
@@ -111,7 +113,7 @@ export default function Scoreboard({ metrics, stats, summary, meta }) {
       {/* Gauges & Stat Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
         {/* Dual Gauges Box */}
-        <div className="md:col-span-5 flex items-center justify-around p-6 rounded-3xl bg-slate-50/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-white/[0.06]">
+        <div className="md:col-span-5 flex items-center justify-around p-6 rounded-3xl bg-slate-50/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-white/[0.06] shadow-inner">
           <CircularGauge
             value={metrics.lexicalSimilarityPercent}
             label="Lexical Similarity"
@@ -127,55 +129,71 @@ export default function Scoreboard({ metrics, stats, summary, meta }) {
           />
         </div>
 
-        {/* 4 Cambased-Style Stat Boxes */}
+        {/* 4 Animated Tilt Stat Boxes */}
         <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           {/* Stat 1: Total Words */}
-          <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-sm transition">
+          <TiltCard
+            maxTilt={6}
+            glowColor="rgba(255, 94, 30, 0.15)"
+            className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-lg transition-all"
+          >
             <div className="flex items-center space-x-1.5 text-xs text-slate-500 mb-2 font-semibold">
               <Hash className="w-3.5 h-3.5 text-[#FF5E1E]" />
               <span>Words</span>
             </div>
             <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-              {stats.totalWordsA}
+              <CountUp end={stats.totalWordsA} />
             </p>
             <p className="text-[11px] font-medium text-slate-400 mt-1">vs {stats.totalWordsB} in B</p>
-          </div>
+          </TiltCard>
 
           {/* Stat 2: Identical */}
-          <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-sm transition">
+          <TiltCard
+            maxTilt={6}
+            glowColor="rgba(16, 185, 129, 0.15)"
+            className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-lg transition-all"
+          >
             <div className="flex items-center space-x-1.5 text-xs text-emerald-600 dark:text-emerald-400 mb-2 font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Identical</span>
             </div>
             <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-              {stats.unchangedWords}
+              <CountUp end={stats.unchangedWords} />
             </p>
             <p className="text-[11px] font-medium text-slate-400 mt-1">shared words</p>
-          </div>
+          </TiltCard>
 
           {/* Stat 3: Additions */}
-          <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-sm transition">
+          <TiltCard
+            maxTilt={6}
+            glowColor="rgba(255, 94, 30, 0.2)"
+            className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-lg transition-all"
+          >
             <div className="flex items-center space-x-1.5 text-xs text-[#FF5E1E] mb-2 font-semibold">
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Added</span>
             </div>
             <p className="text-2xl font-black text-[#FF5E1E] font-mono">
-              +{stats.addedWords}
+              +<CountUp end={stats.addedWords} />
             </p>
             <p className="text-[11px] font-medium text-slate-400 mt-1">new words</p>
-          </div>
+          </TiltCard>
 
           {/* Stat 4: Deletions */}
-          <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-sm transition">
+          <TiltCard
+            maxTilt={6}
+            glowColor="rgba(244, 63, 94, 0.15)"
+            className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:shadow-lg transition-all"
+          >
             <div className="flex items-center space-x-1.5 text-xs text-rose-500 mb-2 font-semibold">
               <MinusCircle className="w-3.5 h-3.5" />
               <span>Removed</span>
             </div>
             <p className="text-2xl font-black text-rose-500 font-mono">
-              -{stats.deletedWords}
+              -<CountUp end={stats.deletedWords} />
             </p>
             <p className="text-[11px] font-medium text-slate-400 mt-1">deleted words</p>
-          </div>
+          </TiltCard>
         </div>
       </div>
     </div>

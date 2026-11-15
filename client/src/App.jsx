@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import confetti from 'canvas-confetti';
 import Navbar from './components/Navbar';
 import ApiKeyModal from './components/ApiKeyModal';
 import DualDropzone from './components/DualDropzone';
@@ -15,7 +16,9 @@ import {
   Zap, 
   Cpu, 
   Layers,
-  ArrowRight
+  ArrowRight,
+  TrendingUp,
+  Award
 } from 'lucide-react';
 
 const SAMPLE_DOC_A = `# Master Services Agreement (v1.0)
@@ -52,7 +55,7 @@ export default function App() {
 
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('docdiff_gemini_key') || '');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false); // Default to clean light agency look like Cambased
+  const [isDark, setIsDark] = useState(false);
 
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState(null);
@@ -83,6 +86,15 @@ export default function App() {
     setTextA(SAMPLE_DOC_A);
     setTextB(SAMPLE_DOC_B);
     setErrorMessage(null);
+  };
+
+  const triggerCelebration = () => {
+    confetti({
+      particleCount: 90,
+      spread: 75,
+      origin: { y: 0.65 },
+      colors: ['#FF5E1E', '#10B981', '#38BDF8', '#F59E0B', '#6366F1']
+    });
   };
 
   const handleCompare = async () => {
@@ -120,6 +132,7 @@ export default function App() {
       }
 
       setComparisonResult(data);
+      triggerCelebration();
 
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -138,9 +151,19 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFD] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans relative selection:bg-[#FF5E1E]/20 selection:text-[#FF5E1E]">
-      {/* Background Dot Pattern (from Cambased design) */}
+    <div className="min-h-screen bg-[#FBFBFD] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans relative selection:bg-[#FF5E1E]/20 selection:text-[#FF5E1E] overflow-x-hidden">
+      {/* Background Dot Pattern (Cambased Style) */}
       <div className="fixed inset-0 bg-dot-pattern pointer-events-none opacity-60 dark:opacity-20" />
+
+      {/* Decorative Floating 3D Sphere & Badges (Like the orange sphere in Cambased!) */}
+      <div className="hidden lg:block absolute top-28 right-12 w-28 h-28 rounded-full bg-gradient-to-tr from-[#FF5E1E] via-[#FF7A45] to-[#FFA07A] shadow-orange-soft animate-float pointer-events-none opacity-90 blur-[0.5px]" />
+      <div className="hidden lg:block absolute top-48 right-32 w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 to-orange-300 shadow-lg animate-float-reverse pointer-events-none opacity-80" />
+      <div className="hidden lg:block absolute top-36 left-12 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-card animate-float-reverse pointer-events-none">
+        <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+          <Award className="w-4 h-4 text-[#FF5E1E]" />
+          <span>Word Myers Diff &bull; Active</span>
+        </div>
+      </div>
 
       <Navbar
         apiKey={apiKey}
@@ -160,35 +183,41 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12 relative z-10">
         {/* Hero Section (Matching Cambased Display Style) */}
         <div className="max-w-4xl mx-auto text-center space-y-5">
-          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border border-[#FFD6C4] dark:border-[#FF5E1E]/30 text-xs font-bold text-[#FF5E1E] shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#FF5E1E] animate-pulse" />
+          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border border-[#FFD6C4] dark:border-[#FF5E1E]/30 text-xs font-bold text-[#FF5E1E] shadow-sm hover:scale-105 transition-transform cursor-default">
+            <span className="w-2 h-2 rounded-full bg-[#FF5E1E] animate-ping" />
             <span>AI & Word-Level Enterprise Document Diff</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.12]">
             We Build Clarity Around <br />
-            <span className="text-[#FF5E1E]">Document Differences</span> That Scale.
+            <span className="text-[#FF5E1E] relative inline-block">
+              Document Differences
+              {/* Subtle underline sketch */}
+              <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#FF5E1E]/30 pointer-events-none" viewBox="0 0 100 12" preserveAspectRatio="none">
+                <path d="M0,8 Q50,0 100,8" stroke="currentColor" strokeWidth="3" fill="none" />
+              </svg>
+            </span> That Scale.
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 font-medium max-w-2xl mx-auto leading-relaxed">
             Spot subtle wording revisions, altered financial terms, and semantic meaning shifts across <strong className="text-slate-900 dark:text-white font-bold">PDF, Word, Excel, PowerPoint</strong> and text files.
           </p>
 
-          {/* Cambased-Style Floating Quick Stats Strip */}
+          {/* Cambased-Style Floating Quick Stats Strip with Hover Effects */}
           <div className="pt-3 flex flex-wrap items-center justify-center gap-3 text-xs font-bold">
-            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center space-x-2 text-slate-700 dark:text-slate-300">
               <Zap className="w-4 h-4 text-[#FF5E1E]" />
               <span>Word-by-Word Accuracy</span>
             </div>
-            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center space-x-2 text-slate-700 dark:text-slate-300">
               <Cpu className="w-4 h-4 text-emerald-500" />
               <span>Gemini 2.5 Flash Reasoning</span>
             </div>
-            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center space-x-2 text-slate-700 dark:text-slate-300">
               <Layers className="w-4 h-4 text-blue-500" />
               <span>PDF &bull; DOCX &bull; XLSX &bull; PPTX</span>
             </div>
-            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center space-x-2 text-slate-700 dark:text-slate-300">
               <ShieldCheck className="w-4 h-4 text-indigo-500" />
               <span>100% In-Memory Privacy</span>
             </div>
@@ -197,13 +226,13 @@ export default function App() {
 
         {/* Error Alert Box */}
         {errorMessage && (
-          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center space-x-3 max-w-3xl mx-auto shadow-sm">
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center space-x-3 max-w-3xl mx-auto shadow-sm animate-in fade-in duration-300">
             <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
             <span className="flex-1">{errorMessage}</span>
           </div>
         )}
 
-        {/* Dual Upload / Input Cards */}
+        {/* Dual 3D Tilt Upload / Input Cards */}
         <DualDropzone
           fileA={fileA}
           setFileA={setFileA}
@@ -220,7 +249,7 @@ export default function App() {
 
         {/* Comparison Results Section */}
         {comparisonResult && (
-          <div ref={resultsRef} className="pt-10 space-y-10 animate-in fade-in duration-500">
+          <div ref={resultsRef} className="pt-10 space-y-10 animate-in fade-in duration-700">
             {/* Results Title Bar with Reset Button */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/[0.08]">
               <div className="flex items-center space-x-3">
@@ -236,14 +265,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition"
+                className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
                 <span>Compare Another Pair</span>
               </button>
             </div>
 
-            {/* 1. Scoreboard (Cambased Gauges & Stat Boxes) */}
+            {/* 1. Scoreboard (Dual Animated Count-Up Gauges & Tilt Stat Cards) */}
             <Scoreboard
               metrics={comparisonResult.metrics}
               stats={comparisonResult.stats}
@@ -262,7 +291,7 @@ export default function App() {
               sectionReports={comparisonResult.sectionReports}
             />
 
-            {/* 4. Interactive Diff Viewer */}
+            {/* 4. Interactive Diff Viewer with Micro-Hover Tokens */}
             <DiffViewer
               diffTokens={comparisonResult.diffTokens}
               meta={comparisonResult.meta}
@@ -272,7 +301,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer (Cambased Agency Clean Style) */}
+      {/* Footer */}
       <footer className="mt-auto py-10 border-t border-slate-200/80 dark:border-white/[0.06] bg-white dark:bg-[#0B0F19] text-xs text-slate-500 font-medium">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
