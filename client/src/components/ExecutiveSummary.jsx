@@ -1,12 +1,11 @@
 import React from 'react';
 import { 
   Sparkles, 
-  AlertTriangle, 
   Scale, 
   Volume2, 
   ShieldAlert, 
   FileCheck2,
-  ArrowRight
+  CheckCircle2
 } from 'lucide-react';
 
 export default function ExecutiveSummary({ contextAnalysis, summary }) {
@@ -15,61 +14,58 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
   const isAi = contextAnalysis.mode === 'ai';
 
   return (
-    <div className="relative rounded-3xl bg-dark-900/90 border border-white/[0.08] p-7 shadow-2xl backdrop-blur-xl space-y-6 overflow-hidden">
-      {/* Background Accent Glow */}
-      <div className="absolute top-0 right-0 w-80 h-32 bg-sky-500/[0.04] rounded-full blur-3xl pointer-events-none" />
-
+    <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 sm:p-9 shadow-card space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-white/[0.06] gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-indigo-500/10 to-sky-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm">
-            <Sparkles className="w-5 h-5 text-indigo-400" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-5 border-b border-slate-100 dark:border-white/[0.06] gap-3">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] flex items-center justify-center shadow-sm">
+            <Sparkles className="w-5 h-5 stroke-[2.2]" />
           </div>
           <div>
-            <h3 className="font-bold text-base text-white tracking-tight flex items-center gap-2">
-              Semantic Intelligence & Difference Summary
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              Semantic Intelligence & Difference Overview
               {isAi && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                   AI Grounded
                 </span>
               )}
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 font-medium">
               {isAi 
                 ? 'Deep semantic and contractual analysis powered by Gemini 2.5 Flash' 
-                : 'Structural change detection & algorithmic heuristics (Set Gemini API key for deep reasoning)'}
+                : 'Algorithmic structural summary (Enter a Gemini API key for deep reasoning)'}
             </p>
           </div>
         </div>
 
         {contextAnalysis.toneShift && (
-          <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-dark-950/80 border border-white/[0.08] text-xs text-slate-300 shadow-sm">
-            <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="flex items-center space-x-2 px-4 py-1.5 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] text-xs shadow-sm">
+            <Volume2 className="w-3.5 h-3.5 text-[#FF5E1E]" />
             <span className="text-slate-400 font-medium">Tone:</span>
-            <span className="text-slate-200 font-semibold">{contextAnalysis.toneShift}</span>
+            <span className="text-slate-800 dark:text-white font-bold">{contextAnalysis.toneShift}</span>
           </div>
         )}
       </div>
 
-      {/* Executive Overview Box */}
-      <div className="relative p-5 rounded-2xl bg-dark-950/70 border border-white/[0.06] shadow-inner">
-        <h4 className="text-[11px] font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center space-x-1.5">
-          <FileCheck2 className="w-3.5 h-3.5" />
-          <span>Executive Synthesis</span>
+      {/* Executive Overview Box (Warm Tinted Callout) */}
+      <div className="p-6 rounded-2xl bg-[#FFF9F6] dark:bg-[#FF5E1E]/5 border border-[#FFE7DD] dark:border-[#FF5E1E]/20">
+        <h4 className="text-[11px] font-black text-[#FF5E1E] uppercase tracking-widest mb-2 flex items-center space-x-1.5">
+          <FileCheck2 className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Executive Summary</span>
         </h4>
-        <p className="text-sm text-slate-200 leading-relaxed font-normal">
+        <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
           {contextAnalysis.executiveSummary}
         </p>
       </div>
 
-      {/* Critical Discrepancies & Risk Alerts (if present) */}
+      {/* Critical Discrepancies (if any) */}
       {contextAnalysis.criticalAlerts && contextAnalysis.criticalAlerts.length > 0 && (
-        <div className="p-5 rounded-2xl bg-rose-500/[0.08] border border-rose-500/20 space-y-2.5">
-          <div className="flex items-center space-x-2 text-rose-400 font-bold text-xs uppercase tracking-wider">
+        <div className="p-6 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-2">
+          <div className="flex items-center space-x-2 text-rose-600 dark:text-rose-400 font-bold text-xs uppercase tracking-wider">
             <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span>High-Risk Discrepancies & Clause Modifications</span>
+            <span>High-Risk Discrepancies & Modified Obligations</span>
           </div>
-          <ul className="space-y-1.5 pl-6 list-disc text-xs text-rose-200/90 leading-relaxed font-normal">
+          <ul className="space-y-1.5 pl-6 list-disc text-xs text-rose-800 dark:text-rose-200/90 leading-relaxed font-medium">
             {contextAnalysis.criticalAlerts.map((alert, idx) => (
               <li key={idx}>{alert}</li>
             ))}
@@ -77,21 +73,21 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
         </div>
       )}
 
-      {/* Key Meaning Changes */}
+      {/* Key Meaning Adjustments Grid */}
       {contextAnalysis.keySemanticChanges && contextAnalysis.keySemanticChanges.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
-            <Scale className="w-3.5 h-3.5 text-sky-400" />
+          <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+            <Scale className="w-3.5 h-3.5 text-[#FF5E1E]" />
             <span>Key Content & Contractual Adjustments</span>
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {contextAnalysis.keySemanticChanges.map((change, idx) => (
               <div 
                 key={idx} 
-                className="p-3.5 rounded-2xl bg-dark-950/50 border border-white/[0.05] hover:border-white/[0.1] transition flex items-start space-x-3 text-xs text-slate-300"
+                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] hover:border-[#FF5E1E]/40 transition flex items-start space-x-3 text-xs text-slate-700 dark:text-slate-300 font-medium"
               >
-                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 mt-1 shrink-0 shadow-sm" />
-                <span className="leading-relaxed font-normal">{change}</span>
+                <div className="w-2 h-2 rounded-full bg-[#FF5E1E] mt-1 shrink-0" />
+                <span className="leading-relaxed">{change}</span>
               </div>
             ))}
           </div>

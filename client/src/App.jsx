@@ -14,7 +14,8 @@ import {
   ShieldCheck, 
   Zap, 
   Cpu, 
-  Layers 
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 
 const SAMPLE_DOC_A = `# Master Services Agreement (v1.0)
@@ -51,7 +52,7 @@ export default function App() {
 
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('docdiff_gemini_key') || '');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false); // Default to clean light agency look like Cambased
 
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState(null);
@@ -137,11 +138,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200 font-sans relative overflow-x-hidden">
-      {/* Background Ambient Spotlights */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-b from-indigo-500/10 via-sky-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
-      <div className="fixed top-1/3 -left-40 w-96 h-96 bg-indigo-600/[0.04] rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="fixed top-1/2 -right-40 w-96 h-96 bg-sky-500/[0.04] rounded-full blur-3xl pointer-events-none -z-10" />
+    <div className="min-h-screen bg-[#FBFBFD] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans relative selection:bg-[#FF5E1E]/20 selection:text-[#FF5E1E]">
+      {/* Background Dot Pattern (from Cambased design) */}
+      <div className="fixed inset-0 bg-dot-pattern pointer-events-none opacity-60 dark:opacity-20" />
 
       <Navbar
         apiKey={apiKey}
@@ -158,53 +157,49 @@ export default function App() {
         onSaveKey={handleSaveApiKey}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
-        {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-            <span className="bg-gradient-to-r from-indigo-300 to-sky-300 bg-clip-text text-transparent">
-              Enterprise Two-Tier Comparison Engine
-            </span>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12 relative z-10">
+        {/* Hero Section (Matching Cambased Display Style) */}
+        <div className="max-w-4xl mx-auto text-center space-y-5">
+          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border border-[#FFD6C4] dark:border-[#FF5E1E]/30 text-xs font-bold text-[#FF5E1E] shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-[#FF5E1E] animate-pulse" />
+            <span>AI & Word-Level Enterprise Document Diff</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-[1.15]">
-            Compare documents with <br className="hidden sm:inline" />
-            <span className="bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-              word-level & semantic precision.
-            </span>
+          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.12]">
+            We Build Clarity Around <br />
+            <span className="text-[#FF5E1E]">Document Differences</span> That Scale.
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-400 leading-relaxed font-normal max-w-2xl mx-auto">
-            Detect exact phrase revisions, altered contractual terms, and semantic meaning shifts across <strong className="text-slate-200">PDF, Word, Excel, PowerPoint</strong> and text files.
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 font-medium max-w-2xl mx-auto leading-relaxed">
+            Spot subtle wording revisions, altered financial terms, and semantic meaning shifts across <strong className="text-slate-900 dark:text-white font-bold">PDF, Word, Excel, PowerPoint</strong> and text files.
           </p>
 
-          {/* Feature Badges Bar */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-[11px] font-medium text-slate-400">
-            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Myers Word Diff</span>
-            </span>
-            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
-              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Gemini 2.5 AI Reasoning</span>
-            </span>
-            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
-              <Layers className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Cross-Format Ingestion</span>
-            </span>
-            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
-              <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-              <span>Zero-Persistence Privacy</span>
-            </span>
+          {/* Cambased-Style Floating Quick Stats Strip */}
+          <div className="pt-3 flex flex-wrap items-center justify-center gap-3 text-xs font-bold">
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+              <Zap className="w-4 h-4 text-[#FF5E1E]" />
+              <span>Word-by-Word Accuracy</span>
+            </div>
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+              <Cpu className="w-4 h-4 text-emerald-500" />
+              <span>Gemini 2.5 Flash Reasoning</span>
+            </div>
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+              <Layers className="w-4 h-4 text-blue-500" />
+              <span>PDF &bull; DOCX &bull; XLSX &bull; PPTX</span>
+            </div>
+            <div className="px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+              <ShieldCheck className="w-4 h-4 text-indigo-500" />
+              <span>100% In-Memory Privacy</span>
+            </div>
           </div>
         </div>
 
         {/* Error Alert Box */}
         {errorMessage && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center space-x-3 max-w-3xl mx-auto shadow-lg animate-in fade-in duration-200">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span className="flex-1 font-medium">{errorMessage}</span>
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center space-x-3 max-w-3xl mx-auto shadow-sm">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+            <span className="flex-1">{errorMessage}</span>
           </div>
         )}
 
@@ -225,30 +220,30 @@ export default function App() {
 
         {/* Comparison Results Section */}
         {comparisonResult && (
-          <div ref={resultsRef} className="pt-8 space-y-8 animate-in fade-in duration-700">
+          <div ref={resultsRef} className="pt-10 space-y-10 animate-in fade-in duration-500">
             {/* Results Title Bar with Reset Button */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/[0.08]">
               <div className="flex items-center space-x-3">
-                <div className="p-2 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
-                  <FileDiff className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] flex items-center justify-center shadow-sm">
+                  <FileDiff className="w-5 h-5 stroke-[2.2]" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white tracking-tight">Intelligence & Diff Results</h2>
-                  <p className="text-xs text-slate-400">Multi-tier metrics, semantic breakdown, and synchronized view</p>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Intelligence & Diff Results</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Multi-tier metrics, semantic breakdown, and synchronized view</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-dark-900 hover:bg-dark-850 border border-white/[0.08] text-xs font-semibold text-slate-300 hover:text-white transition shadow-sm"
+                className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition"
               >
-                <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+                <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
                 <span>Compare Another Pair</span>
               </button>
             </div>
 
-            {/* 1. Scoreboard (Dual Glowing Gauges & 4 Metric Cards) */}
+            {/* 1. Scoreboard (Cambased Gauges & Stat Boxes) */}
             <Scoreboard
               metrics={comparisonResult.metrics}
               stats={comparisonResult.stats}
@@ -256,7 +251,7 @@ export default function App() {
               meta={comparisonResult.meta}
             />
 
-            {/* 2. Executive Difference Summary (AI / Local Heuristics) */}
+            {/* 2. Executive Difference Summary (AI / Heuristic) */}
             <ExecutiveSummary
               contextAnalysis={comparisonResult.contextAnalysis}
               summary={comparisonResult.summary}
@@ -277,11 +272,16 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="mt-auto py-8 border-t border-white/[0.06] text-center text-xs text-slate-500 bg-dark-950/40">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>DocDiff Pro &bull; Built with React, Tailwind CSS, Lucide & Google Gemini</p>
-          <p className="text-slate-600 font-mono">100% Client & In-Memory Safe &bull; Zero Disk Retention</p>
+      {/* Footer (Cambased Agency Clean Style) */}
+      <footer className="mt-auto py-10 border-t border-slate-200/80 dark:border-white/[0.06] bg-white dark:bg-[#0B0F19] text-xs text-slate-500 font-medium">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-2">
+            <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+              Doc<span className="text-[#FF5E1E]">Diff</span>
+            </span>
+            <span className="text-slate-400">&bull; Enterprise Document Intelligence</span>
+          </div>
+          <p className="text-slate-400">100% Client & In-Memory Safe &bull; Zero Disk Retention</p>
         </div>
       </footer>
     </div>

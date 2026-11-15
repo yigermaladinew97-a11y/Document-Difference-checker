@@ -9,9 +9,9 @@ import {
   FileSpreadsheet,
   Presentation,
   FileCode,
+  ArrowRight,
   Shield,
-  Zap,
-  CheckCircle2
+  Layers
 } from 'lucide-react';
 
 export default function DualDropzone({
@@ -27,7 +27,7 @@ export default function DualDropzone({
   isComparing,
   onLoadSample
 }) {
-  const [tabA, setTabA] = useState('file'); // 'file' or 'text'
+  const [tabA, setTabA] = useState('file');
   const [tabB, setTabB] = useState('file');
   const [dragOverA, setDragOverA] = useState(false);
   const [dragOverB, setDragOverB] = useState(false);
@@ -46,14 +46,14 @@ export default function DualDropzone({
 
   const getFormatBadge = (filename) => {
     const ext = filename?.split('.').pop()?.toUpperCase() || 'FILE';
-    let color = 'bg-slate-500/10 text-slate-400 border-slate-500/20';
-    if (ext === 'PDF') color = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-    if (ext === 'DOCX' || ext === 'DOC') color = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-    if (ext === 'XLSX' || ext === 'XLS' || ext === 'CSV') color = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-    if (ext === 'PPTX' || ext === 'PPT') color = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    let color = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+    if (ext === 'PDF') color = 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800';
+    if (ext === 'DOCX' || ext === 'DOC') color = 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800';
+    if (ext === 'XLSX' || ext === 'XLS' || ext === 'CSV') color = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800';
+    if (ext === 'PPTX' || ext === 'PPT') color = 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
 
     return (
-      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border uppercase tracking-wider ${color}`}>
+      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${color}`}>
         {ext}
       </span>
     );
@@ -62,15 +62,15 @@ export default function DualDropzone({
   const getFormatIcon = (filename) => {
     const ext = filename?.split('.').pop()?.toLowerCase();
     switch (ext) {
-      case 'pdf': return <FileText className="w-7 h-7 text-rose-400" />;
+      case 'pdf': return <FileText className="w-8 h-8 text-rose-500" />;
       case 'docx':
-      case 'doc': return <FileText className="w-7 h-7 text-blue-400" />;
+      case 'doc': return <FileText className="w-8 h-8 text-blue-500" />;
       case 'xlsx':
       case 'xls':
-      case 'csv': return <FileSpreadsheet className="w-7 h-7 text-emerald-400" />;
+      case 'csv': return <FileSpreadsheet className="w-8 h-8 text-emerald-500" />;
       case 'pptx':
-      case 'ppt': return <Presentation className="w-7 h-7 text-amber-400" />;
-      default: return <FileCode className="w-7 h-7 text-slate-400" />;
+      case 'ppt': return <Presentation className="w-8 h-8 text-amber-500" />;
+      default: return <FileCode className="w-8 h-8 text-[#FF5E1E]" />;
     }
   };
 
@@ -113,65 +113,60 @@ export default function DualDropzone({
   return (
     <div className="space-y-6">
       {/* Sample Quick Action Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-1">
-        <div className="flex items-center space-x-2 text-xs text-slate-400">
-          <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>Compare any two formats: <strong className="text-slate-300">PDF vs Word</strong>, <strong className="text-slate-300">Excel vs Excel</strong>, or <strong className="text-slate-300">PPTX vs PPTX</strong>.</span>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-2">
+        <div className="flex items-center space-x-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <span className="w-2 h-2 rounded-full bg-[#FF5E1E]" />
+          <span>Upload two documents of any format (<span className="text-slate-900 dark:text-white font-semibold">PDF, Word, Excel, PPTX, or TXT</span>) to begin.</span>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={onLoadSample}
-            className="group relative inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-dark-900 border border-white/[0.08] hover:border-indigo-500/40 text-xs text-slate-300 hover:text-white transition-all shadow-sm"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400 group-hover:rotate-12 transition-transform" />
-            <span>Load Demo Contract (SLA v1 vs v2)</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onLoadSample}
+          className="group inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E]/50 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] transition-all shadow-sm"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#FF5E1E]" />
+          <span>Try Sample Contract (v1 vs v2)</span>
+        </button>
       </div>
 
-      {/* Dual Upload Cards Container */}
+      {/* Dual Cards Container */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-        {/* Central Swap Pill Button */}
+        {/* Central Floating Swap Button */}
         <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
           <button
             type="button"
             onClick={handleSwap}
             title="Swap Document A and Document B"
-            className="p-3.5 rounded-2xl bg-dark-900 border border-white/10 text-slate-300 hover:text-white hover:border-indigo-500/50 hover:shadow-glow-indigo transition-all shadow-2xl backdrop-blur-xl group"
+            className="p-4 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.15] text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] hover:border-[#FF5E1E]/50 hover:shadow-xl transition-all shadow-md group"
           >
-            <ArrowLeftRight className={`w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform ${swapRotating ? 'rotate-180 transition-transform duration-500' : ''}`} />
+            <ArrowLeftRight className={`w-5 h-5 transition-transform duration-500 ${swapRotating ? 'rotate-180 text-[#FF5E1E]' : ''}`} />
           </button>
         </div>
 
-        {/* --- DOCUMENT A (BASE / ORIGINAL) --- */}
-        <div className="relative group rounded-3xl bg-dark-900/80 border border-white/[0.08] p-6 shadow-2xl backdrop-blur-xl flex flex-col justify-between transition-all hover:border-white/[0.12]">
-          {/* Subtle Corner Ambient Glow */}
-          <div className="absolute top-0 left-0 w-32 h-32 bg-sky-500/[0.03] rounded-tl-3xl pointer-events-none blur-xl" />
-
+        {/* --- DOCUMENT A (ORIGINAL) --- */}
+        <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-all duration-300 flex flex-col justify-between">
           <div>
-            {/* Card Header */}
-            <div className="flex items-center justify-between pb-4 mb-5 border-b border-white/[0.06]">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center space-x-3">
-                <span className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-400 font-bold text-xs flex items-center justify-center border border-sky-500/20 font-mono shadow-inner">
+                <span className="w-8 h-8 rounded-xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] font-black text-xs flex items-center justify-center font-mono">
                   A
                 </span>
                 <div>
-                  <h3 className="font-semibold text-sm text-white">Document A &bull; Original Base</h3>
-                  <p className="text-[11px] text-slate-400">Baseline version for comparison</p>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document A (Original Base)</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Original baseline document</p>
                 </div>
               </div>
 
-              {/* Input Type Switcher */}
-              <div className="flex bg-dark-950 p-1 rounded-xl border border-white/[0.06] text-xs">
+              {/* Segmented control */}
+              <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-full text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setTabA('file')}
-                  className={`px-3 py-1 rounded-lg font-medium transition ${
+                  className={`px-3.5 py-1 rounded-full transition ${
                     tabA === 'file' 
-                      ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md' 
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
                   File
@@ -179,10 +174,10 @@ export default function DualDropzone({
                 <button
                   type="button"
                   onClick={() => setTabA('text')}
-                  className={`px-3 py-1 rounded-lg font-medium transition ${
+                  className={`px-3.5 py-1 rounded-full transition ${
                     tabA === 'text' 
-                      ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md' 
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
                   Text
@@ -190,20 +185,20 @@ export default function DualDropzone({
               </div>
             </div>
 
-            {/* Card Body */}
+            {/* Content Area */}
             {tabA === 'file' ? (
               fileA ? (
-                <div className="p-4 rounded-2xl bg-dark-850/80 border border-white/[0.08] flex items-center justify-between shadow-inner">
+                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between">
                   <div className="flex items-center space-x-3.5 truncate">
-                    <div className="p-2.5 rounded-xl bg-dark-900 border border-white/[0.06] shadow-sm">
+                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-sm">
                       {getFormatIcon(fileA.name)}
                     </div>
                     <div className="truncate">
                       <div className="flex items-center space-x-2">
-                        <p className="text-sm font-semibold text-white truncate">{fileA.name}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{fileA.name}</p>
                         {getFormatBadge(fileA.name)}
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{formatFileSize(fileA.size)} &bull; Ready to parse</p>
+                      <p className="text-xs text-slate-400 font-medium mt-0.5">{formatFileSize(fileA.size)} &bull; Ready to process</p>
                     </div>
                   </div>
                   <button
@@ -212,7 +207,7 @@ export default function DualDropzone({
                       setFileA(null);
                       if (fileInputRefA.current) fileInputRefA.current.value = '';
                     }}
-                    className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
                     title="Remove file"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -224,10 +219,10 @@ export default function DualDropzone({
                   onDragLeave={() => setDragOverA(false)}
                   onDrop={(e) => handleDrop(e, 'A')}
                   onClick={() => fileInputRefA.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-9 text-center cursor-pointer transition-all duration-200 ${
+                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 ${
                     dragOverA
-                      ? 'border-sky-500 bg-sky-500/10 scale-[1.01]'
-                      : 'border-white/[0.08] hover:border-sky-500/40 bg-dark-950/40 hover:bg-dark-950/70'
+                      ? 'border-[#FF5E1E] bg-[#FFF4EF] dark:bg-[#FF5E1E]/10 scale-[1.01]'
+                      : 'border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E] bg-slate-50/50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900/70'
                   }`}
                 >
                   <input
@@ -239,54 +234,51 @@ export default function DualDropzone({
                       if (e.target.files && e.target.files[0]) setFileA(e.target.files[0]);
                     }}
                   />
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-                    <Upload className="w-6 h-6" />
+                  <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 flex items-center justify-center text-[#FF5E1E] shadow-sm">
+                    <Upload className="w-6 h-6 stroke-[2.2]" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-200">
-                    Drop Document A here, or <span className="text-sky-400 underline underline-offset-4">browse</span>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    Drop original document here, or <span className="text-[#FF5E1E] underline underline-offset-4">browse</span>
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">PDF, DOCX, XLSX, PPTX, or TXT</p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, or TXT</p>
                 </div>
               )
             ) : (
               <textarea
                 value={textA}
                 onChange={(e) => setTextA(e.target.value)}
-                placeholder="Paste the original contract, specifications, or text content here..."
+                placeholder="Paste original contract, specification, or text content here..."
                 rows={6}
-                className="w-full p-3.5 bg-dark-950/60 border border-white/[0.08] rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono resize-y leading-relaxed"
+                className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30 font-mono resize-y leading-relaxed"
               />
             )}
           </div>
         </div>
 
-        {/* --- DOCUMENT B (COMPARISON / MODIFIED) --- */}
-        <div className="relative group rounded-3xl bg-dark-900/80 border border-white/[0.08] p-6 shadow-2xl backdrop-blur-xl flex flex-col justify-between transition-all hover:border-white/[0.12]">
-          {/* Subtle Corner Ambient Glow */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/[0.03] rounded-tr-3xl pointer-events-none blur-xl" />
-
+        {/* --- DOCUMENT B (MODIFIED / COMPARISON) --- */}
+        <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-all duration-300 flex flex-col justify-between">
           <div>
-            {/* Card Header */}
-            <div className="flex items-center justify-between pb-4 mb-5 border-b border-white/[0.06]">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center space-x-3">
-                <span className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-400 font-bold text-xs flex items-center justify-center border border-indigo-500/20 font-mono shadow-inner">
+                <span className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black text-xs flex items-center justify-center font-mono">
                   B
                 </span>
                 <div>
-                  <h3 className="font-semibold text-sm text-white">Document B &bull; Comparison Target</h3>
-                  <p className="text-[11px] text-slate-400">Revised or candidate document</p>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document B (Comparison Target)</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Revised candidate document</p>
                 </div>
               </div>
 
-              {/* Input Type Switcher */}
-              <div className="flex bg-dark-950 p-1 rounded-xl border border-white/[0.06] text-xs">
+              {/* Segmented control */}
+              <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-full text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setTabB('file')}
-                  className={`px-3 py-1 rounded-lg font-medium transition ${
+                  className={`px-3.5 py-1 rounded-full transition ${
                     tabB === 'file' 
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md' 
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
                   File
@@ -294,10 +286,10 @@ export default function DualDropzone({
                 <button
                   type="button"
                   onClick={() => setTabB('text')}
-                  className={`px-3 py-1 rounded-lg font-medium transition ${
+                  className={`px-3.5 py-1 rounded-full transition ${
                     tabB === 'text' 
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md' 
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
                   Text
@@ -305,20 +297,20 @@ export default function DualDropzone({
               </div>
             </div>
 
-            {/* Card Body */}
+            {/* Content Area */}
             {tabB === 'file' ? (
               fileB ? (
-                <div className="p-4 rounded-2xl bg-dark-850/80 border border-white/[0.08] flex items-center justify-between shadow-inner">
+                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between">
                   <div className="flex items-center space-x-3.5 truncate">
-                    <div className="p-2.5 rounded-xl bg-dark-900 border border-white/[0.06] shadow-sm">
+                    <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-sm">
                       {getFormatIcon(fileB.name)}
                     </div>
                     <div className="truncate">
                       <div className="flex items-center space-x-2">
-                        <p className="text-sm font-semibold text-white truncate">{fileB.name}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{fileB.name}</p>
                         {getFormatBadge(fileB.name)}
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{formatFileSize(fileB.size)} &bull; Ready to parse</p>
+                      <p className="text-xs text-slate-400 font-medium mt-0.5">{formatFileSize(fileB.size)} &bull; Ready to process</p>
                     </div>
                   </div>
                   <button
@@ -327,7 +319,7 @@ export default function DualDropzone({
                       setFileB(null);
                       if (fileInputRefB.current) fileInputRefB.current.value = '';
                     }}
-                    className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
                     title="Remove file"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -339,10 +331,10 @@ export default function DualDropzone({
                   onDragLeave={() => setDragOverB(false)}
                   onDrop={(e) => handleDrop(e, 'B')}
                   onClick={() => fileInputRefB.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-9 text-center cursor-pointer transition-all duration-200 ${
+                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 ${
                     dragOverB
-                      ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]'
-                      : 'border-white/[0.08] hover:border-indigo-500/40 bg-dark-950/40 hover:bg-dark-950/70'
+                      ? 'border-[#FF5E1E] bg-[#FFF4EF] dark:bg-[#FF5E1E]/10 scale-[1.01]'
+                      : 'border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E] bg-slate-50/50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900/70'
                   }`}
                 >
                   <input
@@ -354,56 +346,58 @@ export default function DualDropzone({
                       if (e.target.files && e.target.files[0]) setFileB(e.target.files[0]);
                     }}
                   />
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                    <Upload className="w-6 h-6" />
+                  <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 flex items-center justify-center text-[#FF5E1E] shadow-sm">
+                    <Upload className="w-6 h-6 stroke-[2.2]" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-200">
-                    Drop Document B here, or <span className="text-indigo-400 underline underline-offset-4">browse</span>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    Drop revised document here, or <span className="text-[#FF5E1E] underline underline-offset-4">browse</span>
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">PDF, DOCX, XLSX, PPTX, or TXT</p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, or TXT</p>
                 </div>
               )
             ) : (
               <textarea
                 value={textB}
                 onChange={(e) => setTextB(e.target.value)}
-                placeholder="Paste the revised or comparison text content here..."
+                placeholder="Paste revised contract, specification, or text content here..."
                 rows={6}
-                className="w-full p-3.5 bg-dark-950/60 border border-white/[0.08] rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 font-mono resize-y leading-relaxed"
+                className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] rounded-2xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30 font-mono resize-y leading-relaxed"
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* Main Compare Action */}
-      <div className="flex flex-col items-center justify-center pt-2 space-y-3">
+      {/* Main Compare Action (Cambased Pill Button Style) */}
+      <div className="flex flex-col items-center justify-center pt-3 space-y-3">
         <button
           type="button"
           onClick={onCompare}
           disabled={!isReady || isComparing}
-          className={`relative group px-10 py-4 rounded-2xl font-bold text-sm shadow-2xl flex items-center space-x-3 transition-all duration-300 ${
+          className={`group inline-flex items-center space-x-4 px-8 py-4 rounded-full font-bold text-sm transition-all duration-300 shadow-orange-soft ${
             isReady && !isComparing
-              ? 'bg-gradient-to-r from-indigo-500 via-sky-500 to-indigo-600 hover:from-indigo-400 hover:to-sky-500 text-white shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] cursor-pointer'
-              : 'bg-dark-900 text-slate-600 border border-white/[0.05] cursor-not-allowed shadow-none'
+              ? 'bg-[#FF5E1E] hover:bg-[#E04A0E] text-white hover:scale-[1.02] cursor-pointer'
+              : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none'
           }`}
         >
           {isComparing ? (
             <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               <span>Analyzing Document Differences & Context...</span>
             </>
           ) : (
             <>
-              <Zap className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
               <span>Execute Deep Comparison</span>
+              <span className="w-8 h-8 rounded-full bg-white text-[#FF5E1E] flex items-center justify-center shadow-md group-hover:translate-x-1 transition-transform">
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </span>
             </>
           )}
         </button>
 
         {!isReady && (
-          <p className="text-[11px] text-slate-500">
-            Please supply both Document A and Document B to begin comparison
+          <p className="text-xs text-slate-400 font-medium">
+            Please provide both Document A and Document B to run comparison
           </p>
         )}
       </div>
