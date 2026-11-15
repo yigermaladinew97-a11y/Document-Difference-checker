@@ -6,33 +6,42 @@ import Scoreboard from './components/Scoreboard';
 import ExecutiveSummary from './components/ExecutiveSummary';
 import SectionBreakdown from './components/SectionBreakdown';
 import DiffViewer from './components/DiffViewer';
-import { Sparkles, AlertCircle, RefreshCw, FileDiff } from 'lucide-react';
+import { 
+  Sparkles, 
+  AlertCircle, 
+  RefreshCw, 
+  FileDiff, 
+  ShieldCheck, 
+  Zap, 
+  Cpu, 
+  Layers 
+} from 'lucide-react';
 
 const SAMPLE_DOC_A = `# Master Services Agreement (v1.0)
 Section 1: Scope of Services
-Provider agrees to deliver cloud architecture consulting and software engineering services as defined in Schedule A.
+Provider agrees to deliver cloud architecture consulting and software engineering services as defined in Schedule A. All deliverables must meet standard ISO-27001 compliance standards.
 
 Section 2: Payment and Compensation
-Client agrees to pay Provider a total fixed fee of $15,000 USD. Invoices shall be payable within 30 days of receipt (Net 30). Late payments incur a 1.5% monthly fee.
+Client agrees to pay Provider a total fixed fee of $15,000 USD. Invoices shall be payable within 30 days of receipt (Net 30). Late payments incur a 1.5% monthly financing charge.
 
 Section 3: Warranty & Support
-Provider warrants all software deliverables for 30 days from client sign-off. Support includes bug fixes and critical patching.
+Provider warrants all software deliverables for 30 days from client sign-off. Support includes bug fixes and critical patching within 24 business hours.
 
 Section 4: Confidentiality & IP
 All intellectual property developed exclusively for the Client shall transfer upon full payment. Provider retains core framework licenses.`;
 
 const SAMPLE_DOC_B = `# Master Services Agreement (v2.1 - Revised)
 Section 1: Scope of Services
-Provider agrees to deliver cloud architecture consulting, software engineering, and continuous DevOps deployment services as defined in Schedule A.
+Provider agrees to deliver cloud architecture consulting, software engineering, and continuous 24/7 DevOps deployment services as defined in Schedule A. All deliverables must meet SOC-2 Type II compliance standards.
 
 Section 2: Payment and Compensation
-Client agrees to pay Provider a total fee of $24,500 USD with milestone disbursements. Invoices shall be payable within 60 days of receipt (Net 60). Late payments incur a 2.0% monthly fee.
+Client agrees to pay Provider an escalated total fee of $24,500 USD with milestone disbursements. Invoices shall be payable within 60 days of receipt (Net 60). Late payments incur a 2.5% monthly financing charge.
 
 Section 3: Warranty & Support
-Provider warrants all software deliverables for 90 days from client sign-off. Support includes ongoing maintenance, SLA response within 4 hours, and bug fixes.
+Provider warrants all software deliverables for 90 days from client sign-off. Support includes ongoing maintenance, SLA response within 4 hours, and emergency weekend patching.
 
 Section 4: Confidentiality & IP
-All intellectual property developed exclusively for the Client shall transfer immediately upon project kickoff. Provider waives all retained licensing rights.`;
+All intellectual property developed exclusively for the Client shall transfer immediately upon project kickoff. Provider waives all retained licensing rights and indemnifies Client against infringement.`;
 
 export default function App() {
   const [fileA, setFileA] = useState(null);
@@ -50,7 +59,6 @@ export default function App() {
 
   const resultsRef = useRef(null);
 
-  // Sync theme with document element
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -112,10 +120,9 @@ export default function App() {
 
       setComparisonResult(data);
 
-      // Smooth scroll down to results
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      }, 120);
     } catch (err) {
       console.error(err);
       setErrorMessage(err.message || 'An unexpected error occurred.');
@@ -130,7 +137,12 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-sky-500/30 selection:text-sky-200">
+    <div className="min-h-screen bg-[#070A12] text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200 font-sans relative overflow-x-hidden">
+      {/* Background Ambient Spotlights */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-b from-indigo-500/10 via-sky-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
+      <div className="fixed top-1/3 -left-40 w-96 h-96 bg-indigo-600/[0.04] rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="fixed top-1/2 -right-40 w-96 h-96 bg-sky-500/[0.04] rounded-full blur-3xl pointer-events-none -z-10" />
+
       <Navbar
         apiKey={apiKey}
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
@@ -146,30 +158,57 @@ export default function App() {
         onSaveKey={handleSaveApiKey}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
         {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-xs font-medium text-sky-400">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI & Lexical Two-Tier Comparison Engine</span>
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs font-semibold text-slate-300 shadow-sm backdrop-blur-md">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            <span className="bg-gradient-to-r from-indigo-300 to-sky-300 bg-clip-text text-transparent">
+              Enterprise Two-Tier Comparison Engine
+            </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-            Intelligent Document Difference Checker
+
+          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-[1.15]">
+            Compare documents with <br className="hidden sm:inline" />
+            <span className="bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+              word-level & semantic precision.
+            </span>
           </h1>
-          <p className="text-sm sm:text-base text-slate-400 leading-relaxed">
-            Compare PDF, Word, Excel, PowerPoint, or text documents side-by-side. Spot exact word changes, detect meaning & contractual risk shifts, and calculate similarity percentages instantly.
+
+          <p className="text-sm sm:text-base text-slate-400 leading-relaxed font-normal max-w-2xl mx-auto">
+            Detect exact phrase revisions, altered contractual terms, and semantic meaning shifts across <strong className="text-slate-200">PDF, Word, Excel, PowerPoint</strong> and text files.
           </p>
+
+          {/* Feature Badges Bar */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-[11px] font-medium text-slate-400">
+            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span>Myers Word Diff</span>
+            </span>
+            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
+              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Gemini 2.5 AI Reasoning</span>
+            </span>
+            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
+              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Cross-Format Ingestion</span>
+            </span>
+            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-dark-900 border border-white/[0.05]">
+              <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
+              <span>Zero-Persistence Privacy</span>
+            </span>
+          </div>
         </div>
 
-        {/* Error Alert */}
+        {/* Error Alert Box */}
         {errorMessage && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center space-x-2.5 max-w-3xl mx-auto">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center space-x-3 max-w-3xl mx-auto shadow-lg animate-in fade-in duration-200">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span className="flex-1">{errorMessage}</span>
+            <span className="flex-1 font-medium">{errorMessage}</span>
           </div>
         )}
 
-        {/* Dual Upload / Input Section */}
+        {/* Dual Upload / Input Cards */}
         <DualDropzone
           fileA={fileA}
           setFileA={setFileA}
@@ -184,26 +223,32 @@ export default function App() {
           onLoadSample={handleLoadSample}
         />
 
-        {/* Results Container */}
+        {/* Comparison Results Section */}
         {comparisonResult && (
-          <div ref={resultsRef} className="pt-8 space-y-8 animate-in fade-in duration-500">
-            {/* Results Title Bar with Reset */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center space-x-2">
-                <FileDiff className="w-5 h-5 text-sky-400" />
-                <h2 className="text-lg font-bold text-white">Comparison Results</h2>
+          <div ref={resultsRef} className="pt-8 space-y-8 animate-in fade-in duration-700">
+            {/* Results Title Bar with Reset Button */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
+                  <FileDiff className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white tracking-tight">Intelligence & Diff Results</h2>
+                  <p className="text-xs text-slate-400">Multi-tier metrics, semantic breakdown, and synchronized view</p>
+                </div>
               </div>
+
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 hover:text-white transition"
+                className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-dark-900 hover:bg-dark-850 border border-white/[0.08] text-xs font-semibold text-slate-300 hover:text-white transition shadow-sm"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Compare Another Pair</span>
               </button>
             </div>
 
-            {/* 1. Scoreboard (Circular Gauges & Stats) */}
+            {/* 1. Scoreboard (Dual Glowing Gauges & 4 Metric Cards) */}
             <Scoreboard
               metrics={comparisonResult.metrics}
               stats={comparisonResult.stats}
@@ -211,7 +256,7 @@ export default function App() {
               meta={comparisonResult.meta}
             />
 
-            {/* 2. Executive Difference Summary (AI / Heuristic) */}
+            {/* 2. Executive Difference Summary (AI / Local Heuristics) */}
             <ExecutiveSummary
               contextAnalysis={comparisonResult.contextAnalysis}
               summary={comparisonResult.summary}
@@ -233,8 +278,11 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto py-6 border-t border-slate-900 text-center text-xs text-slate-500">
-        <p>DocDiff &copy; {new Date().getFullYear()} &bull; Multi-Format Document Difference Engine</p>
+      <footer className="mt-auto py-8 border-t border-white/[0.06] text-center text-xs text-slate-500 bg-dark-950/40">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p>DocDiff Pro &bull; Built with React, Tailwind CSS, Lucide & Google Gemini</p>
+          <p className="text-slate-600 font-mono">100% Client & In-Memory Safe &bull; Zero Disk Retention</p>
+        </div>
       </footer>
     </div>
   );
