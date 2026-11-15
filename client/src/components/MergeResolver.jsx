@@ -18,13 +18,23 @@ import {
 } from 'lucide-react';
 import { extractChangeBlocks, computeMergedDocumentText, exportMergedDocx, exportMergedTxt } from '../utils/mergeExporter';
 
-export default function MergeResolver({ diffTokens = [], meta = {} }) {
+export default function MergeResolver({
+  diffTokens = [],
+  meta = {},
+  decisions: externalDecisions,
+  onDecision: externalOnDecision,
+  onAcceptAll: externalOnAcceptAll,
+  onRejectAll: externalOnRejectAll,
+  onResetAll: externalOnResetAll
+}) {
   // Extract grouped change units from diffTokens
   const blocks = useMemo(() => extractChangeBlocks(diffTokens), [diffTokens]);
   const changeBlocks = useMemo(() => blocks.filter(b => b.isChange), [blocks]);
 
-  // Decision state: { [changeId]: 'accepted' | 'rejected' | 'pending' }
-  const [decisions, setDecisions] = useState({});
+  // Decision state: controlled vs uncontrolled
+  const [internalDecisions, setInternalDecisions] = useState({});
+  const decisions = externalDecisions !== undefined ? externalDecisions : internalDecisions;
+
   const [activeSubTab, setActiveSubTab] = useState('interactive'); // 'interactive' | 'preview'
   const [copied, setCopied] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
@@ -39,27 +49,43 @@ export default function MergeResolver({ diffTokens = [], meta = {} }) {
 
   // Single change decision handler
   const handleDecision = (id, choice) => {
-    setDecisions(prev => ({
-      ...prev,
-      [id]: choice
-    }));
+    if (externalOnDecision) {
+      externalOnDecision(id, choice);
+    } else {
+      setInternalDecisions(prev => ({
+        ...prev,
+        [id]: choice
+      }));
+    }
   };
 
   // Bulk actions
   const handleAcceptAll = () => {
-    const next = {};
-    changeBlocks.forEach(b => { next[b.id] = 'accepted'; });
-    setDecisions(next);
+    if (externalOnAcceptAll) {
+      externalOnAcceptAll();
+    } else {
+      const next = {};
+      changeBlocks.forEach(b => { next[b.id] = 'accepted'; });
+      setInternalDecisions(next);
+    }
   };
 
   const handleRejectAll = () => {
-    const next = {};
-    changeBlocks.forEach(b => { next[b.id] = 'rejected'; });
-    setDecisions(next);
+    if (externalOnRejectAll) {
+      externalOnRejectAll();
+    } else {
+      const next = {};
+      changeBlocks.forEach(b => { next[b.id] = 'rejected'; });
+      setInternalDecisions(next);
+    }
   };
 
   const handleResetAll = () => {
-    setDecisions({});
+    if (externalOnResetAll) {
+      externalOnResetAll();
+    } else {
+      setInternalDecisions({});
+    }
   };
 
   // Copy merged text

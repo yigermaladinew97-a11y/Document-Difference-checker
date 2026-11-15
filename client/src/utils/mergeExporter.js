@@ -58,6 +58,72 @@ export function extractChangeBlocks(diffTokens = []) {
 }
 
 /**
+ * Annotates raw diffTokens with changeId, changeNum, changeType, and grouping metadata.
+ * This links every added/removed token in Side-by-Side and Unified views to a discrete change block.
+ */
+export function tagTokensWithChangeIds(diffTokens = []) {
+  if (!diffTokens || diffTokens.length === 0) return [];
+
+  const tagged = [];
+  let changeIndex = 0;
+  let i = 0;
+
+  while (i < diffTokens.length) {
+    const token = diffTokens[i];
+
+    if (token.type === 'unchanged') {
+      tagged.push({
+        ...token,
+        isChange: false,
+        changeId: null,
+        changeNum: null
+      });
+      i++;
+    } else {
+      changeIndex++;
+      const changeId = `change-${changeIndex}`;
+      const groupTokens = [];
+      const removedParts = [];
+      const addedParts = [];
+
+      while (i < diffTokens.length && diffTokens[i].type !== 'unchanged') {
+        const cur = diffTokens[i];
+        groupTokens.push(cur);
+        if (cur.type === 'removed') removedParts.push(cur.value);
+        else if (cur.type === 'added') addedParts.push(cur.value);
+        i++;
+      }
+
+      const origText = removedParts.join('');
+      const newText = addedParts.join('');
+
+      let changeType = 'replacement';
+      if (!origText && newText) changeType = 'addition';
+      else if (origText && !newText) changeType = 'deletion';
+
+      const changeMeta = {
+        isChange: true,
+        changeId,
+        changeNum: changeIndex,
+        changeType,
+        originalText: origText,
+        newText: newText
+      };
+
+      for (let g = 0; g < groupTokens.length; g++) {
+        tagged.push({
+          ...groupTokens[g],
+          ...changeMeta,
+          isFirstInChange: g === 0
+        });
+      }
+    }
+  }
+
+  return tagged;
+}
+
+/**
  * Computes the final resolved document string based on user accept/reject decisions
  * - accepted: takes newText (Doc B)
  * - rejected: takes originalText (Doc A)
