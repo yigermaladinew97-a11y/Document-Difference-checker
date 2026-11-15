@@ -54,6 +54,15 @@ export default function DiffViewer({
 
   if (!diffTokens || diffTokens.length === 0) return null;
 
+  // Format whitespace characters into visible symbols for clarity
+  const renderWhitespaceGlyphs = (val) => {
+    if (!val) return '';
+    return val
+      .replace(/ /g, '·')
+      .replace(/\t/g, '⇥   ')
+      .replace(/\n/g, '↵\n');
+  };
+
   const filteredTokens = diffTokens.filter(token => {
     if (filterChangesOnly && token.type === 'unchanged') return false;
     if (searchQuery.trim()) {
@@ -264,7 +273,7 @@ export default function DiffViewer({
                 <span className="truncate">{meta?.docA?.filename}</span>
               </span>
               <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900">
-                -{stats?.deletedWords || 0} words
+                -{stats?.deletedWords || 0} words{stats?.deletedWhitespace > 0 ? ` · -${stats.deletedWhitespace} spaces` : ''}
               </span>
             </div>
             <div
@@ -276,6 +285,18 @@ export default function DiffViewer({
             >
               {tokensDocA.map((token, idx) => {
                 if (token.type === 'removed') {
+                  const isWs = token.isWhitespace || /^\s+$/.test(token.value);
+                  if (isWs) {
+                    return (
+                      <mark
+                        key={idx}
+                        className="diff-token-ws inline-block bg-rose-200/90 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-rose-400 select-all mx-0.5 align-middle"
+                        title={`Removed whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`}
+                      >
+                        <span className="opacity-80 font-bold">{renderWhitespaceGlyphs(token.value)}</span>
+                      </mark>
+                    );
+                  }
                   return (
                     <mark
                       key={idx}
@@ -299,7 +320,7 @@ export default function DiffViewer({
                 <span className="truncate">{meta?.docB?.filename}</span>
               </span>
               <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-900">
-                +{stats?.addedWords || 0} words
+                +{stats?.addedWords || 0} words{stats?.addedWhitespace > 0 ? ` · +${stats.addedWhitespace} spaces` : ''}
               </span>
             </div>
             <div
@@ -311,6 +332,18 @@ export default function DiffViewer({
             >
               {tokensDocB.map((token, idx) => {
                 if (token.type === 'added') {
+                  const isWs = token.isWhitespace || /^\s+$/.test(token.value);
+                  if (isWs) {
+                    return (
+                      <mark
+                        key={idx}
+                        className="diff-token-ws inline-block bg-emerald-200/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-emerald-400 select-all mx-0.5 align-middle"
+                        title={`Added whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`}
+                      >
+                        <span className="opacity-80 font-bold">{renderWhitespaceGlyphs(token.value)}</span>
+                      </mark>
+                    );
+                  }
                   return (
                     <mark
                       key={idx}
@@ -330,7 +363,19 @@ export default function DiffViewer({
         /* Unified View */
         <div className="p-8 max-h-[650px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono whitespace-pre-wrap select-text text-slate-800 dark:text-slate-300 bg-white dark:bg-slate-900/40">
           {filteredTokens.map((token, idx) => {
+            const isWs = token.isWhitespace || /^\s+$/.test(token.value);
             if (token.type === 'added') {
+              if (isWs) {
+                return (
+                  <mark
+                    key={idx}
+                    className="diff-token-ws inline-block bg-emerald-200/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-emerald-400 select-all mx-0.5 align-middle"
+                    title={`Added whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`}
+                  >
+                    <span className="opacity-80 font-bold">+{renderWhitespaceGlyphs(token.value)}</span>
+                  </mark>
+                );
+              }
               return (
                 <mark
                   key={idx}
@@ -341,6 +386,17 @@ export default function DiffViewer({
               );
             }
             if (token.type === 'removed') {
+              if (isWs) {
+                return (
+                  <mark
+                    key={idx}
+                    className="diff-token-ws inline-block bg-rose-200/90 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-rose-400 select-all mx-0.5 align-middle"
+                    title={`Removed whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`}
+                  >
+                    <span className="opacity-80 font-bold">-{renderWhitespaceGlyphs(token.value)}</span>
+                  </mark>
+                );
+              }
               return (
                 <mark
                   key={idx}

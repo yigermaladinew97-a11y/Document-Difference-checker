@@ -76,6 +76,7 @@ function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) 
     if (modified.length > 0) structuralNotes.push(`${modified.length} section(s) contain textual revisions`);
     if (added.length > 0) structuralNotes.push(`${added.length} new section(s) introduced`);
     if (deleted.length > 0) structuralNotes.push(`${deleted.length} section(s) removed`);
+    if (stats.whitespaceChanges > 0) structuralNotes.push(`${stats.whitespaceChanges} whitespace/spacing modification(s)`);
 
     executiveSummary = `The comparison between the two documents reveals a ${stats.similarityPercent}% overall alignment. Key updates include: ${structuralNotes.join('; ')}. Overall diff reflects +${stats.addedWords} words added and -${stats.deletedWords} words removed across ${stats.totalWordsB} total words in Document B.`;
   }
@@ -149,6 +150,15 @@ function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) 
       title: 'Quantitative & Financial Figures Altered',
       detail: `Specific metrics, monetary figures, or milestones were revised in ${numChanges.slice(0, 3).map(s => s.title).join(', ')}.`,
       type: 'warning'
+    });
+  }
+
+  // Item 6: Formatting & Whitespace Shifts
+  if (stats.whitespaceChanges > 0) {
+    explanations.push({
+      title: 'Formatting & Spacing Variations',
+      detail: `${stats.whitespaceChanges} whitespace or indentation modification(s) flagged while Normalize Spaces is OFF.`,
+      type: 'info'
     });
   }
 

@@ -187,6 +187,40 @@ async function runComparatorTests() {
   console.log(`✓ Is Identical with Filters: ${filteredCompare.isIdentical}`);
   console.log(`✓ Active Filters Logged: ${filteredCompare.summary.keyPoints.find(k => k.includes('Smart noise filters')) || 'none'}`);
 
+  // Test Case 7: Whitespace Sensitivity (Normalize Spaces ON vs OFF)
+  console.log('\n[Test 7/7] Testing Whitespace Sensitivity (Normalize Spaces ON vs OFF)...');
+  const wsDocA = {
+    filename: 'code_sample_v1.txt',
+    format: 'txt',
+    wordCount: 6,
+    text: 'function test() {\n  return true;\n}',
+    sections: [{ title: 'Main Function', content: 'function test() {\n  return true;\n}' }]
+  };
+  const wsDocB = {
+    filename: 'code_sample_v2.txt',
+    format: 'txt',
+    wordCount: 6,
+    text: 'function test() {\n    return true;\n}', // 4 spaces indentation instead of 2 spaces
+    sections: [{ title: 'Main Function', content: 'function test() {\n    return true;\n}' }]
+  };
+
+  // Case A: Normalize Spaces ON (ignoreWhitespace: true)
+  const wsCompareOn = compareDocuments(wsDocA, wsDocB, { ignoreWhitespace: true });
+  console.log(`✓ Normalize Spaces ON: IsIdentical=${wsCompareOn.isIdentical}, Similarity=${wsCompareOn.similarityPercent}%, Status=${wsCompareOn.sectionReports[0].status}`);
+  if (!wsCompareOn.isIdentical || wsCompareOn.similarityPercent !== 100) {
+    throw new Error('Expected 100% match when Normalize Spaces is ON!');
+  }
+
+  // Case B: Normalize Spaces OFF (ignoreWhitespace: false)
+  const wsCompareOff = compareDocuments(wsDocA, wsDocB, { ignoreWhitespace: false });
+  console.log(`✓ Normalize Spaces OFF: IsIdentical=${wsCompareOff.isIdentical}, Similarity=${wsCompareOff.similarityPercent}%, Status=${wsCompareOff.sectionReports[0].status}, Changes=${wsCompareOff.stats.whitespaceChanges}`);
+  if (wsCompareOff.isIdentical || wsCompareOff.similarityPercent === 100 || wsCompareOff.stats.whitespaceChanges === 0) {
+    throw new Error('Expected whitespace changes to be detected when Normalize Spaces is OFF!');
+  }
+  if (wsCompareOff.sectionReports[0].status !== 'MODIFIED') {
+    throw new Error('Expected section status to be MODIFIED when Normalize Spaces is OFF!');
+  }
+
   console.log('\n=======================================');
   console.log('🎉 STEP 2 VERIFICATION COMPLETE: COMPARATOR WORKING ACCURATELY!');
   console.log('=======================================');

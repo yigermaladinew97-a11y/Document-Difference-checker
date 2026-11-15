@@ -199,14 +199,16 @@ export default function NoiseFiltersBar({
               ? 'bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border-[#FF5E1E]/40 text-[#FF5E1E] shadow-xs scale-[1.01]'
               : 'bg-white dark:bg-slate-800/80 border-slate-200/70 dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
           }`}
-          title="Collapse multiple spaces, tabs, and line break variations"
+          title={filters.ignoreWhitespace ? 'Normalize Whitespace is ON: Spaces and blank lines are collapsed' : 'Normalize Whitespace is OFF: Exact spacing, tabs, and indentation matter'}
         >
           <div className={`p-1 rounded-lg ${filters.ignoreWhitespace ? 'bg-[#FF5E1E] text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
             <AlignJustify className="w-3 h-3 stroke-[2.5]" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px]">Normalize Spaces</p>
-            <p className="text-[9px] font-semibold opacity-70 truncate">Tabs & blanks</p>
+            <p className="text-[9px] font-semibold opacity-70 truncate">
+              {filters.ignoreWhitespace ? 'Spaces ignored' : 'Spaces matter (OFF)'}
+            </p>
           </div>
           {filters.ignoreWhitespace && <Check className="w-3 h-3 text-[#FF5E1E] shrink-0" />}
         </button>

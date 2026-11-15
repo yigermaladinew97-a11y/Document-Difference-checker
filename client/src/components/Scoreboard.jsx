@@ -112,9 +112,13 @@ export default function Scoreboard({ metrics, stats, summary, meta, filters, onE
                   .,; Punctuation Filtered
                 </span>
               )}
-              {filters.ignoreWhitespace && (
+              {filters.ignoreWhitespace ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                   ␣ Whitespace Normalized
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800" title="Spaces matter: Whitespace and indentation are actively detected">
+                  ␣ Spaces Sensitive (Strict)
                 </span>
               )}
               {filters.ignoreNumbers && (

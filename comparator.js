@@ -54,22 +54,29 @@ function tokenizeWords(text) {
 /**
  * Calculate exact lexical similarity percentage using Sørensen-Dice coefficient on word tokens
  * Formula: (2 * unchangedWords) / (wordsA + wordsB) * 100
+ * When ignoreWhitespace is false, whitespace differences are factored into similarity and stats.
  */
-/**
- * Calculate exact lexical similarity percentage using Sørensen-Dice coefficient on word tokens
- * Formula: (2 * unchangedWords) / (wordsA + wordsB) * 100
- */
-export function calculateWordSimilarity(textA, textB, wordDiffs) {
+export function calculateWordSimilarity(textA, textB, wordDiffs, filterOpts = {}) {
   let unchangedWordsCount = 0;
   let addedWordsCount = 0;
   let deletedWordsCount = 0;
+  let addedWhitespaceCount = 0;
+  let deletedWhitespaceCount = 0;
 
   for (const part of wordDiffs) {
     const partWords = tokenizeWords(part.value).length;
     if (part.added) {
-      addedWordsCount += partWords;
+      if (partWords > 0) {
+        addedWordsCount += partWords;
+      } else if (/\s/.test(part.value)) {
+        addedWhitespaceCount += part.value.length;
+      }
     } else if (part.removed) {
-      deletedWordsCount += partWords;
+      if (partWords > 0) {
+        deletedWordsCount += partWords;
+      } else if (/\s/.test(part.value)) {
+        deletedWhitespaceCount += part.value.length;
+      }
     } else {
       unchangedWordsCount += partWords;
     }
@@ -78,21 +85,44 @@ export function calculateWordSimilarity(textA, textB, wordDiffs) {
   const wordsInA = unchangedWordsCount + deletedWordsCount;
   const wordsInB = unchangedWordsCount + addedWordsCount;
   const totalWords = wordsInA + wordsInB;
+  const hasWhitespaceChanges = (addedWhitespaceCount > 0 || deletedWhitespaceCount > 0);
 
   if (totalWords === 0) {
     return {
-      similarityPercent: 100,
+      similarityPercent: (hasWhitespaceChanges && !filterOpts.ignoreWhitespace) ? 0 : 100,
       totalWordsA: 0,
       totalWordsB: 0,
       unchangedWords: 0,
       addedWords: 0,
-      deletedWords: 0
+      deletedWords: 0,
+      whitespaceChanges: !filterOpts.ignoreWhitespace ? (addedWhitespaceCount + deletedWhitespaceCount) : 0,
+      addedWhitespace: !filterOpts.ignoreWhitespace ? addedWhitespaceCount : 0,
+      deletedWhitespace: !filterOpts.ignoreWhitespace ? deletedWhitespaceCount : 0
     };
   }
 
-  const similarityScore = (addedWordsCount === 0 && deletedWordsCount === 0)
-    ? 100
-    : Math.round(((2 * unchangedWordsCount) / totalWords) * 1000) / 10;
+  let similarityScore;
+  if (addedWordsCount === 0 && deletedWordsCount === 0) {
+    if (hasWhitespaceChanges && !filterOpts.ignoreWhitespace) {
+      // Wording is identical, but whitespace has changed and spaces matter
+      const charsA = (textA || '').length;
+      const charsB = (textB || '').length;
+      const unchangedChars = Math.max(0, Math.min(charsA, charsB) - deletedWhitespaceCount);
+      const charDice = (2 * unchangedChars) / (charsA + charsB || 1);
+      // Strictly below 100% since whitespace differences are detected
+      similarityScore = Math.min(99.9, Math.round(charDice * 1000) / 10);
+    } else {
+      similarityScore = 100;
+    }
+  } else {
+    const baseScore = ((2 * unchangedWordsCount) / totalWords) * 100;
+    if (hasWhitespaceChanges && !filterOpts.ignoreWhitespace) {
+      const wsPenalty = Math.min(5, (addedWhitespaceCount + deletedWhitespaceCount) * 0.2);
+      similarityScore = Math.round(Math.max(0, baseScore - wsPenalty) * 10) / 10;
+    } else {
+      similarityScore = Math.round(baseScore * 10) / 10;
+    }
+  }
 
   return {
     similarityPercent: Math.min(100, Math.max(0, similarityScore)),
@@ -100,7 +130,10 @@ export function calculateWordSimilarity(textA, textB, wordDiffs) {
     totalWordsB: wordsInB,
     unchangedWords: unchangedWordsCount,
     addedWords: addedWordsCount,
-    deletedWords: deletedWordsCount
+    deletedWords: deletedWordsCount,
+    whitespaceChanges: (!filterOpts.ignoreWhitespace ? (addedWhitespaceCount + deletedWhitespaceCount) : 0),
+    addedWhitespace: (!filterOpts.ignoreWhitespace ? addedWhitespaceCount : 0),
+    deletedWhitespace: (!filterOpts.ignoreWhitespace ? deletedWhitespaceCount : 0)
   };
 }
 
@@ -108,9 +141,12 @@ export function calculateWordSimilarity(textA, textB, wordDiffs) {
  * Compute lexical token similarity between two section contents
  */
 function computeSectionSimilarity(textA = '', textB = '', filterOpts = {}) {
-  const tA = filterText(textA, filterOpts).trim();
-  const tB = filterText(textB, filterOpts).trim();
-  if (filterOpts.ignoreCase ? tA.toLowerCase() === tB.toLowerCase() : tA === tB) return 1.0;
+  const tA = filterText(textA, filterOpts);
+  const tB = filterText(textB, filterOpts);
+  const isExactMatch = filterOpts.ignoreWhitespace
+    ? (filterOpts.ignoreCase ? tA.trim().toLowerCase() === tB.trim().toLowerCase() : tA.trim() === tB.trim())
+    : (filterOpts.ignoreCase ? tA.toLowerCase() === tB.toLowerCase() : tA === tB);
+  if (isExactMatch) return 1.0;
   if (!tA || !tB) return 0.0;
 
   const wordsA = tokenizeWords(tA.toLowerCase());
@@ -300,8 +336,9 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
   for (const pair of inSequencePairs) {
     const contentA = filterText(pair.a.content, filterOpts);
     const contentB = filterText(pair.b.content, filterOpts);
-    const isExact = contentA.trim() === contentB.trim() || 
-      (filterOpts.ignoreCase && contentA.trim().toLowerCase() === contentB.trim().toLowerCase());
+    const isExact = filterOpts.ignoreWhitespace
+      ? (contentA.trim() === contentB.trim() || (filterOpts.ignoreCase && contentA.trim().toLowerCase() === contentB.trim().toLowerCase()))
+      : (contentA === contentB || (filterOpts.ignoreCase && contentA.toLowerCase() === contentB.toLowerCase()));
 
     if (isExact) {
       inSequencePairsValid.push(pair);
@@ -310,10 +347,10 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
 
     const diffOpts = {};
     if (filterOpts.ignoreCase) diffOpts.ignoreCase = true;
-    const diffs = Diff.diffWords(contentA, contentB, diffOpts);
-    const stats = calculateWordSimilarity(contentA, contentB, diffs);
+    const diffsWithSpace = Diff.diffWordsWithSpace(contentA, contentB, diffOpts);
+    const stats = calculateWordSimilarity(contentA, contentB, diffsWithSpace, filterOpts);
 
-    if (stats.similarityPercent >= 20) {
+    if (stats.similarityPercent >= 20 || (stats.addedWords === 0 && stats.deletedWords === 0)) {
       inSequencePairsValid.push(pair);
     } else {
       // Split false pairing into separate deletion and addition
@@ -329,17 +366,30 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
   function summarizeDiffTokens(diffTokens = []) {
     const removedParts = [];
     const addedParts = [];
+    let removedWsChars = 0;
+    let addedWsChars = 0;
 
     for (let i = 0; i < diffTokens.length; i++) {
       const t = diffTokens[i];
-      if (t.type === 'removed' && t.value.trim()) {
-        removedParts.push(t.value.trim());
-      } else if (t.type === 'added' && t.value.trim()) {
-        addedParts.push(t.value.trim());
+      if (t.type === 'removed') {
+        if (t.value.trim()) {
+          removedParts.push(t.value.trim());
+        } else if (/\s/.test(t.value)) {
+          removedWsChars += t.value.length;
+        }
+      } else if (t.type === 'added') {
+        if (t.value.trim()) {
+          addedParts.push(t.value.trim());
+        } else if (/\s/.test(t.value)) {
+          addedWsChars += t.value.length;
+        }
       }
     }
 
     if (removedParts.length === 0 && addedParts.length === 0) {
+      if (removedWsChars > 0 || addedWsChars > 0) {
+        return `Spacing adjusted (${addedWsChars > 0 ? `+${addedWsChars}` : ''}${removedWsChars > 0 ? ` -${removedWsChars}` : ''} space chars)`;
+      }
       return null;
     }
 
@@ -380,19 +430,19 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
     if (secA && secB) {
       const contentA = filterText(secA.content, filterOpts);
       const contentB = filterText(secB.content, filterOpts);
-      const isExact = contentA.trim() === contentB.trim() ||
-        (filterOpts.ignoreCase && contentA.trim().toLowerCase() === contentB.trim().toLowerCase());
+      const isExact = filterOpts.ignoreWhitespace
+        ? (contentA.trim() === contentB.trim() || (filterOpts.ignoreCase && contentA.trim().toLowerCase() === contentB.trim().toLowerCase()))
+        : (contentA === contentB || (filterOpts.ignoreCase && contentA.toLowerCase() === contentB.toLowerCase()));
 
       const diffOpts = {};
       if (filterOpts.ignoreCase) diffOpts.ignoreCase = true;
 
-      const diffs = Diff.diffWords(contentA, contentB, diffOpts);
       const diffsWithSpace = Diff.diffWordsWithSpace(contentA, contentB, diffOpts);
-      const stats = calculateWordSimilarity(contentA, contentB, diffs);
+      const stats = calculateWordSimilarity(contentA, contentB, diffsWithSpace, filterOpts);
 
       let status = isMoved 
         ? 'MOVED' 
-        : (isExact || (stats.addedWords === 0 && stats.deletedWords === 0) ? 'UNCHANGED' : 'MODIFIED');
+        : (isExact ? 'UNCHANGED' : 'MODIFIED');
 
       let title = isMoved
         ? `${secA.title} ➔ ${secB.title}`
@@ -402,7 +452,7 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
 
       let description = '';
       if (isMoved) {
-        if (isExact || (stats.addedWords === 0 && stats.deletedWords === 0)) {
+        if (isExact) {
           description = `Moved from ${secA.title} to ${secB.title} (Identical content)`;
         } else {
           description = `Moved from ${secA.title} to ${secB.title}${smartPreview ? ` • ${smartPreview}` : ` (+${stats.addedWords}, -${stats.deletedWords} words)`}`;
@@ -410,9 +460,15 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
       } else if (status === 'UNCHANGED') {
         description = 'Identical content';
       } else {
-        description = smartPreview 
-          ? `${smartPreview} (+${stats.addedWords}, -${stats.deletedWords} words)`
-          : `${stats.addedWords} words added, ${stats.deletedWords} words removed`;
+        if (stats.addedWords === 0 && stats.deletedWords === 0 && stats.whitespaceChanges > 0) {
+          description = smartPreview 
+            ? smartPreview 
+            : `Spacing / formatting adjusted (${stats.whitespaceChanges} whitespace ${stats.whitespaceChanges === 1 ? 'char' : 'chars'} altered)`;
+        } else {
+          description = smartPreview 
+            ? `${smartPreview} (+${stats.addedWords}, -${stats.deletedWords} words)`
+            : `${stats.addedWords} words added, ${stats.deletedWords} words removed`;
+        }
       }
 
       const similarityPercent = status === 'UNCHANGED' ? 100 : stats.similarityPercent;
@@ -436,7 +492,8 @@ function compareSections(sectionsA = [], sectionsB = [], filterOpts = {}) {
         },
         diffTokens: diffsWithSpace.map(p => ({
           value: p.value,
-          type: p.added ? 'added' : p.removed ? 'removed' : 'unchanged'
+          type: p.added ? 'added' : p.removed ? 'removed' : 'unchanged',
+          isWhitespace: /^\s+$/.test(p.value)
         }))
       };
     } else if (secA && !secB) {
@@ -539,6 +596,10 @@ function generateSummaryDescription(similarityPercent, stats, sectionReports, fi
     category = 'IDENTICAL';
     badgeColor = 'emerald';
     headline = 'The two documents are 100% word-for-word identical.';
+  } else if (stats.addedWords === 0 && stats.deletedWords === 0 && stats.whitespaceChanges > 0 && !filterOpts.ignoreWhitespace) {
+    category = 'SPACING_DIFFS';
+    badgeColor = 'blue';
+    headline = `Identical wording with ${stats.whitespaceChanges} whitespace/indentation ${stats.whitespaceChanges === 1 ? 'difference' : 'differences'} detected.`;
   } else if (similarityPercent >= 90) {
     category = 'MINOR_EDITS';
     badgeColor = 'blue';
@@ -565,6 +626,9 @@ function generateSummaryDescription(similarityPercent, stats, sectionReports, fi
   const keyPoints = [];
   if (stats.addedWords > 0) keyPoints.push(`+${stats.addedWords} words added`);
   if (stats.deletedWords > 0) keyPoints.push(`-${stats.deletedWords} words removed`);
+  if (stats.whitespaceChanges > 0 && !filterOpts.ignoreWhitespace) {
+    keyPoints.push(`${stats.whitespaceChanges} whitespace/spacing ${stats.whitespaceChanges === 1 ? 'difference' : 'differences'} detected`);
+  }
   if (movedSections.length > 0) keyPoints.push(`${movedSections.length} ${movedSections.length === 1 ? 'section' : 'sections'} moved / relocated`);
   if (modifiedSections.length > 0) keyPoints.push(`${modifiedSections.length} sections modified`);
   if (addedSections.length > 0) keyPoints.push(`${addedSections.length} new sections added`);
@@ -574,7 +638,11 @@ function generateSummaryDescription(similarityPercent, stats, sectionReports, fi
   const activeFilters = [];
   if (filterOpts.ignoreCase) activeFilters.push('Case Insensitive');
   if (filterOpts.ignorePunctuation) activeFilters.push('Punctuation Filtered');
-  if (filterOpts.ignoreWhitespace) activeFilters.push('Whitespace Normalized');
+  if (filterOpts.ignoreWhitespace) {
+    activeFilters.push('Whitespace Normalized');
+  } else {
+    activeFilters.push('Whitespace Sensitive (Strict)');
+  }
   if (filterOpts.ignoreNumbers) activeFilters.push('Numbers Filtered');
   if (filterOpts.trimLines) activeFilters.push('Lines Trimmed');
 
@@ -623,11 +691,12 @@ export function compareDocuments(docA, docB, options = {}) {
   // Format diff tokens for easy frontend rendering
   const formattedDiffs = wordDiffs.map(part => ({
     value: part.value,
-    type: part.added ? 'added' : part.removed ? 'removed' : 'unchanged'
+    type: part.added ? 'added' : part.removed ? 'removed' : 'unchanged',
+    isWhitespace: /^\s+$/.test(part.value)
   }));
 
   // 2. Compute similarity stats & percentages
-  const stats = calculateWordSimilarity(textA, textB, wordDiffs);
+  const stats = calculateWordSimilarity(textA, textB, wordDiffs, filterOpts);
 
   // 3. Section by section comparison with filters
   const sectionReports = compareSections(docA.sections, docB.sections, filterOpts);
@@ -635,9 +704,13 @@ export function compareDocuments(docA, docB, options = {}) {
   // 4. Generate local structured summary
   const summary = generateSummaryDescription(stats.similarityPercent, stats, sectionReports, filterOpts);
 
+  const isStrictExact = filterOpts.ignoreWhitespace
+    ? (stats.similarityPercent === 100)
+    : (textA === textB || (filterOpts.ignoreCase ? textA.toLowerCase() === textB.toLowerCase() : false));
+
   return {
-    isIdentical: stats.similarityPercent === 100,
-    similarityPercent: stats.similarityPercent,
+    isIdentical: isStrictExact && stats.similarityPercent === 100,
+    similarityPercent: isStrictExact ? 100 : stats.similarityPercent,
     stats,
     summary,
     sectionReports,

@@ -81,6 +81,32 @@ async function runServerTest() {
   console.log(`✓ Is Identical with filters: ${filterData.metrics.isIdentical}`);
   console.log(`✓ Filters applied in response:`, filterData.filters);
 
+  // 5. Test Whitespace Sensitivity over API (Normalize Spaces ON vs OFF)
+  console.log('\n[5/5] Testing POST /api/compare with Normalize Spaces ON vs OFF...');
+  const wsFormOn = new FormData();
+  wsFormOn.append('textA', 'Payment terms: Net 30');
+  wsFormOn.append('textB', 'Payment terms:    Net 30');
+  wsFormOn.append('ignoreWhitespace', 'true');
+
+  const wsResOn = await fetch('http://localhost:3099/api/compare', { method: 'POST', body: wsFormOn });
+  const wsDataOn = await wsResOn.json();
+  console.log(`✓ Normalize Spaces ON: IsIdentical=${wsDataOn.metrics.isIdentical}, Similarity=${wsDataOn.metrics.lexicalSimilarityPercent}%`);
+  if (!wsDataOn.metrics.isIdentical || wsDataOn.metrics.lexicalSimilarityPercent !== 100) {
+    throw new Error('Expected 100% match when Normalize Spaces is ON!');
+  }
+
+  const wsFormOff = new FormData();
+  wsFormOff.append('textA', 'Payment terms: Net 30');
+  wsFormOff.append('textB', 'Payment terms:    Net 30');
+  wsFormOff.append('ignoreWhitespace', 'false');
+
+  const wsResOff = await fetch('http://localhost:3099/api/compare', { method: 'POST', body: wsFormOff });
+  const wsDataOff = await wsResOff.json();
+  console.log(`✓ Normalize Spaces OFF: IsIdentical=${wsDataOff.metrics.isIdentical}, Similarity=${wsDataOff.metrics.lexicalSimilarityPercent}%, WhitespaceChanges=${wsDataOff.stats.whitespaceChanges}`);
+  if (wsDataOff.metrics.isIdentical || wsDataOff.metrics.lexicalSimilarityPercent === 100 || wsDataOff.stats.whitespaceChanges === 0) {
+    throw new Error('Expected whitespace difference to be detected when Normalize Spaces is OFF!');
+  }
+
   console.log('\n=======================================');
   console.log('🎉 STEP 4 VERIFICATION COMPLETE: SERVER & API ENDPOINTS FULLY OPERATIONAL!');
   console.log('=======================================');

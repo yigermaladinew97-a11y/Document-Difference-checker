@@ -5,8 +5,13 @@ import * as XLSX from 'xlsx';
 import AdmZip from 'adm-zip';
 
 /**
- * Clean & normalize extracted text
- * Normalizes newlines, removes zero-width characters, and unifies all Unicode whitespace
+ * Clean & sanitize extracted text from raw file streams:
+ * - Unifies line breaks (\r\n and \r -> \n)
+ * - Removes zero-width spaces, byte-order marks, soft hyphens
+ * - Normalizes exotic Unicode space variants (non-breaking space, em space) to standard space
+ * NOTE: Intentionally preserves raw spaces, indentation, tabs, and line breaks so that
+ * whitespace-sensitive diffing works when 'Normalize Spaces' is disabled.
+ * Whitespace normalization is applied on-demand via comparator.js `filterText`.
  */
 function normalizeText(text) {
   if (!text) return '';
@@ -16,12 +21,7 @@ function normalizeText(text) {
     // Remove zero-width spaces, byte-order marks, soft hyphens
     .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
     // Normalize all Unicode space variants (non-breaking space, thin space, em space, etc.) to standard space
-    .replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ')
-    // Normalize horizontal whitespace sequences
-    .replace(/[ \t]+/g, ' ')
-    // Normalize excessive consecutive blank lines
-    .replace(/\n\s*\n\s*\n+/g, '\n\n')
-    .trim();
+    .replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ');
 }
 
 /**
