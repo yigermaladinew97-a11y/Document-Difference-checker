@@ -9,6 +9,8 @@ import SectionBreakdown from './components/SectionBreakdown';
 import DiffViewer from './components/DiffViewer';
 import PdfReportModal from './components/PdfReportModal';
 import NoiseFiltersBar from './components/NoiseFiltersBar';
+import HistoryDrawer from './components/HistoryDrawer';
+import { saveComparisonSession, getAllSessions, updateSessionDecisions } from './utils/historyStorage';
 import { 
   Sparkles, 
   AlertCircle, 
@@ -74,7 +76,39 @@ export default function App() {
     trimLines: false
   });
 
+  // History Drawer state & persistence
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [historySessions, setHistorySessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+
   const resultsRef = useRef(null);
+
+  const loadHistorySessions = async () => {
+    try {
+      const list = await getAllSessions();
+      setHistorySessions(list);
+    } catch (e) {
+      console.warn('Could not load history:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadHistorySessions();
+  }, []);
+
+  const handleRestoreSession = (session) => {
+    setComparisonResult(session);
+    setActiveSessionId(session.id);
+    if (session.filters) {
+      setFilters(session.filters);
+    }
+    setErrorMessage(null);
+    triggerCelebration();
+
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 120);
+  };
 
   useEffect(() => {
     if (isDark) {
@@ -166,6 +200,20 @@ export default function App() {
       setComparisonResult(data);
       triggerCelebration();
 
+      // Automatically preserve comparison in private IndexedDB
+      try {
+        const saved = await saveComparisonSession({
+          ...data,
+          filters: activeFilters
+        });
+        if (saved) {
+          setActiveSessionId(saved.id);
+          loadHistorySessions();
+        }
+      } catch (saveErr) {
+        console.warn('Failed to auto-save session to history:', saveErr);
+      }
+
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 120);
@@ -203,6 +251,16 @@ export default function App() {
         isDark={isDark}
         onToggleTheme={() => setIsDark(!isDark)}
         isComparing={isComparing}
+        historyCount={historySessions.length}
+        onOpenHistory={() => setIsHistoryDrawerOpen(true)}
+      />
+
+      <HistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        sessions={historySessions}
+        onRestoreSession={handleRestoreSession}
+        onSessionsChange={loadHistorySessions}
       />
 
       <ApiKeyModal
@@ -357,6 +415,12 @@ export default function App() {
               onApplyFilters={handleCompare}
               isComparing={isComparing}
               onExportPdf={() => setIsPdfModalOpen(true)}
+              initialDecisions={comparisonResult.decisions || {}}
+              onDecisionsChange={(newDecisions) => {
+                if (activeSessionId) {
+                  updateSessionDecisions(activeSessionId, newDecisions);
+                }
+              }}
             />
 
             {/* 5. Executive PDF Audit Report Modal */}

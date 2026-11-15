@@ -8,10 +8,19 @@ import {
   Github,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 
-export default function Navbar({ apiKey, onOpenApiKeyModal, isDark, onToggleTheme, isComparing }) {
+export default function Navbar({ 
+  apiKey, 
+  onOpenApiKeyModal, 
+  isDark, 
+  onToggleTheme, 
+  isComparing,
+  historyCount = 0,
+  onOpenHistory 
+}) {
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-white/85 dark:bg-[#0B0F19]/85 border-b border-slate-200/80 dark:border-white/[0.08] transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -47,6 +56,23 @@ export default function Navbar({ apiKey, onOpenApiKeyModal, isDark, onToggleThem
 
         {/* Action Controls */}
         <div className="flex items-center space-x-3">
+          {/* History Drawer Button */}
+          {onOpenHistory && (
+            <button
+              onClick={onOpenHistory}
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] text-slate-700 dark:text-slate-200 hover:border-[#FF5E1E]/50 hover:text-[#FF5E1E] transition shadow-sm active:scale-95"
+              title="View past comparison history"
+            >
+              <Clock className="w-3.5 h-3.5 text-[#FF5E1E]" />
+              <span className="hidden sm:inline">History</span>
+              {historyCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#FF5E1E]/15 text-[#FF5E1E]">
+                  {historyCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* AI Settings Pill Button (Matching Cambased pill button) */}
           <button
             onClick={onOpenApiKeyModal}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Columns,
   AlignLeft,
@@ -30,7 +30,9 @@ export default function DiffViewer({
   onFilterChange,
   onApplyFilters,
   isComparing = false,
-  onExportPdf
+  onExportPdf,
+  initialDecisions = {},
+  onDecisionsChange
 }) {
   const [viewMode, setViewMode] = useState('sideBySide');
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
@@ -40,9 +42,16 @@ export default function DiffViewer({
   const [showFilterTray, setShowFilterTray] = useState(false);
 
   // In-line change decision state shared across Side-by-Side, Unified, and MergeResolver
-  const [decisions, setDecisions] = useState({});
+  const [decisions, setDecisions] = useState(() => initialDecisions || {});
   const [hoveredChangeId, setHoveredChangeId] = useState(null);
   const [currentChangeIndex, setCurrentChangeIndex] = useState(0);
+
+  // Synchronize when restored from history
+  useEffect(() => {
+    if (initialDecisions) {
+      setDecisions(initialDecisions);
+    }
+  }, [initialDecisions]);
 
   const activeFilterCount = filters ? Object.values(filters).filter(Boolean).length : 0;
 
@@ -78,10 +87,11 @@ export default function DiffViewer({
 
   // Single change decision handler
   const handleInlineDecision = (changeId, choice) => {
-    setDecisions(prev => ({
-      ...prev,
-      [changeId]: choice
-    }));
+    setDecisions(prev => {
+      const next = { ...prev, [changeId]: choice };
+      if (onDecisionsChange) onDecisionsChange(next);
+      return next;
+    });
   };
 
   // Bulk decision handlers
@@ -89,16 +99,19 @@ export default function DiffViewer({
     const next = {};
     changeBlocks.forEach(b => { next[b.id] = 'accepted'; });
     setDecisions(next);
+    if (onDecisionsChange) onDecisionsChange(next);
   };
 
   const handleRejectAll = () => {
     const next = {};
     changeBlocks.forEach(b => { next[b.id] = 'rejected'; });
     setDecisions(next);
+    if (onDecisionsChange) onDecisionsChange(next);
   };
 
   const handleResetAll = () => {
     setDecisions({});
+    if (onDecisionsChange) onDecisionsChange({});
   };
 
   // Smooth jump to next/previous change
