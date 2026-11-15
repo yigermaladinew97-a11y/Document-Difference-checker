@@ -16,7 +16,7 @@ import {
   SlidersHorizontal,
   Info
 } from 'lucide-react';
-import { extractChangeBlocks, computeMergedDocumentText, exportMergedDocx, exportMergedTxt } from '../utils/mergeExporter';
+import { extractChangeBlocks, computeMergedDocumentText, exportMergedDocx, exportMergedTxt, exportRedlineDocx } from '../utils/mergeExporter';
 
 export default function MergeResolver({
   diffTokens = [],
@@ -38,6 +38,7 @@ export default function MergeResolver({
   const [activeSubTab, setActiveSubTab] = useState('interactive'); // 'interactive' | 'preview'
   const [copied, setCopied] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [isExportingRedline, setIsExportingRedline] = useState(false);
 
   // Metrics
   const totalChanges = changeBlocks.length;
@@ -105,6 +106,17 @@ export default function MergeResolver({
       console.error('Docx export failed:', err);
     } finally {
       setIsExportingDocx(false);
+    }
+  };
+
+  const handleDownloadRedline = async () => {
+    try {
+      setIsExportingRedline(true);
+      await exportRedlineDocx(diffTokens, meta, {});
+    } catch (err) {
+      console.error('Redline Docx export failed:', err);
+    } finally {
+      setIsExportingRedline(false);
     }
   };
 
@@ -267,6 +279,17 @@ export default function MergeResolver({
             >
               <FileText className="w-3.5 h-3.5 text-slate-400" />
               <span>Export .TXT</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadRedline}
+              disabled={isExportingRedline}
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold transition hover:scale-105 active:scale-95 disabled:opacity-50"
+              title="Download marked-up Word document with all revisions highlighted in red & green"
+            >
+              <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>{isExportingRedline ? 'Generating...' : 'Redline .DOCX'}</span>
             </button>
 
             <button

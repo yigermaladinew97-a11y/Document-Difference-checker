@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import { extractDocumentContent } from './parsers.js';
 import { compareDocuments } from './comparator.js';
 import { analyzeDocumentContext } from './ai_summarizer.js';
+import { generateAnnotatedExcel } from './excelExporter.js';
 
 dotenv.config();
 
@@ -170,6 +171,31 @@ app.post(
     }
   }
 );
+
+/**
+ * POST /api/export/excel-diff
+ * Generates and downloads a color-coded Microsoft Excel (.xlsx) workbook with delta notes
+ */
+app.post('/api/export/excel-diff', async (req, res) => {
+  try {
+    const { spreadsheetDiff, meta, stats } = req.body;
+    if (!spreadsheetDiff || !Array.isArray(spreadsheetDiff)) {
+      return res.status(400).json({ error: 'Missing spreadsheetDiff array payload.' });
+    }
+
+    const buffer = await generateAnnotatedExcel(spreadsheetDiff, meta || {}, stats || {});
+    const baseName = (meta?.docB?.filename || meta?.docA?.filename || 'Spreadsheet').replace(/\.[^/.]+$/, '');
+    const filename = `Diff_${baseName}_${Date.now()}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
+  } catch (err) {
+    console.error('[API Error /api/export/excel-diff]:', err);
+    res.status(500).json({ error: 'Failed to generate annotated Excel workbook.' });
+  }
+});
 
 // Fallback route
 app.get('*', (req, res) => {

@@ -27,6 +27,7 @@ export default function SpreadsheetGridDiff({ spreadsheetDiff = [], meta = {} })
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const activeSheet = spreadsheetDiff[activeSheetIndex] || spreadsheetDiff[0];
   const stats = activeSheet.stats || {};
@@ -63,6 +64,33 @@ export default function SpreadsheetGridDiff({ spreadsheetDiff = [], meta = {} })
     navigator.clipboard.writeText(csvLines.join('\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      setIsExportingExcel(true);
+      const res = await fetch('/api/export/excel-diff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spreadsheetDiff, meta, stats: activeSheet.stats || {} })
+      });
+
+      if (!res.ok) throw new Error('Failed to generate annotated Excel workbook.');
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const baseName = (meta?.docB?.filename || meta?.docA?.filename || 'Spreadsheet').replace(/\.[^/.]+$/, '');
+      a.href = url;
+      a.download = `Diff_${baseName}_${Date.now()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export Excel:', err);
+      alert('Could not export Excel workbook. Please try again.');
+    } finally {
+      setIsExportingExcel(false);
+    }
   };
 
   return (
@@ -163,6 +191,17 @@ export default function SpreadsheetGridDiff({ spreadsheetDiff = [], meta = {} })
             >
               {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-slate-400" />}
               <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy CSV'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadExcel}
+              disabled={isExportingExcel}
+              className="flex items-center space-x-1.5 px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white border border-emerald-700 text-xs font-bold shadow-sm transition disabled:opacity-50"
+              title="Download color-coded Microsoft Excel (.xlsx) file with cell notes & summary sheet"
+            >
+              <Download className="w-3 h-3" />
+              <span>{isExportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}</span>
             </button>
           </div>
         </div>

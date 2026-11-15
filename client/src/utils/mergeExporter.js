@@ -1,6 +1,162 @@
 import { Document, Paragraph, TextRun, Packer, HeadingLevel, AlignmentType } from 'docx';
 
 /**
+ * Builds array of Docx Paragraph elements preserving redline strike/underline tokens across line breaks
+ */
+function buildRedlineParagraphs(diffTokens = []) {
+  const paragraphs = [];
+  let currentRuns = [];
+
+  for (const token of diffTokens) {
+    const rawVal = token.value || '';
+    const segments = rawVal.split(/\r?\n/);
+
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+
+      if (seg.length > 0) {
+        if (token.type === 'removed') {
+          // Deleted text: Red strikethrough with soft pink background
+          currentRuns.push(
+            new TextRun({
+              text: seg,
+              strike: true,
+              color: 'C00000',
+              shading: { fill: 'FCE8E6' },
+              size: 24, // 12pt
+              font: 'Calibri'
+            })
+          );
+        } else if (token.type === 'added') {
+          // Added text: Green underline with bold and soft green background
+          currentRuns.push(
+            new TextRun({
+              text: seg,
+              underline: { type: 'single', color: '0D8050' },
+              color: '0D8050',
+              bold: true,
+              shading: { fill: 'E6F4EA' },
+              size: 24, // 12pt
+              font: 'Calibri'
+            })
+          );
+        } else {
+          // Unchanged text
+          currentRuns.push(
+            new TextRun({
+              text: seg,
+              size: 24,
+              font: 'Calibri'
+            })
+          );
+        }
+      }
+
+      // If newline was encountered, seal the current paragraph and start the next
+      if (i < segments.length - 1) {
+        paragraphs.push(
+          new Paragraph({
+            children: currentRuns.length > 0 ? currentRuns : [new TextRun({ text: '' })],
+            spacing: { after: 180, line: 360 }
+          })
+        );
+        currentRuns = [];
+      }
+    }
+  }
+
+  if (currentRuns.length > 0) {
+    paragraphs.push(
+      new Paragraph({
+        children: currentRuns,
+        spacing: { after: 180, line: 360 }
+      })
+    );
+  }
+
+  return paragraphs;
+}
+
+/**
+ * Export full legal redline comparison to Microsoft Word (.docx)
+ * with strikethrough deletions, underlined additions, and professional audit cover metadata.
+ */
+export async function exportRedlineDocx(diffTokens = [], meta = {}, stats = {}) {
+  const docAName = meta?.docA?.filename || 'Document A';
+  const docBName = meta?.docB?.filename || 'Document B';
+  const similarity = stats?.similarityPercent ?? 100;
+  const addedWords = stats?.addedWords ?? 0;
+  const deletedWords = stats?.deletedWords ?? 0;
+  const nowStr = new Date().toLocaleString();
+
+  const contentParagraphs = buildRedlineParagraphs(diffTokens);
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 1440,
+              right: 1440,
+              bottom: 1440,
+              left: 1440
+            }
+          }
+        },
+        children: [
+          new Paragraph({
+            text: 'LEGAL REDLINE COMPARISON AUDIT',
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.LEFT,
+            spacing: { after: 160 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Baseline (Doc A): ', bold: true, color: '334155', size: 21 }),
+              new TextRun({ text: `${docAName}\n`, color: '0F172A', size: 21 }),
+              new TextRun({ text: 'Revised (Doc B): ', bold: true, color: '334155', size: 21 }),
+              new TextRun({ text: `${docBName}\n`, color: '0F172A', size: 21 }),
+              new TextRun({ text: 'Generated: ', bold: true, color: '334155', size: 21 }),
+              new TextRun({ text: `${nowStr}\n`, color: '64748B', size: 21 }),
+              new TextRun({ text: 'Similarity: ', bold: true, color: '334155', size: 21 }),
+              new TextRun({ text: `${similarity}% match  |  +${addedWords} words added  |  -${deletedWords} words removed`, color: 'D97706', bold: true, size: 21 })
+            ],
+            spacing: { after: 240 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'MARKUP KEY:  ', bold: true, size: 20, color: '1E293B' }),
+              new TextRun({ text: '[ Strikethrough Red ]', strike: true, color: 'C00000', bold: true, shading: { fill: 'FCE8E6' }, size: 20 }),
+              new TextRun({ text: ' = Deleted from Doc A   |   ', size: 20, color: '475569' }),
+              new TextRun({ text: '[ Underline Green ]', underline: { type: 'single', color: '0D8050' }, color: '0D8050', bold: true, shading: { fill: 'E6F4EA' }, size: 20 }),
+              new TextRun({ text: ' = Added in Doc B', size: 20, color: '475569' })
+            ],
+            shading: { fill: 'F1F5F9' },
+            spacing: { before: 100, after: 360, line: 300 }
+          }),
+          new Paragraph({
+            text: '─────────────────────────────────────────────────────────────',
+            color: 'CBD5E1',
+            spacing: { after: 280 }
+          }),
+          ...contentParagraphs
+        ]
+      }
+    ]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const baseName = (meta?.docB?.filename || meta?.docA?.filename || 'Document').replace(/\.[^/.]+$/, '');
+  a.href = url;
+  a.download = `Redline_${baseName}_${Date.now()}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Groups raw diff tokens into discrete, reviewable change blocks
  * Consecutive additions and deletions become a single replacement unit
  */

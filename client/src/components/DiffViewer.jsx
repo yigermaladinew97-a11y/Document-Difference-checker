@@ -22,7 +22,7 @@ import NoiseFiltersBar from './NoiseFiltersBar';
 import MergeResolver from './MergeResolver';
 import InlineChangeAction from './InlineChangeAction';
 import SpreadsheetGridDiff from './SpreadsheetGridDiff';
-import { extractChangeBlocks, tagTokensWithChangeIds } from '../utils/mergeExporter';
+import { extractChangeBlocks, tagTokensWithChangeIds, exportRedlineDocx } from '../utils/mergeExporter';
 
 export default function DiffViewer({
   diffTokens,
@@ -44,11 +44,24 @@ export default function DiffViewer({
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const [showFilterTray, setShowFilterTray] = useState(false);
+  const [isExportingWord, setIsExportingWord] = useState(false);
 
   // In-line change decision state shared across Side-by-Side, Unified, and MergeResolver
   const [decisions, setDecisions] = useState(() => initialDecisions || {});
   const [hoveredChangeId, setHoveredChangeId] = useState(null);
   const [currentChangeIndex, setCurrentChangeIndex] = useState(0);
+
+  const handleExportRedlineWord = async () => {
+    try {
+      setIsExportingWord(true);
+      await exportRedlineDocx(diffTokens, meta, stats);
+    } catch (err) {
+      console.error('Failed to export redline Word document:', err);
+      alert('Could not export redline Word document.');
+    } finally {
+      setIsExportingWord(false);
+    }
+  };
 
   // Auto-switch to spreadsheet view if spreadsheetDiff is provided
   useEffect(() => {
@@ -339,6 +352,17 @@ export default function DiffViewer({
               <span>PDF Report</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleExportRedlineWord}
+            disabled={isExportingWord}
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition disabled:opacity-50"
+            title="Download Legal Redline Word Document (.docx) with strikethrough & underline markup"
+          >
+            <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>{isExportingWord ? 'Exporting...' : 'Redline Word'}</span>
+          </button>
         </div>
       </div>
 
