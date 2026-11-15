@@ -41,7 +41,7 @@ async function parsePdf(buffer) {
     content: normalizeText(pageText)
   })).filter(s => s.content.length > 0);
 
-  const fullText = sections.map(s => `[${s.title}]\n${s.content}`).join('\n\n');
+  const fullText = sections.map(s => s.content).join('\n\n');
 
   return {
     type: 'pdf',
@@ -90,7 +90,7 @@ function parseExcel(buffer) {
         title: `Sheet: ${sheetName}`,
         content: cleaned
       });
-      fullTextParts.push(`=== Sheet: ${sheetName} ===\n${cleaned}`);
+      fullTextParts.push(cleaned);
     }
   }
 
@@ -142,7 +142,7 @@ function parsePptx(buffer) {
         title: `Slide ${item.slideNum}`,
         content: cleaned
       });
-      fullTextParts.push(`[Slide ${item.slideNum}]\n${cleaned}`);
+      fullTextParts.push(cleaned);
     }
   }
 

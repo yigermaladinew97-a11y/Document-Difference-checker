@@ -50,21 +50,128 @@ export function calculateWordSimilarity(textA, textB, wordDiffs) {
 }
 
 /**
- * Compare two documents section by section (Pages, Slides, or Sheets)
+ * Optimal Global Alignment of Sections (Needleman-Wunsch DP)
+ * Prevents off-by-one cascading mismatches when slides/pages are inserted or deleted.
  */
 function compareSections(sectionsA = [], sectionsB = []) {
-  const maxLen = Math.max(sectionsA.length, sectionsB.length);
-  const sectionReports = [];
+  const n = sectionsA.length;
+  const m = sectionsB.length;
 
-  for (let i = 0; i < maxLen; i++) {
-    const secA = sectionsA[i];
-    const secB = sectionsB[i];
+  if (n === 0 && m === 0) return [];
+  if (n === 0) {
+    return sectionsB.map((s, idx) => ({
+      index: idx + 1,
+      title: s.title,
+      status: 'ADDED',
+      similarityPercent: 0,
+      description: 'New section added in Document B'
+    }));
+  }
+  if (m === 0) {
+    return sectionsA.map((s, idx) => ({
+      index: idx + 1,
+      title: s.title,
+      status: 'DELETED',
+      similarityPercent: 0,
+      description: 'Section removed in Document B'
+    }));
+  }
+
+  // 1. Build similarity matrix between all section pairs (A_i, B_j)
+  const simMatrix = Array.from({ length: n }, () => new Float32Array(m));
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) {
+      const textA = sectionsA[i].content.trim();
+      const textB = sectionsB[j].content.trim();
+      if (textA === textB) {
+        simMatrix[i][j] = 1.0;
+      } else if (!textA || !textB) {
+        simMatrix[i][j] = 0.0;
+      } else {
+        const wordsA = tokenizeWords(textA.toLowerCase());
+        const wordsB = tokenizeWords(textB.toLowerCase());
+        const setA = new Map();
+        for (const w of wordsA) setA.set(w, (setA.get(w) || 0) + 1);
+        let common = 0;
+        for (const w of wordsB) {
+          const count = setA.get(w) || 0;
+          if (count > 0) {
+            common++;
+            setA.set(w, count - 1);
+          }
+        }
+        simMatrix[i][j] = (2 * common) / (wordsA.length + wordsB.length || 1);
+      }
+    }
+  }
+
+  // 2. Dynamic programming with Needleman-Wunsch global alignment
+  const GAP_PENALTY = -0.15;
+  const dp = Array.from({ length: n + 1 }, () => new Float32Array(m + 1));
+  const trace = Array.from({ length: n + 1 }, () => new Uint8Array(m + 1)); // 1=diag, 2=up (gap in B), 3=left (gap in A)
+
+  for (let i = 1; i <= n; i++) {
+    dp[i][0] = i * GAP_PENALTY;
+    trace[i][0] = 2;
+  }
+  for (let j = 1; j <= m; j++) {
+    dp[0][j] = j * GAP_PENALTY;
+    trace[0][j] = 3;
+  }
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      const sim = simMatrix[i - 1][j - 1];
+      // Reward matching pairs; penalize incompatible pairs (< 0.35)
+      const matchScore = sim >= 0.35 ? (sim * 2.0 - 0.2) : -1.0;
+
+      const diag = dp[i - 1][j - 1] + matchScore;
+      const up = dp[i - 1][j] + GAP_PENALTY;
+      const left = dp[i][j - 1] + GAP_PENALTY;
+
+      if (diag >= up && diag >= left) {
+        dp[i][j] = diag;
+        trace[i][j] = 1;
+      } else if (up >= left) {
+        dp[i][j] = up;
+        trace[i][j] = 2;
+      } else {
+        dp[i][j] = left;
+        trace[i][j] = 3;
+      }
+    }
+  }
+
+  // 3. Backtrack to recover optimal alignment
+  let i = n, j = m;
+  const alignedPairs = [];
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && trace[i][j] === 1) {
+      alignedPairs.push({ secA: sectionsA[i - 1], secB: sectionsB[j - 1] });
+      i--;
+      j--;
+    } else if (i > 0 && (j === 0 || trace[i][j] === 2)) {
+      alignedPairs.push({ secA: sectionsA[i - 1], secB: null });
+      i--;
+    } else {
+      alignedPairs.push({ secA: null, secB: sectionsB[j - 1] });
+      j--;
+    }
+  }
+  alignedPairs.reverse();
+
+  // 4. Construct Section Reports with precise diff stats
+  const sectionReports = [];
+  for (let k = 0; k < alignedPairs.length; k++) {
+    const { secA, secB } = alignedPairs[k];
 
     if (secA && secB) {
-      const title = secA.title === secB.title ? secA.title : `${secA.title} vs ${secB.title}`;
-      if (secA.content.trim() === secB.content.trim()) {
+      const isExact = secA.content.trim() === secB.content.trim();
+      const title = secA.title === secB.title ? secA.title : `${secA.title} / ${secB.title}`;
+
+      if (isExact) {
         sectionReports.push({
-          index: i + 1,
+          index: k + 1,
           title,
           status: 'UNCHANGED',
           similarityPercent: 100,
@@ -74,7 +181,7 @@ function compareSections(sectionsA = [], sectionsB = []) {
         const diffs = Diff.diffWords(secA.content, secB.content);
         const stats = calculateWordSimilarity(secA.content, secB.content, diffs);
         sectionReports.push({
-          index: i + 1,
+          index: k + 1,
           title,
           status: 'MODIFIED',
           similarityPercent: stats.similarityPercent,
@@ -83,15 +190,15 @@ function compareSections(sectionsA = [], sectionsB = []) {
       }
     } else if (secA && !secB) {
       sectionReports.push({
-        index: i + 1,
+        index: k + 1,
         title: secA.title,
         status: 'DELETED',
         similarityPercent: 0,
-        description: 'Section exists only in Document A (Removed in Document B)'
+        description: 'Section exists in Document A (Removed in Document B)'
       });
     } else if (!secA && secB) {
       sectionReports.push({
-        index: i + 1,
+        index: k + 1,
         title: secB.title,
         status: 'ADDED',
         similarityPercent: 0,

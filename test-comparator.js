@@ -79,6 +79,40 @@ async function runComparatorTests() {
     console.log(`   - ${sec.title}: [${sec.status}] -> ${sec.description} (${sec.similarityPercent}% match)`);
   });
 
+  // Test Case 4: Slide Deletion (Exact scenario reported by user)
+  console.log('\n[Test 4/4] Comparing Presentations where 1 middle slide was removed...');
+  const pptxFull = {
+    filename: 'pitch_deck_v1.pptx',
+    format: 'pptx',
+    wordCount: 30,
+    text: 'Company introduction and vision for Q4.\n\nFinancial plan: $500,000 venture funding round.\n\nTechnical architecture and security compliance.\n\nExecutive team and board of advisors.',
+    sections: [
+      { title: 'Slide 1', content: 'Company introduction and vision for Q4.' },
+      { title: 'Slide 2', content: 'Financial plan: $500,000 venture funding round.' },
+      { title: 'Slide 3', content: 'Technical architecture and security compliance.' },
+      { title: 'Slide 4', content: 'Executive team and board of advisors.' }
+    ]
+  };
+
+  const pptxWithSlideRemoved = {
+    filename: 'pitch_deck_without_financials.pptx',
+    format: 'pptx',
+    wordCount: 23,
+    text: 'Company introduction and vision for Q4.\n\nTechnical architecture and security compliance.\n\nExecutive team and board of advisors.',
+    sections: [
+      { title: 'Slide 1', content: 'Company introduction and vision for Q4.' },
+      { title: 'Slide 2', content: 'Technical architecture and security compliance.' },
+      { title: 'Slide 3', content: 'Executive team and board of advisors.' }
+    ]
+  };
+
+  const res4 = compareDocuments(pptxFull, pptxWithSlideRemoved);
+  console.log(`✓ Overall Similarity: ${res4.similarityPercent}%`);
+  console.log('✓ Section Reports:');
+  res4.sectionReports.forEach(sec => {
+    console.log(`   - ${sec.title}: [${sec.status}] -> ${sec.description} (${sec.similarityPercent}% match)`);
+  });
+
   console.log('\n=======================================');
   console.log('🎉 STEP 2 VERIFICATION COMPLETE: COMPARATOR WORKING ACCURATELY!');
   console.log('=======================================');
