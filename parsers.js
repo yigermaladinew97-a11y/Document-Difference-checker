@@ -6,13 +6,20 @@ import AdmZip from 'adm-zip';
 
 /**
  * Clean & normalize extracted text
+ * Normalizes newlines, removes zero-width characters, and unifies all Unicode whitespace
  */
 function normalizeText(text) {
   if (!text) return '';
   return text
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
+    // Remove zero-width spaces, byte-order marks, soft hyphens
+    .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
+    // Normalize all Unicode space variants (non-breaking space, thin space, em space, etc.) to standard space
+    .replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ')
+    // Normalize horizontal whitespace sequences
     .replace(/[ \t]+/g, ' ')
+    // Normalize excessive consecutive blank lines
     .replace(/\n\s*\n\s*\n+/g, '\n\n')
     .trim();
 }
@@ -104,39 +111,122 @@ function parseExcel(buffer) {
 }
 
 /**
- * Extract text from PowerPoint (.pptx) buffer
+ * Resolve true sequential slide order in PPTX using presentation.xml & presentation.xml.rels
  */
-function parsePptx(buffer) {
-  const zip = new AdmZip(buffer);
-  const zipEntries = zip.getEntries();
-  const slideEntries = [];
+function getOrderedPptxSlides(zip) {
+  try {
+    const allEntries = zip.getEntries();
+    const relsEntry = allEntries.find(e => e.entryName.toLowerCase() === 'ppt/_rels/presentation.xml.rels');
+    const presEntry = allEntries.find(e => e.entryName.toLowerCase() === 'ppt/presentation.xml');
 
-  for (const entry of zipEntries) {
+    if (relsEntry && presEntry) {
+      const relsXml = relsEntry.getData().toString('utf8');
+      const presXml = presEntry.getData().toString('utf8');
+
+      // Map relationship ID (rId) -> target slide file path
+      const relMatches = [...relsXml.matchAll(/<Relationship\s+[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/gi)];
+      const rIdMap = new Map();
+      for (const m of relMatches) {
+        let target = m[2].replace(/\\/g, '/');
+        if (!target.toLowerCase().startsWith('ppt/')) {
+          target = 'ppt/' + target.replace(/^\/?/, '');
+        }
+        rIdMap.set(m[1], target.toLowerCase());
+      }
+
+      // Extract ordered slide references in <p:sldIdLst>
+      const sldIdMatches = [...presXml.matchAll(/<p:sldId\b[^>]*\br:id="([^"]+)"/gi)];
+      if (sldIdMatches.length > 0) {
+        const ordered = [];
+        for (let idx = 0; idx < sldIdMatches.length; idx++) {
+          const rId = sldIdMatches[idx][1];
+          const targetPath = rIdMap.get(rId);
+          if (targetPath) {
+            const entry = allEntries.find(e => e.entryName.toLowerCase() === targetPath);
+            if (entry) {
+              ordered.push({
+                slideNum: idx + 1,
+                entry
+              });
+            }
+          }
+        }
+        if (ordered.length > 0) {
+          return ordered;
+        }
+      }
+    }
+  } catch (err) {
+    // If presentation.xml is missing or unparseable, fall back to natural sorting
+  }
+
+  // Fallback: collect ppt/slides/slide*.xml and sort naturally
+  const slideEntries = [];
+  for (const entry of zip.getEntries()) {
     const match = entry.entryName.match(/^ppt\/slides\/slide(\d+)\.xml$/i);
     if (match) {
       slideEntries.push({
-        slideNum: parseInt(match[1], 10),
+        num: parseInt(match[1], 10),
         entry
       });
     }
   }
+  slideEntries.sort((a, b) => a.num - b.num);
+  return slideEntries.map((item, idx) => ({
+    slideNum: idx + 1,
+    entry: item.entry
+  }));
+}
 
-  // Sort slides in natural presentation order (slide1, slide2, slide3...)
-  slideEntries.sort((a, b) => a.slideNum - b.slideNum);
+/**
+ * Extract clean slide text from slide XML:
+ * - Strips auto-numbered slide footer fields (<a:fld type="slidenum">) to prevent false diff cascades
+ * - Preserves in-paragraph runs (<a:r><a:t>) without splitting words
+ */
+function extractSlideXmlText(xml) {
+  // Strip dynamic slide number and date/time footer fields
+  const cleanXml = xml
+    .replace(/<a:fld\b[^>]*\btype=["']slidenum["'][\s\S]*?<\/a:fld>/gi, '')
+    .replace(/<a:fld\b[^>]*\btype=["']datetime["'][\s\S]*?<\/a:fld>/gi, '');
+
+  // Extract text paragraph by paragraph (<a:p>)
+  const pMatches = [...cleanXml.matchAll(/<a:p(?:\s+[^>]*)?>([\s\S]*?)<\/a:p>/g)];
+  const paragraphs = [];
+
+  for (const pMatch of pMatches) {
+    const pXml = pMatch[1];
+    const tMatches = [...pXml.matchAll(/<a:t(?:\s+[^>]*)?>([\s\S]*?)<\/a:t>/g)];
+    if (tMatches.length > 0) {
+      const pText = tMatches.map(m => decodeXmlEntities(m[1])).join('');
+      if (pText.trim().length > 0) {
+        paragraphs.push(pText.trim());
+      }
+    }
+  }
+
+  // Fallback if no <a:p> matched
+  if (paragraphs.length === 0) {
+    const tMatches = [...cleanXml.matchAll(/<a:t(?:\s+[^>]*)?>([\s\S]*?)<\/a:t>/g)];
+    return normalizeText(tMatches.map(m => decodeXmlEntities(m[1])).join(' '));
+  }
+
+  return normalizeText(paragraphs.join('\n'));
+}
+
+/**
+ * Extract text from PowerPoint (.pptx) buffer
+ */
+function parsePptx(buffer) {
+  const zip = new AdmZip(buffer);
+  const slideEntries = getOrderedPptxSlides(zip);
 
   const sections = [];
   const fullTextParts = [];
 
   for (const item of slideEntries) {
     const xml = item.entry.getData().toString('utf8');
-    // Extract all text inside <a:t>...</a:t> elements
-    const matches = [...xml.matchAll(/<a:t(?:\s+[^>]*)?>([\s\S]*?)<\/a:t>/g)];
-    const slideText = matches
-      .map(m => decodeXmlEntities(m[1].trim()))
-      .filter(t => t.length > 0)
-      .join(' ');
+    const cleaned = extractSlideXmlText(xml);
 
-    const cleaned = normalizeText(slideText);
     if (cleaned) {
       sections.push({
         title: `Slide ${item.slideNum}`,

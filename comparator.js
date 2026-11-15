@@ -122,8 +122,8 @@ function compareSections(sectionsA = [], sectionsB = []) {
   for (let i = 1; i <= n; i++) {
     for (let j = 1; j <= m; j++) {
       const sim = simMatrix[i - 1][j - 1];
-      // Reward matching pairs; penalize incompatible pairs (< 0.35)
-      const matchScore = sim >= 0.35 ? (sim * 2.0 - 0.2) : -1.0;
+      // Reward matching pairs; penalize low-similarity pairs
+      const matchScore = sim >= 0.25 ? (sim * 2.0 - 0.2) : (sim - 0.6);
 
       const diag = dp[i - 1][j - 1] + matchScore;
       const up = dp[i - 1][j] + GAP_PENALTY;
@@ -167,42 +167,111 @@ function compareSections(sectionsA = [], sectionsB = []) {
 
     if (secA && secB) {
       const isExact = secA.content.trim() === secB.content.trim();
-      const title = secA.title === secB.title ? secA.title : `${secA.title} / ${secB.title}`;
+      const title = secA.title === secB.title ? secA.title : `${secA.title} ↔ ${secB.title}`;
 
       if (isExact) {
         sectionReports.push({
           index: k + 1,
           title,
+          titleA: secA.title,
+          titleB: secB.title,
           status: 'UNCHANGED',
           similarityPercent: 100,
-          description: 'Identical content'
+          description: 'Identical content',
+          contentA: secA.content,
+          contentB: secB.content,
+          stats: {
+            totalWordsA: tokenizeWords(secA.content).length,
+            totalWordsB: tokenizeWords(secB.content).length,
+            addedWords: 0,
+            deletedWords: 0,
+            unchangedWords: tokenizeWords(secA.content).length
+          },
+          diffTokens: [{ value: secA.content, type: 'unchanged' }]
         });
       } else {
         const diffs = Diff.diffWords(secA.content, secB.content);
+        const diffsWithSpace = Diff.diffWordsWithSpace(secA.content, secB.content);
         const stats = calculateWordSimilarity(secA.content, secB.content, diffs);
-        sectionReports.push({
-          index: k + 1,
-          title,
-          status: 'MODIFIED',
-          similarityPercent: stats.similarityPercent,
-          description: `${stats.addedWords} words added, ${stats.deletedWords} words removed`
-        });
+
+        // If word counts show 0 added and 0 deleted, the words are identical (only minor whitespace variance)
+        if (stats.addedWords === 0 && stats.deletedWords === 0) {
+          sectionReports.push({
+            index: k + 1,
+            title,
+            titleA: secA.title,
+            titleB: secB.title,
+            status: 'UNCHANGED',
+            similarityPercent: 100,
+            description: 'Identical content',
+            contentA: secA.content,
+            contentB: secB.content,
+            stats: {
+              ...stats,
+              similarityPercent: 100
+            },
+            diffTokens: [{ value: secB.content, type: 'unchanged' }]
+          });
+        } else {
+          sectionReports.push({
+            index: k + 1,
+            title,
+            titleA: secA.title,
+            titleB: secB.title,
+            status: 'MODIFIED',
+            similarityPercent: stats.similarityPercent,
+            description: `${stats.addedWords} words added, ${stats.deletedWords} words removed`,
+            contentA: secA.content,
+            contentB: secB.content,
+            stats,
+            diffTokens: diffsWithSpace.map(p => ({
+              value: p.value,
+              type: p.added ? 'added' : p.removed ? 'removed' : 'unchanged'
+            }))
+          });
+        }
       }
     } else if (secA && !secB) {
+      const wordsCount = tokenizeWords(secA.content).length;
       sectionReports.push({
         index: k + 1,
         title: secA.title,
+        titleA: secA.title,
+        titleB: null,
         status: 'DELETED',
         similarityPercent: 0,
-        description: 'Section exists in Document A (Removed in Document B)'
+        description: 'Section exists in Document A (Removed in Document B)',
+        contentA: secA.content,
+        contentB: '',
+        stats: {
+          totalWordsA: wordsCount,
+          totalWordsB: 0,
+          addedWords: 0,
+          deletedWords: wordsCount,
+          unchangedWords: 0
+        },
+        diffTokens: [{ value: secA.content, type: 'removed' }]
       });
     } else if (!secA && secB) {
+      const wordsCount = tokenizeWords(secB.content).length;
       sectionReports.push({
         index: k + 1,
         title: secB.title,
+        titleA: null,
+        titleB: secB.title,
         status: 'ADDED',
         similarityPercent: 0,
-        description: 'New section added in Document B'
+        description: 'New section added in Document B',
+        contentA: '',
+        contentB: secB.content,
+        stats: {
+          totalWordsA: 0,
+          totalWordsB: wordsCount,
+          addedWords: wordsCount,
+          deletedWords: 0,
+          unchangedWords: 0
+        },
+        diffTokens: [{ value: secB.content, type: 'added' }]
       });
     }
   }

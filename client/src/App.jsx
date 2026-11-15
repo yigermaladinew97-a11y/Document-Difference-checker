@@ -289,6 +289,7 @@ export default function App() {
             {/* 3. Section / Page / Slide Breakdown */}
             <SectionBreakdown
               sectionReports={comparisonResult.sectionReports}
+              meta={comparisonResult.meta}
             />
 
             {/* 4. Interactive Diff Viewer with Micro-Hover Tokens */}
