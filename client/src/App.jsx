@@ -421,6 +421,7 @@ export default function App() {
                   updateSessionDecisions(activeSessionId, newDecisions);
                 }
               }}
+              spreadsheetDiff={comparisonResult.spreadsheetDiff}
             />
 
             {/* 5. Executive PDF Audit Report Modal */}

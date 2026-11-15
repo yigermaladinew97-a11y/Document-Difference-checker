@@ -107,6 +107,34 @@ async function runServerTest() {
     throw new Error('Expected whitespace difference to be detected when Normalize Spaces is OFF!');
   }
 
+  // 6. Test Spreadsheet Grid Diff over API
+  console.log('\n[6/6] Testing POST /api/compare with Two Excel Files for Spreadsheet Grid Diff...');
+  const wb1 = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet([['Item', 'Price'], ['Server', '$1000'], ['License', '$500']]);
+  XLSX.utils.book_append_sheet(wb1, ws1, 'Budget');
+  const xlsx1 = XLSX.write(wb1, { type: 'buffer', bookType: 'xlsx' });
+
+  const wb2 = XLSX.utils.book_new();
+  const ws2 = XLSX.utils.aoa_to_sheet([['Item', 'Price'], ['Server', '$1250'], ['License', '$500']]);
+  XLSX.utils.book_append_sheet(wb2, ws2, 'Budget');
+  const xlsx2 = XLSX.write(wb2, { type: 'buffer', bookType: 'xlsx' });
+
+  const sheetForm = new FormData();
+  sheetForm.append('fileA', new Blob([xlsx1]), 'budget_2025.xlsx');
+  sheetForm.append('fileB', new Blob([xlsx2]), 'budget_2026.xlsx');
+
+  const sheetRes = await fetch('http://localhost:3099/api/compare', { method: 'POST', body: sheetForm });
+  const sheetData = await sheetRes.json();
+  console.log(`✓ Spreadsheet compare status: ${sheetRes.status}`);
+  console.log(`✓ SpreadsheetDiff returned: ${Array.isArray(sheetData.spreadsheetDiff)}`);
+  if (!sheetData.spreadsheetDiff || sheetData.spreadsheetDiff.length === 0) {
+    throw new Error('Expected spreadsheetDiff array in API response!');
+  }
+  const sDiff = sheetData.spreadsheetDiff[0];
+  console.log(`✓ Sheet "${sDiff.sheetName}" analyzed: ${sDiff.stats.totalDiffCells} diff cell(s), modifiedCells: ${sDiff.stats.modifiedCells}`);
+  const priceCell = sDiff.rows[1].cells[1];
+  console.log(`✓ Cell B2 drift: ${priceCell.valA} -> ${priceCell.valB}, delta: +${priceCell.delta} (+${priceCell.percentChange}%)`);
+
   console.log('\n=======================================');
   console.log('🎉 STEP 4 VERIFICATION COMPLETE: SERVER & API ENDPOINTS FULLY OPERATIONAL!');
   console.log('=======================================');

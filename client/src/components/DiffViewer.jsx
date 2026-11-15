@@ -15,11 +15,13 @@ import {
   Sparkles,
   ChevronUp,
   ChevronDown,
-  X
+  X,
+  Table
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
 import MergeResolver from './MergeResolver';
 import InlineChangeAction from './InlineChangeAction';
+import SpreadsheetGridDiff from './SpreadsheetGridDiff';
 import { extractChangeBlocks, tagTokensWithChangeIds } from '../utils/mergeExporter';
 
 export default function DiffViewer({
@@ -32,9 +34,11 @@ export default function DiffViewer({
   isComparing = false,
   onExportPdf,
   initialDecisions = {},
-  onDecisionsChange
+  onDecisionsChange,
+  spreadsheetDiff
 }) {
-  const [viewMode, setViewMode] = useState('sideBySide');
+  const hasSpreadsheet = Boolean(spreadsheetDiff && spreadsheetDiff.length > 0);
+  const [viewMode, setViewMode] = useState(() => (hasSpreadsheet ? 'spreadsheet' : 'sideBySide'));
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
   const [wrapText, setWrapText] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +49,13 @@ export default function DiffViewer({
   const [decisions, setDecisions] = useState(() => initialDecisions || {});
   const [hoveredChangeId, setHoveredChangeId] = useState(null);
   const [currentChangeIndex, setCurrentChangeIndex] = useState(0);
+
+  // Auto-switch to spreadsheet view if spreadsheetDiff is provided
+  useEffect(() => {
+    if (hasSpreadsheet) {
+      setViewMode('spreadsheet');
+    }
+  }, [hasSpreadsheet]);
 
   // Synchronize when restored from history
   useEffect(() => {
@@ -191,6 +202,20 @@ export default function DiffViewer({
         {/* Left: View Mode Controls */}
         <div className="flex items-center space-x-2">
           <div className="flex bg-white dark:bg-slate-950 p-1 rounded-full border border-slate-200/80 dark:border-white/[0.08] text-xs shadow-sm">
+            {hasSpreadsheet && (
+              <button
+                type="button"
+                onClick={() => setViewMode('spreadsheet')}
+                className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'spreadsheet'
+                    ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                title="Spreadsheet cell-by-cell grid diff with numerical delta analysis"
+              >
+                <Table className="w-3.5 h-3.5" />
+                <span>Spreadsheet Grid</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setViewMode('sideBySide')}
@@ -332,7 +357,7 @@ export default function DiffViewer({
       )}
 
       {/* Quick In-Line Resolver & Jump Navigation Bar */}
-      {viewMode !== 'merge' && totalChanges > 0 && (
+      {viewMode !== 'merge' && viewMode !== 'spreadsheet' && totalChanges > 0 && (
         <div className="px-6 py-2.5 bg-slate-50/90 dark:bg-slate-900/80 border-b border-slate-100 dark:border-white/[0.04] flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Left: Progress info */}
           <div className="flex items-center space-x-3">
@@ -410,7 +435,7 @@ export default function DiffViewer({
       )}
 
       {/* Legend & Status */}
-      {viewMode !== 'merge' && (
+      {viewMode !== 'merge' && viewMode !== 'spreadsheet' && (
         <div className="px-6 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
           <div className="flex items-center space-x-6">
             <span className="flex items-center space-x-2">
@@ -433,7 +458,11 @@ export default function DiffViewer({
       )}
 
       {/* Content Panes */}
-      {viewMode === 'merge' ? (
+      {viewMode === 'spreadsheet' && hasSpreadsheet ? (
+        <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
+          <SpreadsheetGridDiff spreadsheetDiff={spreadsheetDiff} meta={meta} />
+        </div>
+      ) : viewMode === 'merge' ? (
         <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
           <MergeResolver
             diffTokens={diffTokens}

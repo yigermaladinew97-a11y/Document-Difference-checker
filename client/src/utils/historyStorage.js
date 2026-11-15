@@ -64,6 +64,7 @@ export async function saveComparisonSession(sessionData, existingDecisions = {})
       filters: sessionData.filters || {},
       diffTokens: sessionData.diffTokens || [],
       sectionReports: sessionData.sectionReports || [],
+      spreadsheetDiff: sessionData.spreadsheetDiff || null,
       decisions: existingDecisions || sessionData.decisions || {}
     };
 

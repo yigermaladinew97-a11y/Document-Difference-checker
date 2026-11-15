@@ -158,6 +158,7 @@ app.post(
         summary: comparison.summary,
         contextAnalysis,
         sectionReports: comparison.sectionReports,
+        spreadsheetDiff: comparison.spreadsheetDiff || null,
         diffTokens: comparison.diffTokens
       });
     } catch (error) {

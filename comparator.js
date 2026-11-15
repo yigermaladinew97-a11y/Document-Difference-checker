@@ -668,6 +668,165 @@ function generateSummaryDescription(similarityPercent, stats, sectionReports, fi
 }
 
 /**
+ * Helper to convert 0-indexed column number to Excel column letter (0->A, 1->B, 25->Z, 26->AA)
+ */
+function getExcelColumnLetter(idx) {
+  let letter = '';
+  let temp = idx;
+  while (temp >= 0) {
+    letter = String.fromCharCode((temp % 26) + 65) + letter;
+    temp = Math.floor(temp / 26) - 1;
+  }
+  return letter;
+}
+
+/**
+ * Compare two sets of spreadsheet sheets cell-by-cell with numerical delta analysis
+ */
+export function compareSpreadsheetSheets(sheetsA = [], sheetsB = [], filterOpts = {}) {
+  if ((!sheetsA || sheetsA.length === 0) && (!sheetsB || sheetsB.length === 0)) {
+    return null;
+  }
+
+  const comparedSheets = [];
+
+  // Match sheets by name or index
+  const allSheetNames = new Set([
+    ...sheetsA.map(s => s.name),
+    ...sheetsB.map(s => s.name)
+  ]);
+
+  for (const sheetName of allSheetNames) {
+    const sA = sheetsA.find(s => s.name === sheetName) || sheetsA[comparedSheets.length] || { matrix: [] };
+    const sB = sheetsB.find(s => s.name === sheetName) || sheetsB[comparedSheets.length] || { matrix: [] };
+
+    const matrixA = sA.matrix || [];
+    const matrixB = sB.matrix || [];
+
+    const maxRows = Math.max(matrixA.length, matrixB.length);
+    let maxCols = 0;
+    for (const r of matrixA) if (r && r.length > maxCols) maxCols = r.length;
+    for (const r of matrixB) if (r && r.length > maxCols) maxCols = r.length;
+
+    if (maxRows === 0 || maxCols === 0) continue;
+
+    const colHeaders = [];
+    for (let c = 0; c < maxCols; c++) {
+      colHeaders.push(getExcelColumnLetter(c));
+    }
+
+    const rowDiffs = [];
+    let modifiedCellsCount = 0;
+    let addedCellsCount = 0;
+    let deletedCellsCount = 0;
+    let unchangedCellsCount = 0;
+    let totalCellsCount = 0;
+    let addedRowsCount = 0;
+    let deletedRowsCount = 0;
+
+    for (let r = 0; r < maxRows; r++) {
+      const rowA = matrixA[r] || null;
+      const rowB = matrixB[r] || null;
+
+      const isRowAdded = !rowA && !!rowB;
+      const isRowDeleted = !!rowA && !rowB;
+      if (isRowAdded) addedRowsCount++;
+      if (isRowDeleted) deletedRowsCount++;
+
+      let hasRowDiff = isRowAdded || isRowDeleted;
+      const cells = [];
+
+      for (let c = 0; c < maxCols; c++) {
+        totalCellsCount++;
+        const rawA = rowA && rowA[c] !== undefined ? String(rowA[c]) : '';
+        const rawB = rowB && rowB[c] !== undefined ? String(rowB[c]) : '';
+
+        const cleanA = filterOpts.ignoreWhitespace ? rawA.trim() : rawA;
+        const cleanB = filterOpts.ignoreWhitespace ? rawB.trim() : rawB;
+
+        const isExact = filterOpts.ignoreCase
+          ? cleanA.toLowerCase() === cleanB.toLowerCase()
+          : cleanA === cleanB;
+
+        let status = 'unchanged';
+        let delta = null;
+        let percentChange = null;
+        let isNumeric = false;
+
+        if (isExact) {
+          status = 'unchanged';
+          unchangedCellsCount++;
+        } else if (cleanA && !cleanB) {
+          status = 'deleted';
+          deletedCellsCount++;
+          hasRowDiff = true;
+        } else if (!cleanA && cleanB) {
+          status = 'added';
+          addedCellsCount++;
+          hasRowDiff = true;
+        } else {
+          status = 'modified';
+          modifiedCellsCount++;
+          hasRowDiff = true;
+
+          // Numerical delta calculation
+          const numA = parseFloat(cleanA.replace(/[^0-9.-]/g, ''));
+          const numB = parseFloat(cleanB.replace(/[^0-9.-]/g, ''));
+
+          if (!isNaN(numA) && !isNaN(numB)) {
+            isNumeric = true;
+            delta = Math.round((numB - numA) * 100) / 100;
+            if (numA !== 0) {
+              percentChange = Math.round(((delta / Math.abs(numA)) * 100) * 10) / 10;
+            }
+          }
+        }
+
+        cells.push({
+          colIndex: c,
+          colLetter: colHeaders[c],
+          valA: rawA,
+          valB: rawB,
+          status,
+          isNumeric,
+          delta,
+          percentChange
+        });
+      }
+
+      rowDiffs.push({
+        rowNum: r + 1,
+        isRowAdded,
+        isRowDeleted,
+        hasRowDiff,
+        status: isRowAdded ? 'added' : isRowDeleted ? 'deleted' : hasRowDiff ? 'modified' : 'unchanged',
+        cells
+      });
+    }
+
+    comparedSheets.push({
+      sheetName: sheetName || sA.name || sB.name || `Sheet ${comparedSheets.length + 1}`,
+      colHeaders,
+      maxRows,
+      maxCols,
+      rows: rowDiffs,
+      stats: {
+        totalCells: totalCellsCount,
+        modifiedCells: modifiedCellsCount,
+        addedCells: addedCellsCount,
+        deletedCells: deletedCellsCount,
+        unchangedCells: unchangedCellsCount,
+        addedRows: addedRowsCount,
+        deletedRows: deletedRowsCount,
+        totalDiffCells: modifiedCellsCount + addedCellsCount + deletedCellsCount
+      }
+    });
+  }
+
+  return comparedSheets.length > 0 ? comparedSheets : null;
+}
+
+/**
  * Compare two extracted document objects
  * @param {Object} docA - Extracted content of Document A { text, sections, format, filename }
  * @param {Object} docB - Extracted content of Document B { text, sections, format, filename }
@@ -712,6 +871,9 @@ export function compareDocuments(docA, docB, options = {}) {
   // 4. Generate local structured summary
   const summary = generateSummaryDescription(stats.similarityPercent, stats, sectionReports, filterOpts);
 
+  // 5. If spreadsheet data (XLSX, XLS, CSV) exists, compute structured cell-by-cell matrix diff
+  const spreadsheetDiff = compareSpreadsheetSheets(docA.sheets || [], docB.sheets || [], filterOpts);
+
   const isStrictExact = filterOpts.ignoreWhitespace
     ? (stats.similarityPercent === 100)
     : (textA === textB || (filterOpts.ignoreCase ? textA.toLowerCase() === textB.toLowerCase() : false));
@@ -722,6 +884,7 @@ export function compareDocuments(docA, docB, options = {}) {
     stats,
     summary,
     sectionReports,
+    spreadsheetDiff,
     diffTokens: formattedDiffs,
     filters: filterOpts,
     meta: {

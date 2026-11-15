@@ -87,6 +87,7 @@ function parseExcel(buffer) {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sections = [];
   const fullTextParts = [];
+  const sheets = [];
 
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
@@ -100,12 +101,22 @@ function parseExcel(buffer) {
       });
       fullTextParts.push(cleaned);
     }
+
+    // Extract structured matrix for cell-by-cell spreadsheet grid comparison
+    const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (matrix && matrix.length > 0) {
+      sheets.push({
+        name: sheetName,
+        matrix
+      });
+    }
   }
 
   const text = fullTextParts.join('\n\n');
   return {
     type: 'xlsx',
     sheetsCount: workbook.SheetNames.length,
+    sheets,
     sections: sections.length > 0 ? sections : [{ title: 'Sheet 1', content: '' }],
     text
   };
@@ -251,8 +262,30 @@ function parsePptx(buffer) {
  */
 function parsePlainText(buffer, ext) {
   const text = normalizeText(buffer.toString('utf8'));
+  const sheets = [];
+
+  // If CSV, extract structured rows/columns matrix for cell-by-cell spreadsheet view
+  if (ext === '.csv') {
+    try {
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      if (workbook.SheetNames && workbook.SheetNames.length > 0) {
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        if (matrix && matrix.length > 0) {
+          sheets.push({
+            name: 'CSV Sheet',
+            matrix
+          });
+        }
+      }
+    } catch (e) {
+      // Fallback cleanly to text
+    }
+  }
+
   return {
     type: ext.replace('.', '') || 'text',
+    sheets,
     sections: [{ title: 'Full Content', content: text }],
     text
   };
@@ -303,6 +336,7 @@ export async function extractDocumentContent(buffer, originalname) {
     format: parsedResult.type,
     text: parsedResult.text,
     sections: parsedResult.sections,
+    sheets: parsedResult.sheets || [],
     wordCount: words.length,
     charCount: parsedResult.text.length
   };
