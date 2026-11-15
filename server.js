@@ -169,7 +169,7 @@ app.get('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+export const server = app.listen(PORT, () => {
   console.log(`\n🚀 Server is running on http://localhost:${PORT}`);
   console.log(`📡 Compare API ready at POST http://localhost:${PORT}/api/compare`);
 });

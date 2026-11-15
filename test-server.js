@@ -8,7 +8,7 @@ async function runServerTest() {
   // Dynamically import server or run against port 3000
   // Let's spawn or start server
   process.env.PORT = '3099';
-  const { default: app } = await import('./server.js');
+  const { default: app, server } = await import('./server.js');
   
   // Wait a moment for server to listen
   await new Promise(r => setTimeout(r, 600));
@@ -65,6 +65,9 @@ async function runServerTest() {
   console.log('🎉 STEP 4 VERIFICATION COMPLETE: SERVER & API ENDPOINTS FULLY OPERATIONAL!');
   console.log('=======================================');
 
+  if (server && server.close) {
+    await new Promise(r => server.close(r));
+  }
   process.exit(0);
 }
 
