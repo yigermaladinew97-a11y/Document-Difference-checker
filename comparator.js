@@ -248,6 +248,56 @@ function compareSections(sectionsA = [], sectionsB = []) {
   const deletedA = unmatchedA.filter(a => !claimedA.has(a._idx));
   const addedB = unmatchedB.filter(b => !claimedB.has(b._idx));
 
+  // Extract clear human-readable snippet explaining the exact changes
+  function summarizeDiffTokens(diffTokens = []) {
+    const removedParts = [];
+    const addedParts = [];
+
+    for (let i = 0; i < diffTokens.length; i++) {
+      const t = diffTokens[i];
+      if (t.type === 'removed' && t.value.trim()) {
+        removedParts.push(t.value.trim());
+      } else if (t.type === 'added' && t.value.trim()) {
+        addedParts.push(t.value.trim());
+      }
+    }
+
+    if (removedParts.length === 0 && addedParts.length === 0) {
+      return null;
+    }
+
+    // Detect numerical / currency changes (e.g. $10 -> $15)
+    const numRegex = /[\$€£¥]?\b\d+(?:[\.,]\d+)?%?/g;
+    const remNums = removedParts.join(' ').match(numRegex) || [];
+    const addNums = addedParts.join(' ').match(numRegex) || [];
+
+    if (remNums.length > 0 && addNums.length > 0) {
+      return `Updated values: "${remNums.slice(0, 2).join(', ')}" ➔ "${addNums.slice(0, 2).join(', ')}"`;
+    }
+
+    if (removedParts.length > 0 && addedParts.length > 0) {
+      const remSnippet = removedParts.slice(0, 2).join(' ');
+      const addSnippet = addedParts.slice(0, 2).join(' ');
+      const remClean = remSnippet.length > 25 ? remSnippet.slice(0, 22) + '...' : remSnippet;
+      const addClean = addSnippet.length > 25 ? addSnippet.slice(0, 22) + '...' : addSnippet;
+      return `Replaced "${remClean}" with "${addClean}"`;
+    }
+
+    if (addedParts.length > 0) {
+      const addSnippet = addedParts.slice(0, 2).join(' ');
+      const addClean = addSnippet.length > 32 ? addSnippet.slice(0, 29) + '...' : addSnippet;
+      return `Added "${addClean}"`;
+    }
+
+    if (removedParts.length > 0) {
+      const remSnippet = removedParts.slice(0, 2).join(' ');
+      const remClean = remSnippet.length > 32 ? remSnippet.slice(0, 29) + '...' : remSnippet;
+      return `Removed "${remClean}"`;
+    }
+
+    return null;
+  }
+
   // Helper to format detailed report object for a pair
   function createSectionReport(secA, secB, isMoved = false) {
     if (secA && secB) {
@@ -264,15 +314,21 @@ function compareSections(sectionsA = [], sectionsB = []) {
         ? `${secA.title} ➔ ${secB.title}`
         : (secA.title === secB.title ? secA.title : `${secA.title} ↔ ${secB.title}`);
 
+      const smartPreview = summarizeDiffTokens(diffsWithSpace);
+
       let description = '';
       if (isMoved) {
-        description = isExact
-          ? `Moved from ${secA.title} to ${secB.title} (Identical content)`
-          : `Moved from ${secA.title} to ${secB.title} (${stats.addedWords} words added, ${stats.deletedWords} words removed)`;
+        if (isExact || (stats.addedWords === 0 && stats.deletedWords === 0)) {
+          description = `Moved from ${secA.title} to ${secB.title} (Identical content)`;
+        } else {
+          description = `Moved from ${secA.title} to ${secB.title}${smartPreview ? ` • ${smartPreview}` : ` (+${stats.addedWords}, -${stats.deletedWords} words)`}`;
+        }
       } else if (status === 'UNCHANGED') {
         description = 'Identical content';
       } else {
-        description = `${stats.addedWords} words added, ${stats.deletedWords} words removed`;
+        description = smartPreview 
+          ? `${smartPreview} (+${stats.addedWords}, -${stats.deletedWords} words)`
+          : `${stats.addedWords} words added, ${stats.deletedWords} words removed`;
       }
 
       const similarityPercent = status === 'UNCHANGED' ? 100 : stats.similarityPercent;
@@ -299,13 +355,15 @@ function compareSections(sectionsA = [], sectionsB = []) {
       };
     } else if (secA && !secB) {
       const wordsCount = tokenizeWords(secA.content).length;
+      const previewA = secA.content.trim().slice(0, 35);
+      const cleanPrev = previewA ? ` (was: "${previewA}${secA.content.length > 35 ? '...' : ''}")` : '';
       return {
         title: secA.title,
         titleA: secA.title,
         titleB: null,
         status: 'DELETED',
         similarityPercent: 0,
-        description: 'Section removed in Document B',
+        description: `Section removed in Document B${cleanPrev}`,
         movedFrom: null,
         movedTo: null,
         contentA: secA.content,
@@ -322,13 +380,15 @@ function compareSections(sectionsA = [], sectionsB = []) {
       };
     } else {
       const wordsCount = tokenizeWords(secB.content).length;
+      const previewB = secB.content.trim().slice(0, 35);
+      const cleanPrev = previewB ? ` ("${previewB}${secB.content.length > 35 ? '...' : ''}")` : '';
       return {
         title: secB.title,
         titleA: null,
         titleB: secB.title,
         status: 'ADDED',
         similarityPercent: 0,
-        description: 'New section added in Document B',
+        description: `New section added in Document B${cleanPrev}`,
         movedFrom: null,
         movedTo: null,
         contentA: '',

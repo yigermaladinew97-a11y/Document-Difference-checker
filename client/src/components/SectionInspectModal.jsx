@@ -97,8 +97,8 @@ export default function SectionInspectModal({ section, onClose, meta }) {
                 </h3>
                 {getStatusBadge()}
               </div>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">
-                Detailed isolated comparison for this specific page / slide
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                {section.description || 'Detailed isolated comparison for this specific page / slide'}
               </p>
             </div>
           </div>

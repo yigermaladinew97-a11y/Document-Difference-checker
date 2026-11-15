@@ -27,52 +27,104 @@ function cleanJsonResponse(rawText) {
 /**
  * Fallback generator when no Gemini API key is provided or on offline mode
  */
-function generateLocalContextAnalysis(stats, sectionReports, summary) {
+/**
+ * Fallback generator when no Gemini API key is provided or on offline mode
+ * Generates an articulate, human-grade analytical summary and specific change descriptions.
+ */
+function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) {
   const alerts = [];
   const changes = [];
 
   const modified = sectionReports.filter(s => s.status === 'MODIFIED');
+  const moved = sectionReports.filter(s => s.status === 'MOVED');
   const added = sectionReports.filter(s => s.status === 'ADDED');
   const deleted = sectionReports.filter(s => s.status === 'DELETED');
-
-  if (deleted.length > 0) {
-    alerts.push(`${deleted.length} section(s) completely removed in the comparison document.`);
-  }
 
   if (stats.similarityPercent === 100) {
     return {
       mode: 'local_fallback',
       contextSimilarityPercent: 100,
-      executiveSummary: 'Both documents are completely identical in both wording and semantic context.',
-      keySemanticChanges: ['No semantic alterations detected.'],
+      executiveSummary: 'Both documents are 100% word-for-word and structurally identical. No additions, deletions, edits, or relocated sections were detected.',
+      keySemanticChanges: ['Document content is completely unchanged.'],
       criticalAlerts: [],
-      toneShift: 'Identical tone and structure.'
+      toneShift: 'Identical structure and tone.'
     };
   }
 
-  for (const m of modified.slice(0, 5)) {
-    changes.push(`Section "${m.title}": ${m.description} (${m.similarityPercent}% match).`);
+  // 1. Synthesize rich narrative Executive Summary
+  const narrativeParts = [];
+  narrativeParts.push(`The comparison between the two documents reveals a ${stats.similarityPercent}% overall alignment.`);
+
+  const structuralPoints = [];
+  if (moved.length > 0) {
+    structuralPoints.push(`${moved.length} section(s) were relocated to new positions (e.g. ${moved.slice(0, 2).map(m => `${m.movedFrom} ➔ ${m.movedTo}`).join(', ')})`);
   }
-  for (const a of added.slice(0, 3)) {
-    changes.push(`New Section Added: "${a.title}".`);
+  if (modified.length > 0) {
+    structuralPoints.push(`${modified.length} section(s) contain textual revisions`);
   }
-  for (const d of deleted.slice(0, 3)) {
-    changes.push(`Section Removed: "${d.title}".`);
+  if (added.length > 0) {
+    structuralPoints.push(`${added.length} new section(s) were introduced`);
+  }
+  if (deleted.length > 0) {
+    structuralPoints.push(`${deleted.length} section(s) were removed`);
   }
 
-  // Estimate contextual similarity from word overlap and structure
+  if (structuralPoints.length > 0) {
+    narrativeParts.push(`Key updates include: ${structuralPoints.join('; ')}.`);
+  }
+
+  narrativeParts.push(`Overall diff reflects +${stats.addedWords} words added and -${stats.deletedWords} words removed across ${stats.totalWordsB} total words in Document B.`);
+
+  const executiveSummary = narrativeParts.join(' ');
+
+  // 2. High-value key changes with exact contextual descriptions
+  for (const m of moved.slice(0, 4)) {
+    changes.push(`[Relocated] ${m.title}: ${m.description}`);
+  }
+  for (const m of modified.slice(0, 6)) {
+    changes.push(`[Modified] ${m.title}: ${m.description} (${m.similarityPercent}% match)`);
+  }
+  for (const a of added.slice(0, 3)) {
+    changes.push(`[Added] ${a.title}: ${a.description}`);
+  }
+  for (const d of deleted.slice(0, 3)) {
+    changes.push(`[Removed] ${d.title}: ${d.description}`);
+  }
+
+  // 3. Scan for critical alerts (e.g. omitted sections, metric updates)
+  if (deleted.length > 0) {
+    alerts.push(`Omitted Content: ${deleted.length} section(s) from Document A are missing in Document B (${deleted.slice(0, 3).map(d => `"${d.title}"`).join(', ')}).`);
+  }
+
+  const numChanges = modified.filter(m => m.description && m.description.includes('Updated values:'));
+  if (numChanges.length > 0) {
+    alerts.push(`Numerical / Metric Discrepancies: Quantitative figures were revised in ${numChanges.map(s => s.title).join(', ')}.`);
+  }
+
+  // 4. Tone shift & length comparison
+  let toneShift = 'Consistent with original content.';
+  if (stats.totalWordsA > 0 && stats.totalWordsB > 0) {
+    const diffRatio = (stats.totalWordsB - stats.totalWordsA) / stats.totalWordsA;
+    if (diffRatio > 0.15) {
+      toneShift = `Expanded detail (Document B is +${Math.round(diffRatio * 100)}% longer).`;
+    } else if (diffRatio < -0.15) {
+      toneShift = `Condensed content (Document B is ${Math.round(Math.abs(diffRatio) * 100)}% shorter).`;
+    }
+  }
+
+  // Estimate contextual similarity
   let contextScore = stats.similarityPercent;
   if (stats.similarityPercent > 80 && deleted.length === 0) {
-    contextScore = Math.min(98, Math.round(stats.similarityPercent * 1.05 * 10) / 10);
+    contextScore = Math.min(99, Math.round(stats.similarityPercent * 1.05 * 10) / 10);
   }
 
   return {
     mode: 'local_fallback',
     contextSimilarityPercent: contextScore,
-    executiveSummary: `Local algorithmic evaluation: Documents are ${stats.similarityPercent}% lexically similar. ${stats.addedWords} words were added and ${stats.deletedWords} words were removed. Provide a Gemini API key to unlock deep semantic and legal nuance detection.`,
+    executiveSummary,
     keySemanticChanges: changes.length > 0 ? changes : ['Minor text adjustments across the document.'],
     criticalAlerts: alerts,
-    toneShift: 'Consistent with original content.'
+    toneShift
   };
 }
 
@@ -85,7 +137,7 @@ export async function analyzeDocumentContext({
   textA,
   textB,
   stats,
-  sectionReports,
+  sectionReports = [],
   summary,
   apiKey
 }) {
@@ -107,6 +159,11 @@ export async function analyzeDocumentContext({
       }
     });
 
+    const sectionsContext = sectionReports && sectionReports.length > 0
+      ? `\n\n--- DETAILED SECTION BREAKDOWN (${sectionReports.length} sections) ---\n` +
+        sectionReports.slice(0, 40).map(s => `- ${s.title}: [${s.status}] (${s.similarityPercent}% match) -> ${s.description}`).join('\n')
+      : '';
+
     const prompt = `You are an expert document comparison and legal/business contract analyst.
 Compare the following two documents:
 
@@ -115,21 +172,27 @@ ${safeTruncate(textA)}
 
 --- DOCUMENT B (MODIFIED) ---
 ${safeTruncate(textB)}
+${sectionsContext}
 
 Analyze the contextual, substantive, and meaning differences between them.
+Provide a high-impact, professional executive summary that clearly explains:
+1. What main ideas, provisions, numbers, or sections changed.
+2. The practical difference and real-world impact between Document A and Document B.
+3. Actionable bullet points in keySemanticChanges detailing the exact changes with specific excerpts, values, and affected sections.
+
 Return a STRICT JSON object matching this exact schema:
 {
   "contextSimilarityPercent": <number between 0 and 100 representing how closely the core meaning and obligations match, even if wording changed>,
-  "executiveSummary": "<2-3 sentence clear summary of the core differences, what was added/removed, and the overall impact>",
+  "executiveSummary": "<2-4 sentence clear, professional, executive-ready summary of the core differences, what was added/removed, and the overall impact>",
   "keySemanticChanges": [
-    "<specific bullet point 1 explaining a meaningful change (e.g. altered prices, dates, liability, names)>",
+    "<specific bullet point 1 explaining a meaningful change with exact details (e.g. altered prices, dates, liability, names, moved slides)>",
     "<specific bullet point 2>",
     "<specific bullet point 3>"
   ],
   "criticalAlerts": [
-    "<any high-risk changes, removed clauses, or major discrepancies. Empty array if none>"
+    "<any high-risk changes, removed clauses, altered financial metrics, or major discrepancies. Empty array if none>"
   ],
-  "toneShift": "<description of any tone or style shift (e.g. 'Shifted from collaborative to strict legal language' or 'No significant tone shift')>"
+  "toneShift": "<description of any tone or style shift (e.g. 'Shifted from collaborative to strict legal language' or 'Expanded with additional technical specificity')>"
 }`;
 
     const result = await model.generateContent(prompt);
