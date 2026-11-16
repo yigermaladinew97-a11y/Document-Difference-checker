@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 /**
  * UserAvatar:
- * Bulletproof, high-resolution user avatar component.
- * Automatically falls back to radiant initials monograms if an image URL fails,
- * ensuring it NEVER displays broken image icons.
+ * 100% Bulletproof, high-resolution user avatar component.
+ * Always renders radiant initials monogram as the rock-solid base layer.
+ * If a custom profile photo (PP) or external image is provided, it fades in smoothly
+ * only after successful image decode, with referrerPolicy="no-referrer".
+ * NEVER shows broken image icons or browser placeholder boxes under any circumstance.
  */
 export default function UserAvatar({
   user,
@@ -14,12 +16,25 @@ export default function UserAvatar({
   className = '',
   ring = true
 }) {
+  const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   const userName = user?.name || name || 'User';
-  const userAvatar = user?.avatar || avatar;
+  let userAvatar = user?.avatar || avatar;
+
+  // Validate avatar string to filter corrupted data URIs
+  if (typeof userAvatar === 'string') {
+    userAvatar = userAvatar.trim();
+    if (userAvatar.startsWith('data:image/svg+xml') && userAvatar.includes('/9j/')) {
+      // Corrupted concatenated SVG+JPEG string
+      userAvatar = null;
+    }
+  } else {
+    userAvatar = null;
+  }
 
   useEffect(() => {
+    setIsLoaded(false);
     setHasError(false);
   }, [userAvatar]);
 
@@ -42,28 +57,42 @@ export default function UserAvatar({
   const selectedSize = sizeClasses[size] || sizeClasses.md;
   const ringClass = ring ? 'ring-2 ring-white dark:ring-slate-900 shadow-xs' : '';
 
-  // If we have an avatar and it hasn't errored
-  if (userAvatar && !hasError) {
-    return (
-      <div className={`relative shrink-0 rounded-full overflow-hidden ${selectedSize} ${ringClass} ${className}`}>
+  // Determine gradient palette from user preference or initials hash
+  const gradients = [
+    'from-[#FF5E1E] via-[#FF7A45] to-[#FFA07A]',
+    'from-[#4F46E5] via-[#6366F1] to-[#818CF8]',
+    'from-[#059669] via-[#10B981] to-[#34D399]',
+    'from-[#0284C7] via-[#0EA5E9] to-[#38BDF8]',
+    'from-[#7C3AED] via-[#9333EA] to-[#C084FC]',
+    'from-[#D97706] via-[#F59E0B] to-[#FBBF24]'
+  ];
+  const charCode = (userName.charCodeAt(0) || 0) + (userName.charCodeAt(userName.length - 1) || 0);
+  const gradientClass = gradients[charCode % gradients.length];
+
+  return (
+    <div
+      className={`relative shrink-0 rounded-full overflow-hidden flex items-center justify-center font-bold text-white bg-gradient-to-tr ${gradientClass} select-none ${selectedSize} ${ringClass} ${className}`}
+      title={userName}
+    >
+      <span className="pointer-events-none select-none tracking-tight">{initials}</span>
+
+      {userAvatar && !hasError && (
         <img
           src={userAvatar}
           alt={userName}
-          onError={() => setHasError(true)}
-          className="w-full h-full object-cover select-none"
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
           loading="eager"
+          onLoad={() => setIsLoaded(true)}
+          onError={() => {
+            setHasError(true);
+            setIsLoaded(false);
+          }}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 select-none ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
         />
-      </div>
-    );
-  }
-
-  // Fallback to vibrant orange gradient monogram
-  return (
-    <div
-      className={`shrink-0 rounded-full flex items-center justify-center font-bold text-white bg-gradient-to-tr from-[#FF5E1E] via-[#FF7A45] to-[#FFA07A] select-none ${selectedSize} ${ringClass} ${className}`}
-      title={userName}
-    >
-      <span>{initials}</span>
+      )}
     </div>
   );
 }

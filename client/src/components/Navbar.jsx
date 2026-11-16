@@ -87,7 +87,7 @@ export default function Navbar({
           {/* AI Settings Pill Button (Matching Cambased pill button) */}
           <button
             onClick={onOpenApiKeyModal}
-            className={`group flex items-center space-x-2 pl-3.5 pr-2 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 shadow-sm ${
+            className={`group flex items-center space-x-1.5 sm:space-x-2 pl-2.5 sm:pl-3.5 pr-1.5 sm:pr-2 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 shadow-sm ${
               apiKey
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20'
                 : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-white/[0.1] text-slate-700 dark:text-slate-200 hover:border-[#FF5E1E]/50 hover:text-[#FF5E1E]'
@@ -96,17 +96,19 @@ export default function Navbar({
             {apiKey ? (
               <>
                 <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Gemini 2.5 Active</span>
-                <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center ml-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Gemini 2.5 Active</span>
+                <span className="sm:hidden font-bold text-[11px]">AI Active</span>
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center ml-0.5 sm:ml-1">
+                  <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </span>
               </>
             ) : (
               <>
                 <Key className="w-3.5 h-3.5 text-[#FF5E1E]" />
-                <span>AI Key Settings</span>
-                <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-[#FF5E1E] group-hover:text-white flex items-center justify-center transition-colors ml-1">
-                  <ArrowRight className="w-3 h-3" />
+                <span className="hidden sm:inline">AI Key Settings</span>
+                <span className="sm:hidden font-bold text-[11px]">AI Key</span>
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-[#FF5E1E] group-hover:text-white flex items-center justify-center transition-colors ml-0.5 sm:ml-1">
+                  <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 </span>
               </>
             )}
@@ -118,11 +120,11 @@ export default function Navbar({
               <button
                 type="button"
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] text-xs font-bold shadow-xs hover:border-[#FF5E1E]/50 transition cursor-pointer"
+                className="flex items-center space-x-1.5 sm:space-x-2 pl-1 pr-2.5 sm:pr-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] text-xs font-bold shadow-xs hover:border-[#FF5E1E]/50 transition cursor-pointer"
                 title="View user profile & settings"
               >
                 <UserAvatar user={currentUser} size="sm" />
-                <span className="text-slate-800 dark:text-slate-200 truncate max-w-[120px] hidden sm:inline">
+                <span className="text-slate-800 dark:text-slate-200 truncate max-w-[80px] sm:max-w-[120px] hidden xs:inline">
                   {currentUser.name}
                 </span>
                 <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-[#FF5E1E]/15 text-[#FF5E1E]">
@@ -133,22 +135,27 @@ export default function Navbar({
 
               {/* Enhanced Profile Dropdown Menu */}
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 rounded-3xl bg-white dark:bg-[#111726] border border-slate-200 dark:border-white/[0.1] shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3.5 py-3 border-b border-slate-100 dark:border-white/[0.06] mb-1.5 flex items-center space-x-3">
-                    <UserAvatar user={currentUser} size="md" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black text-slate-900 dark:text-white truncate">
-                        {currentUser.name}
-                      </p>
-                      <p className="text-[11px] text-slate-400 truncate font-mono">
-                        {currentUser.email}
-                      </p>
-                      <div className="mt-1 flex items-center space-x-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                        <ShieldCheck className="w-3 h-3" />
-                        <span>Pro Plan Active</span>
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowProfileMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] rounded-3xl bg-white dark:bg-[#111726] border border-slate-200 dark:border-white/[0.1] shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3.5 py-3 border-b border-slate-100 dark:border-white/[0.06] mb-1.5 flex items-center space-x-3">
+                      <UserAvatar user={currentUser} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-black text-slate-900 dark:text-white truncate">
+                          {currentUser.name}
+                        </p>
+                        <p className="text-[11px] text-slate-400 truncate font-mono">
+                          {currentUser.email}
+                        </p>
+                        <div className="mt-1 flex items-center space-x-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Pro Plan Active</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
                   {/* Actions */}
                   <div className="space-y-1">
@@ -200,8 +207,9 @@ export default function Navbar({
                     <span>Sign Out</span>
                   </button>
                 </div>
-              )}
-            </div>
+              </>
+            )}
+          </div>
           ) : (
             <button
               type="button"

@@ -26,7 +26,7 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
   const verdictHeadline = contextAnalysis.verdictHeadline || summary?.headline || 'Executive Difference Summary';
 
   return (
-    <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 sm:p-9 shadow-card space-y-7 transition-all">
+    <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-4 sm:p-7 md:p-9 shadow-card space-y-6 sm:space-y-7 transition-all">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-5 border-b border-slate-100 dark:border-white/[0.06] gap-3">
         <div className="flex items-center space-x-3.5">

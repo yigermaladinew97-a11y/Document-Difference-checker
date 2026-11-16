@@ -82,8 +82,8 @@ export default function CurtainSwipeDiff({
   return (
     <div className="space-y-4 select-none">
       {/* Top Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-slate-50/90 dark:bg-slate-900/80 border-b border-slate-100 dark:border-white/[0.06] rounded-t-3xl text-xs font-semibold">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 sm:px-6 py-3 bg-slate-50/90 dark:bg-slate-900/80 border-b border-slate-100 dark:border-white/[0.06] rounded-t-3xl text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="flex items-center space-x-1.5 text-slate-800 dark:text-slate-200 font-bold">
             <Sparkles className="w-3.5 h-3.5 text-[#FF5E1E]" />
             <span>Curtain Swipe Lens:</span>
@@ -93,28 +93,28 @@ export default function CurtainSwipeDiff({
           </span>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {/* Preset Buttons */}
           <button
             type="button"
             onClick={() => { setIsAutoWiping(false); setSliderPos(25); }}
-            className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] hover:border-[#FF5E1E] transition text-[11px]"
+            className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] hover:border-[#FF5E1E] transition text-[11px] font-bold"
           >
-            25% Split
+            25%
           </button>
           <button
             type="button"
             onClick={() => { setIsAutoWiping(false); setSliderPos(50); }}
-            className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] hover:border-[#FF5E1E] transition text-[11px]"
+            className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] hover:border-[#FF5E1E] transition text-[11px] font-bold"
           >
-            50% Center
+            50%
           </button>
           <button
             type="button"
             onClick={() => { setIsAutoWiping(false); setSliderPos(75); }}
-            className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] hover:border-[#FF5E1E] transition text-[11px]"
+            className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] hover:border-[#FF5E1E] transition text-[11px] font-bold"
           >
-            75% Split
+            75%
           </button>
 
           {/* Auto-Wipe Toggle */}
@@ -129,7 +129,7 @@ export default function CurtainSwipeDiff({
             title="Auto-scan back and forth"
           >
             {isAutoWiping ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 fill-current" />}
-            <span>{isAutoWiping ? 'Pause Scan' : 'Auto Scan'}</span>
+            <span className="hidden xs:inline">{isAutoWiping ? 'Pause' : 'Auto Scan'}</span>
           </button>
         </div>
       </div>
@@ -137,19 +137,19 @@ export default function CurtainSwipeDiff({
       {/* Interactive Swipe Viewport */}
       <div
         ref={containerRef}
-        className="relative w-full h-[580px] overflow-hidden bg-slate-50/40 dark:bg-[#0B0F19] rounded-b-3xl border border-slate-200/80 dark:border-white/[0.08] shadow-inner cursor-ew-resize select-text"
+        className="relative w-full h-[440px] sm:h-[580px] overflow-hidden bg-slate-50/40 dark:bg-[#0B0F19] rounded-b-3xl border border-slate-200/80 dark:border-white/[0.08] shadow-inner cursor-ew-resize select-text touch-none"
         onMouseDown={onMouseDown}
         onTouchStart={onMouseDown}
       >
         {/* Under Layer: Document B (Right Side / Full Base) */}
-        <div className="absolute inset-0 p-8 overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono text-slate-800 dark:text-slate-300">
-          <div className="mb-4 pb-2 border-b border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
-            <span>REVISION: {meta?.docB?.filename || 'Document B'}</span>
-            <span className="text-[10px] uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+        <div className="absolute inset-0 p-4 sm:p-8 overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono text-slate-800 dark:text-slate-300">
+          <div className="mb-3 sm:mb-4 pb-2 border-b border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="truncate max-w-[200px] sm:max-w-none">REVISION: {meta?.docB?.filename || 'Document B'}</span>
+            <span className="text-[10px] uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 shrink-0">
               Active Layer
             </span>
           </div>
-          <div className={wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre'}>
+          <div className={wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre'}>
             {tokensDocB.map((t, idx) => (
               <span
                 key={idx}
@@ -168,15 +168,15 @@ export default function CurtainSwipeDiff({
         {/* Over Layer: Document A (Left Side, clipped by sliderPos) */}
         <div
           style={{ clipPath: `polygon(0 0, ${sliderPos}% 0, ${sliderPos}% 100%, 0 100%)` }}
-          className="absolute inset-0 p-8 overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono bg-white dark:bg-[#0F172A] border-r border-slate-300 dark:border-slate-700 shadow-2xl text-slate-800 dark:text-slate-300"
+          className="absolute inset-0 p-4 sm:p-8 overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono bg-white dark:bg-[#0F172A] border-r border-slate-300 dark:border-slate-700 shadow-2xl text-slate-800 dark:text-slate-300"
         >
-          <div className="mb-4 pb-2 border-b border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-xs font-bold text-rose-600 dark:text-rose-400">
-            <span>BASELINE: {meta?.docA?.filename || 'Document A'}</span>
-            <span className="text-[10px] uppercase tracking-wider bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800">
+          <div className="mb-3 sm:mb-4 pb-2 border-b border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-xs font-bold text-rose-600 dark:text-rose-400">
+            <span className="truncate max-w-[200px] sm:max-w-none">BASELINE: {meta?.docA?.filename || 'Document A'}</span>
+            <span className="text-[10px] uppercase tracking-wider bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800 shrink-0">
               Baseline Layer
             </span>
           </div>
-          <div className={wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre'}>
+          <div className={wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre'}>
             {tokensDocA.map((t, idx) => (
               <span
                 key={idx}
@@ -198,7 +198,7 @@ export default function CurtainSwipeDiff({
           className="absolute top-0 bottom-0 w-0.5 bg-gradient-to-b from-[#FF5E1E] via-amber-400 to-[#FF5E1E] shadow-[0_0_12px_rgba(255,94,30,0.8)] cursor-ew-resize pointer-events-none z-30"
         >
           {/* Glowing Center Handle Knob */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white dark:bg-slate-900 border-2 border-[#FF5E1E] shadow-xl flex items-center justify-center pointer-events-auto cursor-ew-resize hover:scale-110 active:scale-95 transition-transform">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-white dark:bg-slate-900 border-2 border-[#FF5E1E] shadow-xl flex items-center justify-center pointer-events-auto cursor-ew-resize hover:scale-110 active:scale-95 transition-transform touch-none">
             <div className="flex items-center space-x-0.5 text-[#FF5E1E]">
               <span className="text-[9px] font-black">◀</span>
               <span className="text-[9px] font-black">▶</span>

@@ -173,7 +173,7 @@ export default function DualDropzone({
         <TiltCard
           maxTilt={4}
           glowColor="rgba(255, 94, 30, 0.08)"
-          className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-shadow duration-300 flex flex-col justify-between"
+          className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-5 sm:p-7 shadow-card hover:shadow-clean-hover transition-shadow duration-300 flex flex-col justify-between"
         >
           <div>
             {/* Header */}
@@ -285,11 +285,24 @@ export default function DualDropzone({
           </div>
         </TiltCard>
 
+        {/* Mobile Swap Button (visible on screens < lg) */}
+        <div className="flex lg:hidden justify-center -my-2 z-20">
+          <button
+            type="button"
+            onClick={handleSwap}
+            title="Swap Document A and Document B"
+            className="flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.15] text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] text-xs font-bold shadow-md active:scale-95 transition"
+          >
+            <ArrowLeftRight className={`w-3.5 h-3.5 ${swapRotating ? 'rotate-180 text-[#FF5E1E]' : ''}`} />
+            <span>Swap Old &amp; New Documents</span>
+          </button>
+        </div>
+
         {/* --- DOCUMENT B (COMPARISON) 3D TILT CARD --- */}
         <TiltCard
           maxTilt={4}
           glowColor="rgba(255, 94, 30, 0.08)"
-          className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-7 shadow-card hover:shadow-clean-hover transition-shadow duration-300 flex flex-col justify-between"
+          className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-5 sm:p-7 shadow-card hover:shadow-clean-hover transition-shadow duration-300 flex flex-col justify-between"
         >
           <div>
             {/* Header */}
@@ -415,12 +428,12 @@ export default function DualDropzone({
       )}
 
       {/* Main Compare Action with Animated Glow & Ripple */}
-      <div className="flex flex-col items-center justify-center pt-3 space-y-3">
+      <div className="flex flex-col items-center justify-center pt-3 space-y-3 px-2 sm:px-0">
         <button
           type="button"
           onClick={() => onCompare && onCompare()}
           disabled={!isReady || isComparing}
-          className={`group relative inline-flex items-center space-x-4 px-9 py-4 rounded-full font-bold text-sm transition-all duration-300 overflow-hidden ${
+          className={`group relative inline-flex items-center justify-center space-x-3 sm:space-x-4 px-6 sm:px-9 py-3.5 sm:py-4 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 overflow-hidden w-full sm:w-auto ${
             isReady && !isComparing
               ? 'bg-[#FF5E1E] hover:bg-[#E04A0E] text-white hover:scale-105 active:scale-95 shadow-orange-soft hover:shadow-orange-glow cursor-pointer'
               : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none'

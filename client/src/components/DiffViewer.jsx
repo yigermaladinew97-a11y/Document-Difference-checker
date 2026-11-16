@@ -302,28 +302,28 @@ export default function DiffViewer({
   return (
     <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card hover:shadow-clean-hover transition-shadow duration-300 overflow-hidden">
       {/* Top Toolbar */}
-      <div className="p-5 bg-slate-50/70 dark:bg-slate-900/60 border-b border-slate-100 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3.5 sm:p-5 bg-slate-50/70 dark:bg-slate-900/60 border-b border-slate-100 dark:border-white/[0.06] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Left: View Mode Controls */}
-        <div className="flex items-center space-x-2">
-          <div className="flex bg-white dark:bg-slate-950 p-1 rounded-full border border-slate-200/80 dark:border-white/[0.08] text-xs shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
+          <div className="flex items-center bg-white dark:bg-slate-950 p-1 rounded-full border border-slate-200/80 dark:border-white/[0.08] text-xs shadow-sm overflow-x-auto max-w-full no-scrollbar">
             {hasSpreadsheet && (
               <button
                 type="button"
                 onClick={() => setViewMode('spreadsheet')}
-                className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'spreadsheet'
+                className={`shrink-0 flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'spreadsheet'
                     ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 title="Spreadsheet cell-by-cell table comparison"
               >
                 <Table className="w-3.5 h-3.5" />
-                <span>Spreadsheet Table</span>
+                <span>Table</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => setViewMode('sideBySide')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'sideBySide'
+              className={`shrink-0 flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'sideBySide'
                   ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
@@ -335,7 +335,7 @@ export default function DiffViewer({
             <button
               type="button"
               onClick={() => setViewMode('unified')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'unified'
+              className={`shrink-0 flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'unified'
                   ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
@@ -347,7 +347,7 @@ export default function DiffViewer({
             <button
               type="button"
               onClick={() => setViewMode('curtain')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'curtain'
+              className={`shrink-0 flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'curtain'
                   ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
@@ -359,7 +359,7 @@ export default function DiffViewer({
             <button
               type="button"
               onClick={() => setViewMode('merge')}
-              className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'merge'
+              className={`shrink-0 flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'merge'
                   ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
@@ -373,7 +373,7 @@ export default function DiffViewer({
           <button
             type="button"
             onClick={() => setFilterChangesOnly(!filterChangesOnly)}
-            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${filterChangesOnly
+            className={`flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 shrink-0 ${filterChangesOnly
                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 shadow-sm scale-105'
                 : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:text-slate-900 shadow-sm hover:scale-105'
               }`}
@@ -385,7 +385,7 @@ export default function DiffViewer({
           <button
             type="button"
             onClick={() => setWrapText(!wrapText)}
-            className={`hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${wrapText
+            className={`hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition shrink-0 ${wrapText
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-white border-transparent'
                 : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-white/[0.08] text-slate-500 hover:text-slate-900'
               }`}
@@ -399,7 +399,7 @@ export default function DiffViewer({
             <button
               type="button"
               onClick={() => setShowFilterTray(!showFilterTray)}
-              className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${showFilterTray
+              className={`flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 shrink-0 ${showFilterTray
                   ? 'bg-[#FF5E1E] text-white border-transparent shadow-xs scale-105'
                   : activeFilterCount > 0
                     ? 'bg-[#FF5E1E]/10 text-[#FF5E1E] border-[#FF5E1E]/30 shadow-xs'
@@ -414,47 +414,47 @@ export default function DiffViewer({
         </div>
 
         {/* Right: Search, Export & Copy */}
-        <div className="flex items-center space-x-2.5">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 sm:flex-initial">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search in diff..."
-              className="pl-9 pr-3.5 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] rounded-full text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30 w-36 sm:w-48 shadow-sm font-mono"
+              className="pl-9 pr-3.5 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] rounded-full text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30 w-full sm:w-44 shadow-sm font-mono"
             />
           </div>
 
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 active:scale-95 transition"
+            className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 active:scale-95 transition"
             title="Copy diff to clipboard"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-            <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy'}</span>
+            <span className="hidden xs:inline">{copied ? 'Copied' : 'Copy'}</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportReport}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 active:scale-95 transition"
+            className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 active:scale-95 transition"
             title="Export JSON report"
           >
             <Download className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden xs:inline">Export</span>
           </button>
 
           {onExportPdf && (
             <button
               type="button"
               onClick={onExportPdf}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-[#FF5E1E]/10 hover:bg-[#FF5E1E]/20 text-[#FF5E1E] border border-[#FF5E1E]/30 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition"
+              className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-[#FF5E1E]/10 hover:bg-[#FF5E1E]/20 text-[#FF5E1E] border border-[#FF5E1E]/30 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition"
               title="Export Executive PDF Audit Report"
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>PDF Report</span>
+              <span>PDF</span>
             </button>
           )}
 
@@ -462,11 +462,12 @@ export default function DiffViewer({
             type="button"
             onClick={handleExportRedlineWord}
             disabled={isExportingWord}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition disabled:opacity-50"
+            className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition disabled:opacity-50"
             title="Download Legal Redline Word Document (.docx) with strikethrough & underline markup"
           >
             <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>{isExportingWord ? 'Exporting...' : 'Redline Word'}</span>
+            <span className="hidden xs:inline">{isExportingWord ? 'Exporting...' : 'Redline Word'}</span>
+            <span className="xs:hidden">{isExportingWord ? '...' : 'Word'}</span>
           </button>
 
           {/* Sound Feedback Toggle */}
@@ -689,7 +690,7 @@ export default function DiffViewer({
             <div
               ref={leftPaneRef}
               onScroll={() => handleScroll('left')}
-              className={`p-6 sm:p-8 max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'
+              className={`p-4 sm:p-6 lg:p-8 max-h-[450px] sm:max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'
                 }`}
             >
               {tokensDocA.map((token, idx) => {
@@ -784,7 +785,7 @@ export default function DiffViewer({
             <div
               ref={rightPaneRef}
               onScroll={() => handleScroll('right')}
-              className={`p-6 sm:p-8 max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap' : 'whitespace-pre overflow-x-auto'
+              className={`p-4 sm:p-6 lg:p-8 max-h-[450px] sm:max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'
                 }`}
             >
               {tokensDocB.map((token, idx) => {

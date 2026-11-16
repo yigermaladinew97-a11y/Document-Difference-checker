@@ -96,9 +96,9 @@ export default function AuthModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-md bg-white dark:bg-[#111726] border border-slate-200 dark:border-white/[0.1] rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 select-none"
+        className="w-full max-w-md max-h-[92vh] overflow-y-auto bg-white dark:bg-[#111726] border border-slate-200 dark:border-white/[0.1] rounded-3xl p-5 sm:p-8 shadow-2xl space-y-4 sm:space-y-5 animate-in zoom-in-95 duration-200 select-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
