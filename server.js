@@ -228,8 +228,8 @@ function requireAuth(req, res, next) {
 // Auth: Sign up
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    const result = await createUser({ name, email, password });
+    const { name, email, password, avatar, title, organization } = req.body;
+    const result = await createUser({ name, email, password, avatar, title, organization });
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(400).json({ error: err.message || 'Signup failed.' });

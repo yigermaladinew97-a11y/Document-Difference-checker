@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * UserAvatar:
@@ -18,6 +18,10 @@ export default function UserAvatar({
 
   const userName = user?.name || name || 'User';
   const userAvatar = user?.avatar || avatar;
+
+  useEffect(() => {
+    setHasError(false);
+  }, [userAvatar]);
 
   const parts = userName.trim().split(/\s+/).filter(Boolean);
   let initials = 'U';

@@ -50,12 +50,12 @@ export async function loginWithEmail(email, password) {
   return data.user;
 }
 
-export async function signupWithEmail(name, email, password) {
-  const avatar = generateLocalSvgAvatar(name, 'orange');
+export async function signupWithEmail(name, email, password, avatar = null) {
+  const finalAvatar = avatar || generateLocalSvgAvatar(name, 'orange');
   const res = await fetch('/api/auth/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password, avatar })
+    body: JSON.stringify({ name, email, password, avatar: finalAvatar })
   });
 
   const data = await res.json();

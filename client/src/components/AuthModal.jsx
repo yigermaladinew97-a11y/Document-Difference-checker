@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Lock, Mail, User, Eye, EyeOff, Sparkles, CheckCircle2, Shield, ArrowRight } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Lock, Mail, User, Eye, EyeOff, Sparkles, CheckCircle2, Shield, ArrowRight, Camera, Upload, Trash2 } from 'lucide-react';
 import { loginWithEmail, signupWithEmail, loginWithGoogle } from '../utils/authClient';
+import UserAvatar from './UserAvatar';
 
 export default function AuthModal({
   isOpen,
@@ -15,9 +16,43 @@ export default function AuthModal({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [signupPhoto, setSignupPhoto] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const signupFileInputRef = useRef(null);
+
+  const handleSignupPhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file (PNG, JPG, WEBP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 256;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        setSignupPhoto(dataUrl);
+        setError(null);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    if (e.target) e.target.value = '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,7 +62,7 @@ export default function AuthModal({
     try {
       let user;
       if (mode === 'signup') {
-        user = await signupWithEmail(name, email, password);
+        user = await signupWithEmail(name, email, password, signupPhoto);
       } else {
         user = await loginWithEmail(email, password);
       }
@@ -163,22 +198,75 @@ export default function AuthModal({
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {mode === 'signup' && (
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Your Name
-              </label>
-              <div className="relative">
-                <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <>
+              {/* Profile Photo (PP) selector during signup */}
+              <div className="flex items-center space-x-3 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08]">
+                <div className="relative shrink-0 cursor-pointer" onClick={() => signupFileInputRef.current?.click()}>
+                  <UserAvatar name={name || 'User'} avatar={signupPhoto} size="md" />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      signupFileInputRef.current?.click();
+                    }}
+                    className="absolute -bottom-1 -right-1 p-1 bg-[#FF5E1E] text-white rounded-full shadow-xs border border-white dark:border-slate-900"
+                    title="Upload photo"
+                  >
+                    <Camera className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => signupFileInputRef.current?.click()}
+                    className="text-[11px] font-bold text-[#FF5E1E] hover:underline flex items-center space-x-1"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>{signupPhoto ? 'Change Photo (PP)' : 'Add Profile Photo (PP)'}</span>
+                  </button>
+                  <p className="text-[10px] text-slate-400 truncate">
+                    {signupPhoto ? 'Custom photo attached' : 'Optional · Auto-defaults to gradient monogram'}
+                  </p>
+                </div>
+
+                {signupPhoto && (
+                  <button
+                    type="button"
+                    onClick={() => setSignupPhoto(null)}
+                    className="p-1 rounded-full text-slate-400 hover:text-rose-500 transition"
+                    title="Remove photo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
                 <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Sarah Connor"
-                  className="w-full pl-9 pr-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30"
+                  type="file"
+                  ref={signupFileInputRef}
+                  onChange={handleSignupPhotoChange}
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                  className="hidden"
                 />
               </div>
-            </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Your Name
+                </label>
+                <div className="relative">
+                  <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Yigermal Adinew"
+                    className="w-full pl-9 pr-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30"
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           <div>

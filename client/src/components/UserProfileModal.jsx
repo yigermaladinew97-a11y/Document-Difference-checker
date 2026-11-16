@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   User,
@@ -15,7 +15,11 @@ import {
   Layers,
   FileDiff,
   Cloud,
-  Volume2
+  Volume2,
+  Camera,
+  Upload,
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 import { updateUserProfile, generateLocalSvgAvatar } from '../utils/authClient';
@@ -50,6 +54,13 @@ export default function UserProfileModal({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const isCustomPhoto = Boolean(
+    currentAvatar &&
+    !currentAvatar.startsWith('data:image/svg+xml') &&
+    !currentAvatar.includes('<svg')
+  );
 
   useEffect(() => {
     setName(currentUser.name || '');
@@ -59,6 +70,60 @@ export default function UserProfileModal({
     setAutoCloudSync(currentUser.preferences?.autoCloudSync ?? true);
     setSoundEnabled(currentUser.preferences?.soundEnabled ?? true);
   }, [currentUser]);
+
+  // Handle uploaded picture from computer / phone
+  const handlePhotoFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Please choose a valid image file (PNG, JPG, JPEG, WEBP).');
+      return;
+    }
+
+    // Limit original file to 15MB
+    if (file.size > 15 * 1024 * 1024) {
+      setErrorMessage('Image is too large. Please select a photo under 15MB.');
+      return;
+    }
+
+    setErrorMessage(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // High quality center-cropped 256x256 image
+        const canvas = document.createElement('canvas');
+        const size = 256;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        setCurrentAvatar(compressedDataUrl);
+      };
+      img.onerror = () => {
+        setErrorMessage('Could not load image. Please try another file.');
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    if (e.target) e.target.value = '';
+  };
+
+  // Switch back to monogram initials
+  const handleResetToInitials = () => {
+    const newSvg = generateLocalSvgAvatar(name || currentUser.name, selectedTheme);
+    setCurrentAvatar(newSvg);
+    setErrorMessage(null);
+  };
 
   // When user selects a color theme, regenerate their avatar SVG with their initials
   const handleThemeChange = (themeId) => {
@@ -70,7 +135,7 @@ export default function UserProfileModal({
   // Re-generate avatar when name changes if using SVG avatar
   const handleNameChange = (newName) => {
     setName(newName);
-    if (!currentAvatar || currentAvatar.startsWith('data:image/svg+xml')) {
+    if (!isCustomPhoto) {
       const newSvg = generateLocalSvgAvatar(newName || 'User', selectedTheme);
       setCurrentAvatar(newSvg);
     }
@@ -132,14 +197,14 @@ export default function UserProfileModal({
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="font-black text-lg text-slate-900 dark:text-white tracking-tight">
-                  User Profile &amp; Preferences
+                  User Profile &amp; Photo Studio
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#FF5E1E]/15 text-[#FF5E1E] border border-[#FF5E1E]/30">
                   PRO MEMBER
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-medium">
-                Manage your identity, role, theme, and cloud workspace
+                Manage your profile picture, role, theme, and cloud workspace
               </p>
             </div>
           </div>
@@ -156,23 +221,46 @@ export default function UserProfileModal({
 
         {/* Scrollable Body */}
         <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1">
-          {/* Top Profile Card with Avatar Customizer */}
+          {/* Top Profile Card with Avatar & Photo Uploader */}
           <div className="p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-white/[0.06] flex flex-col sm:flex-row items-center sm:items-start gap-5">
-            {/* Live Avatar Preview */}
+            {/* Live Avatar Preview with Camera Trigger */}
             <div className="flex flex-col items-center space-y-2 shrink-0">
-              <UserAvatar
-                name={name || currentUser.name}
-                avatar={currentAvatar}
-                size="xl"
-                className="shadow-md"
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <UserAvatar
+                  name={name || currentUser.name}
+                  avatar={currentAvatar}
+                  size="xl"
+                  className="shadow-lg transition-transform group-hover:scale-105"
+                />
+                {/* Camera Overlay Icon */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="absolute -bottom-1 -right-1 p-2 bg-[#FF5E1E] hover:bg-[#E04A0E] text-white rounded-full shadow-lg border-2 border-white dark:border-slate-900 transition hover:scale-110 active:scale-95"
+                  title="Upload profile picture (PP)"
+                >
+                  <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
+                </button>
+              </div>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoFileChange}
+                accept="image/png, image/jpeg, image/jpg, image/webp"
+                className="hidden"
               />
+
               <span className="text-[10px] text-slate-400 font-mono font-bold">
-                {currentUser.plan?.toUpperCase() || 'PRO'} USER
+                {isCustomPhoto ? 'CUSTOM PHOTO (PP)' : 'VECTOR MONOGRAM'}
               </span>
             </div>
 
-            {/* Avatar Color Picker & Quick Info */}
-            <div className="flex-1 space-y-3 text-center sm:text-left">
+            {/* Photo Action Controls & Avatar Themes */}
+            <div className="flex-1 space-y-3.5 text-center sm:text-left">
               <div>
                 <h4 className="font-extrabold text-base text-slate-900 dark:text-white">
                   {name || 'Your Name'}
@@ -180,33 +268,63 @@ export default function UserProfileModal({
                 <p className="text-xs text-slate-400 font-mono">{currentUser.email}</p>
               </div>
 
-              {/* Theme Palette */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center space-x-1.5 justify-center sm:justify-start">
-                  <Palette className="w-3.5 h-3.5 text-[#FF5E1E]" />
-                  <span>Avatar Color Theme</span>
-                </label>
-                <div className="flex items-center space-x-2 justify-center sm:justify-start">
-                  {GRADIENT_THEMES.map((theme) => (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      onClick={() => handleThemeChange(theme.id)}
-                      className={`w-7 h-7 rounded-full transition-transform duration-150 flex items-center justify-center ${
-                        selectedTheme === theme.id
-                          ? 'ring-2 ring-offset-2 ring-[#FF5E1E] scale-110'
-                          : 'hover:scale-105 opacity-80 hover:opacity-100'
-                      }`}
-                      style={{ backgroundColor: theme.color }}
-                      title={theme.name}
-                    >
-                      {selectedTheme === theme.id && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-white stroke-[3]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+              {/* Photo Upload / Switch Buttons */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FF5E1E] hover:bg-[#E04A0E] text-white shadow-xs transition hover:scale-105 active:scale-95"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{isCustomPhoto ? 'Change Photo' : 'Upload Photo (PP)'}</span>
+                </button>
+
+                {isCustomPhoto ? (
+                  <button
+                    type="button"
+                    onClick={handleResetToInitials}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/[0.1] text-slate-700 dark:text-slate-300 hover:text-[#FF5E1E] transition hover:scale-105"
+                    title="Switch back to gradient initials avatar"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Use Initials Avatar</span>
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Or pick an initials gradient theme below:
+                  </span>
+                )}
               </div>
+
+              {/* Monogram Gradient Color Theme Palette */}
+              {!isCustomPhoto && (
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center space-x-1.5 justify-center sm:justify-start">
+                    <Palette className="w-3.5 h-3.5 text-[#FF5E1E]" />
+                    <span>Monogram Gradient Theme</span>
+                  </label>
+                  <div className="flex items-center space-x-2 justify-center sm:justify-start">
+                    {GRADIENT_THEMES.map((theme) => (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => handleThemeChange(theme.id)}
+                        className={`w-7 h-7 rounded-full transition-transform duration-150 flex items-center justify-center ${
+                          selectedTheme === theme.id
+                            ? 'ring-2 ring-offset-2 ring-[#FF5E1E] scale-110'
+                            : 'hover:scale-105 opacity-80 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: theme.color }}
+                        title={theme.name}
+                      >
+                        {selectedTheme === theme.id && (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white stroke-[3]" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -367,7 +485,7 @@ export default function UserProfileModal({
             {saveSuccess && (
               <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs font-bold text-emerald-600 flex items-center space-x-2 animate-in fade-in">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Profile updated successfully!</span>
+                <span>Profile &amp; Photo updated successfully!</span>
               </div>
             )}
 
