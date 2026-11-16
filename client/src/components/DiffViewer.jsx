@@ -43,7 +43,9 @@ export default function DiffViewer({
   onExportPdf,
   initialDecisions = {},
   onDecisionsChange,
-  spreadsheetDiff
+  spreadsheetDiff,
+  currentUser = null,
+  onRequestAuth = null
 }) {
   const hasSpreadsheet = Boolean(spreadsheetDiff && spreadsheetDiff.length > 0);
   const [viewMode, setViewMode] = useState(() => (hasSpreadsheet ? 'spreadsheet' : 'sideBySide'));
@@ -67,6 +69,10 @@ export default function DiffViewer({
   };
 
   const handleExportRedlineWord = async () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to download Legal Redline Word (.docx) markups with Track Changes.');
+      return;
+    }
     try {
       setIsExportingWord(true);
       await exportRedlineDocx(diffTokens, meta, stats);
@@ -604,7 +610,12 @@ export default function DiffViewer({
       {/* Content Panes */}
       {viewMode === 'spreadsheet' && hasSpreadsheet ? (
         <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
-          <SpreadsheetGridDiff spreadsheetDiff={spreadsheetDiff} meta={meta} />
+          <SpreadsheetGridDiff
+            spreadsheetDiff={spreadsheetDiff}
+            meta={meta}
+            currentUser={currentUser}
+            onRequestAuth={onRequestAuth}
+          />
         </div>
       ) : viewMode === 'curtain' ? (
         <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent">
@@ -625,6 +636,8 @@ export default function DiffViewer({
             onAcceptAll={handleAcceptAll}
             onRejectAll={handleRejectAll}
             onResetAll={handleResetAll}
+            currentUser={currentUser}
+            onRequestAuth={onRequestAuth}
           />
         </div>
       ) : (

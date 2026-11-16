@@ -12,3 +12,6 @@ build/
 coverage/
 .vscode/
 .idea/
+data/*.json
+!data/.gitkeep
+

@@ -25,7 +25,9 @@ export default function MergeResolver({
   onDecision: externalOnDecision,
   onAcceptAll: externalOnAcceptAll,
   onRejectAll: externalOnRejectAll,
-  onResetAll: externalOnResetAll
+  onResetAll: externalOnResetAll,
+  currentUser = null,
+  onRequestAuth = null
 }) {
   // Extract grouped change units from diffTokens
   const blocks = useMemo(() => extractChangeBlocks(diffTokens), [diffTokens]);
@@ -110,6 +112,10 @@ export default function MergeResolver({
   };
 
   const handleDownloadRedline = async () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to export Legal Redline Word (.docx) markups.');
+      return;
+    }
     try {
       setIsExportingRedline(true);
       await exportRedlineDocx(diffTokens, meta, {});

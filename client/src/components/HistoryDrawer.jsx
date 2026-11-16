@@ -13,7 +13,9 @@ import {
   RotateCcw,
   Layers,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Cloud,
+  ShieldCheck
 } from 'lucide-react';
 import { deleteSession, clearAllSessions, exportHistoryToJson, importHistoryFromJson } from '../utils/historyStorage';
 
@@ -22,7 +24,9 @@ export default function HistoryDrawer({
   onClose,
   sessions = [],
   onRestoreSession,
-  onSessionsChange
+  onSessionsChange,
+  currentUser = null,
+  onRequestAuth = null
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
@@ -148,6 +152,36 @@ export default function HistoryDrawer({
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Cloud Sync Status Strip */}
+          {currentUser ? (
+            <div className="px-5 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400">
+              <div className="flex items-center space-x-1.5 font-bold">
+                <Cloud className="w-3.5 h-3.5" />
+                <span className="truncate">Cloud Sync Active ({currentUser.name})</span>
+              </div>
+              <span className="text-[10px] uppercase font-mono font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
+                PRO SYNC
+              </span>
+            </div>
+          ) : (
+            <div className="px-5 py-2.5 bg-gradient-to-r from-[#FF5E1E]/10 via-[#FF5E1E]/5 to-transparent border-b border-[#FF5E1E]/20 flex items-center justify-between text-xs gap-2">
+              <div className="flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+                <Cloud className="w-3.5 h-3.5 text-[#FF5E1E] shrink-0" />
+                <span className="font-semibold text-[11px]">Sync history across your devices?</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onRequestAuth) onRequestAuth('signup', 'Sign up for free to sync your diff history across all your computers and phones.');
+                }}
+                className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#FF5E1E] text-white hover:bg-[#E04A0E] transition shadow-xs shrink-0"
+              >
+                Sign Up Free
+              </button>
+            </div>
+          )}
 
           {/* Action Sub-Toolbar: Search + Backup actions */}
           <div className="px-5 py-3 border-b border-slate-100 dark:border-white/[0.06] bg-white dark:bg-slate-950 flex items-center justify-between gap-2.5">
@@ -347,7 +381,9 @@ export default function HistoryDrawer({
 
           {/* Footer Info Strip */}
           <div className="p-4 border-t border-slate-100 dark:border-white/[0.06] bg-slate-50/50 dark:bg-slate-900/40 text-center text-[11px] text-slate-400 font-medium">
-            Stored privately in your browser's IndexedDB. Export a backup to transfer across devices.
+            {currentUser
+              ? `Synchronized with your DocDiff account (${currentUser.email}). Safe & encrypted.`
+              : "Stored privately in this browser's IndexedDB. Sign in or create a free account to sync across devices."}
           </div>
         </div>
       </div>

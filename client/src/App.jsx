@@ -10,15 +10,17 @@ import DiffViewer from './components/DiffViewer';
 import PdfReportModal from './components/PdfReportModal';
 import NoiseFiltersBar from './components/NoiseFiltersBar';
 import HistoryDrawer from './components/HistoryDrawer';
+import AuthModal from './components/AuthModal';
 import { saveComparisonSession, getAllSessions, updateSessionDecisions } from './utils/historyStorage';
-import { 
-  Sparkles, 
-  AlertCircle, 
-  RefreshCw, 
-  FileDiff, 
-  ShieldCheck, 
-  Zap, 
-  Cpu, 
+import { getCurrentUser, clearAuthSession, syncCloudSession } from './utils/authClient';
+import {
+  Sparkles,
+  AlertCircle,
+  RefreshCw,
+  FileDiff,
+  ShieldCheck,
+  Zap,
+  Cpu,
   Layers,
   ArrowRight,
   TrendingUp,
@@ -119,6 +121,30 @@ export default function App() {
   const [historySessions, setHistorySessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
 
+  // Authentication & Cloud Sync state
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login');
+  const [authModalReason, setAuthModalReason] = useState(null);
+
+  const handleOpenAuthModal = (mode = 'login', reason = null) => {
+    setAuthModalMode(mode);
+    setAuthModalReason(reason);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleLogout = () => {
+    clearAuthSession();
+    setCurrentUser(null);
+  };
+
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+    if (comparisonResult) {
+      syncCloudSession(comparisonResult);
+    }
+  };
+
   const resultsRef = useRef(null);
 
   const loadHistorySessions = async () => {
@@ -188,9 +214,9 @@ export default function App() {
     setErrorMessage(null);
 
     // Validate overrideFilters is an actual filters object and not a SyntheticEvent
-    const isFilterObject = overrideFilters && 
-      typeof overrideFilters === 'object' && 
-      !overrideFilters.nativeEvent && 
+    const isFilterObject = overrideFilters &&
+      typeof overrideFilters === 'object' &&
+      !overrideFilters.nativeEvent &&
       !overrideFilters.target &&
       typeof overrideFilters.ignoreWhitespace !== 'undefined';
 
@@ -249,6 +275,15 @@ export default function App() {
           setActiveSessionId(saved.id);
           loadHistorySessions();
         }
+
+        // Auto-sync with cloud history if user is logged in
+        if (currentUser) {
+          syncCloudSession({
+            id: saved?.id || activeSessionId,
+            ...data,
+            filters: activeFilters
+          }).catch((err) => console.warn('Cloud sync error:', err));
+        }
       } catch (saveErr) {
         console.warn('Failed to auto-save session to history:', saveErr);
       }
@@ -292,6 +327,9 @@ export default function App() {
         isComparing={isComparing}
         historyCount={historySessions.length}
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
+        currentUser={currentUser}
+        onOpenAuthModal={handleOpenAuthModal}
+        onLogout={handleLogout}
       />
 
       <HistoryDrawer
@@ -300,6 +338,8 @@ export default function App() {
         sessions={historySessions}
         onRestoreSession={handleRestoreSession}
         onSessionsChange={loadHistorySessions}
+        currentUser={currentUser}
+        onRequestAuth={handleOpenAuthModal}
       />
 
       <ApiKeyModal
@@ -307,6 +347,14 @@ export default function App() {
         onClose={() => setIsApiKeyModalOpen(false)}
         currentKey={apiKey}
         onSaveKey={handleSaveApiKey}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authModalMode}
+        reasonMessage={authModalReason}
+        onSuccess={handleAuthSuccess}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12 relative z-10">
@@ -461,6 +509,8 @@ export default function App() {
                 }
               }}
               spreadsheetDiff={comparisonResult.spreadsheetDiff}
+              currentUser={currentUser}
+              onRequestAuth={handleOpenAuthModal}
             />
 
             {/* 5. Executive PDF Audit Report Modal */}

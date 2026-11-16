@@ -20,7 +20,12 @@ import {
  * Highlights individual modified cells with numerical drift calculation (+/- delta, % shift),
  * added rows, and removed rows.
  */
-export default function SpreadsheetGridDiff({ spreadsheetDiff = [], meta = {} }) {
+export default function SpreadsheetGridDiff({
+  spreadsheetDiff = [],
+  meta = {},
+  currentUser = null,
+  onRequestAuth = null
+}) {
   if (!spreadsheetDiff || spreadsheetDiff.length === 0) return null;
 
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
@@ -67,6 +72,10 @@ export default function SpreadsheetGridDiff({ spreadsheetDiff = [], meta = {} })
   };
 
   const handleDownloadExcel = async () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to export color-coded Excel (.xlsx) workbooks with delta cell notes.');
+      return;
+    }
     try {
       setIsExportingExcel(true);
       const res = await fetch('/api/export/excel-diff', {

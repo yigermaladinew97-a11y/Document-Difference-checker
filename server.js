@@ -9,6 +9,15 @@ import { extractDocumentContent } from './parsers.js';
 import { compareDocuments } from './comparator.js';
 import { analyzeDocumentContext } from './ai_summarizer.js';
 import { generateAnnotatedExcel } from './excelExporter.js';
+import {
+  createUser,
+  authenticateUser,
+  authenticateGoogleUser,
+  getUserById,
+  verifyToken,
+  saveCloudSession,
+  getCloudSessions
+} from './authService.js';
 
 dotenv.config();
 
@@ -194,6 +203,83 @@ app.post('/api/export/excel-diff', async (req, res) => {
   } catch (err) {
     console.error('[API Error /api/export/excel-diff]:', err);
     res.status(500).json({ error: 'Failed to generate annotated Excel workbook.' });
+  }
+});
+
+// Auth Verification Middleware
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const decoded = verifyToken(token);
+  if (!decoded || !decoded.userId) {
+    return res.status(401).json({ error: 'Invalid or expired authentication token.' });
+  }
+
+  req.userId = decoded.userId;
+  next();
+}
+
+// Auth: Sign up
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const result = await createUser({ name, email, password });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Signup failed.' });
+  }
+});
+
+// Auth: Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const result = await authenticateUser({ email, password });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Login failed.' });
+  }
+});
+
+// Auth: 1-Click Google Sign-In
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { email, name, avatar } = req.body;
+    const result = await authenticateGoogleUser({ email, name, avatar });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Google authentication failed.' });
+  }
+});
+
+// Auth: Current User Profile
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  const user = getUserById(req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+  res.json({ success: true, user });
+});
+
+// Cloud History: Save session
+app.post('/api/user/cloud-history', requireAuth, (req, res) => {
+  try {
+    const record = saveCloudSession(req.userId, req.body);
+    res.json({ success: true, record });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save cloud comparison.' });
+  }
+});
+
+// Cloud History: Get sessions
+app.get('/api/user/cloud-history', requireAuth, (req, res) => {
+  try {
+    const records = getCloudSessions(req.userId);
+    res.json({ success: true, records });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve cloud history.' });
   }
 });
 
