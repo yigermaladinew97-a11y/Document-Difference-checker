@@ -489,7 +489,13 @@ export default function App() {
               />
             </div>
 
-            {/* 1. Scoreboard (Dual Animated Count-Up Gauges, Tilt Stat Cards & Noise Filter Indicators) */}
+            {/* 1. What Changed? (Plain English Summary First for Maximum Clarity) */}
+            <ExecutiveSummary
+              contextAnalysis={comparisonResult.contextAnalysis}
+              summary={comparisonResult.summary}
+            />
+
+            {/* 2. Visual Match Scoreboard & Metrics */}
             <Scoreboard
               metrics={comparisonResult.metrics}
               stats={comparisonResult.stats}
@@ -497,12 +503,6 @@ export default function App() {
               meta={comparisonResult.meta}
               filters={comparisonResult.filters || filters}
               onExportPdf={() => setIsPdfModalOpen(true)}
-            />
-
-            {/* 2. Executive Difference Summary (AI / Heuristic) */}
-            <ExecutiveSummary
-              contextAnalysis={comparisonResult.contextAnalysis}
-              summary={comparisonResult.summary}
             />
 
             {/* 3. Section / Page / Slide Breakdown */}

@@ -180,11 +180,11 @@ export default function DualDropzone({
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center space-x-3">
                 <span className="w-8 h-8 rounded-xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] font-black text-xs flex items-center justify-center font-mono shadow-sm">
-                  A
+                  1
                 </span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document A &bull; Original Base</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Original baseline document</p>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">1. Original Document (Old Version)</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Your starting draft or original baseline file</p>
                 </div>
               </div>
 
@@ -296,11 +296,11 @@ export default function DualDropzone({
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center space-x-3">
                 <span className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black text-xs flex items-center justify-center font-mono shadow-sm">
-                  B
+                  2
                 </span>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Document B &bull; Comparison Target</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Revised candidate document</p>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">2. New Document (Updated Version)</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Your updated, edited, or received version</p>
                 </div>
               </div>
 
@@ -434,12 +434,12 @@ export default function DualDropzone({
           {isComparing ? (
             <>
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Analyzing Document Differences & Context...</span>
+              <span>Comparing documents & finding what changed...</span>
             </>
           ) : (
             <>
               <Zap className="w-4 h-4 text-white group-hover:rotate-12 transition-transform" />
-              <span>Execute Deep Comparison</span>
+              <span>Compare Both Documents Now</span>
               <span className="w-8 h-8 rounded-full bg-white text-[#FF5E1E] flex items-center justify-center shadow-md group-hover:translate-x-1.5 transition-transform duration-200">
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </span>
@@ -447,9 +447,14 @@ export default function DualDropzone({
           )}
         </button>
 
-        {!isReady && (
+        {!isReady ? (
           <p className="text-xs text-slate-400 font-medium">
-            Please provide both Document A and Document B to run comparison
+            Select or drag your two files above to see what changed in seconds
+          </p>
+        ) : (
+          <p className="text-[11px] text-slate-400 font-medium flex items-center space-x-1.5">
+            <Shield className="w-3.5 h-3.5 text-emerald-500" />
+            <span>100% Private &amp; Client-Safe &bull; Zero Disk Retention</span>
           </p>
         )}
       </div>

@@ -165,15 +165,15 @@ export default function Scoreboard({ metrics, stats, summary, meta, filters, onE
         <div className="md:col-span-5 flex items-center justify-around p-6 rounded-3xl bg-slate-50/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-white/[0.06] shadow-inner">
           <CircularGauge
             value={metrics.lexicalSimilarityPercent}
-            label="Lexical Similarity"
-            sublabel="Verbatim word accuracy"
+            label="Word Match Score"
+            sublabel="Exact words in common"
             strokeColor="#FF5E1E"
           />
           <div className="w-px h-28 bg-slate-200 dark:bg-white/[0.08]" />
           <CircularGauge
             value={metrics.contextSimilarityPercent}
-            label="Contextual Match"
-            sublabel="Semantic meaning & obligations"
+            label="Overall Meaning"
+            sublabel="Core message & intent"
             strokeColor="#10B981"
           />
         </div>

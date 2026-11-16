@@ -20,7 +20,8 @@ import {
   Layers,
   Volume2,
   VolumeX,
-  Keyboard
+  Keyboard,
+  Info
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
 import MergeResolver from './MergeResolver';
@@ -313,10 +314,10 @@ export default function DiffViewer({
                     ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                   }`}
-                title="Spreadsheet cell-by-cell grid diff with numerical delta analysis"
+                title="Spreadsheet cell-by-cell table comparison"
               >
                 <Table className="w-3.5 h-3.5" />
-                <span>Spreadsheet Grid</span>
+                <span>Spreadsheet Table</span>
               </button>
             )}
             <button
@@ -326,6 +327,7 @@ export default function DiffViewer({
                   ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
+              title="Compare Old and New documents side-by-side [1]"
             >
               <Columns className="w-3.5 h-3.5" />
               <span>Side-by-Side</span>
@@ -337,9 +339,10 @@ export default function DiffViewer({
                   ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
+              title="Show all revisions in one continuous document [2]"
             >
               <AlignLeft className="w-3.5 h-3.5" />
-              <span>Unified Redline</span>
+              <span>Single Page</span>
             </button>
             <button
               type="button"
@@ -351,7 +354,7 @@ export default function DiffViewer({
               title="Curtain swipe split slider lens [3]"
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Curtain Swipe</span>
+              <span>Split Slider</span>
             </button>
             <button
               type="button"
@@ -360,10 +363,10 @@ export default function DiffViewer({
                   ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
-              title="Track changes: Accept / Reject individual changes and export clean document"
+              title="Track changes: Accept or reject each change like Microsoft Word [4]"
             >
               <FileEdit className="w-3.5 h-3.5" />
-              <span>Merge &amp; Resolve</span>
+              <span>Track Changes</span>
             </button>
           </div>
 
@@ -490,6 +493,33 @@ export default function DiffViewer({
             <Keyboard className="w-3.5 h-3.5" />
           </button>
         </div>
+      </div>
+
+      {/* Friendly Plain-English Color Guide Legend Banner */}
+      <div className="px-6 py-2.5 bg-[#FFF9F6] dark:bg-slate-900/40 border-b border-[#FFD6C4]/60 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-5">
+          <span className="font-extrabold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+            <Info className="w-3.5 h-3.5 text-[#FF5E1E]" />
+            <span>Color Guide:</span>
+          </span>
+          <span className="inline-flex items-center space-x-1.5 text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-900/50">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span className="line-through">Red text</span>
+            <span className="text-[11px] font-normal text-rose-500/80">= Deleted from old version</span>
+          </span>
+          <span className="inline-flex items-center space-x-1.5 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-900/50">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="underline">Green text</span>
+            <span className="text-[11px] font-normal text-emerald-600/80">= Added in new version</span>
+          </span>
+          <span className="hidden lg:inline-flex items-center space-x-1.5 text-slate-500 dark:text-slate-400 text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-slate-400" />
+            <span>Black text = Kept unchanged</span>
+          </span>
+        </div>
+        <span className="text-[11px] text-slate-400 font-medium hidden md:inline">
+          💡 Tip: Hover any word or click "Track Changes" to approve edits
+        </span>
       </div>
 
       {/* Expandable Smart Noise Filters Tray */}

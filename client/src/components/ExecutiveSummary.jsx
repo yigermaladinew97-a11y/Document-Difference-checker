@@ -35,21 +35,21 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
           </div>
           <div>
             <h3 className="font-extrabold text-base text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              Semantic Intelligence & Executive Overview
+              What Changed? (Summary in Plain English)
               {isAi ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                  AI Grounded (Gemini)
+                  AI Summary
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08]">
-                  Algorithmic Structural Synthesis
+                  Automated Summary
                 </span>
               )}
             </h3>
             <p className="text-xs text-slate-400 font-medium">
               {isAi 
-                ? 'Deep semantic and contractual analysis powered by Gemini 2.5 Flash' 
-                : 'Algorithmic structural synthesis • Enter a Gemini API key for deep reasoning'}
+                ? 'AI-powered summary of the main differences between your documents' 
+                : 'A quick, simple summary of the key changes so you do not have to read every line'}
             </p>
           </div>
         </div>
@@ -72,12 +72,12 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
             <span className="w-2.5 h-2.5 rounded-full bg-[#FF5E1E] animate-pulse" />
             <span className="text-xs font-black text-[#FF5E1E] uppercase tracking-widest flex items-center space-x-1.5">
               <FileCheck2 className="w-4 h-4 stroke-[2.5]" />
-              <span>Executive Synthesis</span>
+              <span>30-Second Summary</span>
             </span>
           </div>
 
           <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.1] shadow-xs">
-            {summary?.category?.replace('_', ' ') || 'ANALYSIS COMPLETE'}
+            {summary?.category?.replace('_', ' ') || 'COMPARISON COMPLETE'}
           </span>
         </div>
 
@@ -96,7 +96,7 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
           {/* Modified */}
           <div className="p-3 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200/70 dark:border-white/[0.08] shadow-xs">
             <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
-              Modified Sections
+              Edited Paragraphs
             </span>
             <span className="text-lg font-black text-slate-900 dark:text-white font-mono mt-0.5 block">
               {breakdown.modifiedCount ?? 0}
@@ -107,29 +107,29 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
           {/* Added */}
           <div className="p-3 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200/70 dark:border-white/[0.08] shadow-xs">
             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
-              New Sections
+              New Additions
             </span>
             <span className="text-lg font-black text-blue-600 dark:text-blue-400 font-mono mt-0.5 block">
               +{breakdown.addedCount ?? 0}
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">introduced in Doc B</span>
+            <span className="text-[10px] text-slate-400 font-medium">added in new version</span>
           </div>
 
           {/* Removed */}
           <div className="p-3 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200/70 dark:border-white/[0.08] shadow-xs">
             <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider block">
-              Omitted Sections
+              Deleted Content
             </span>
             <span className="text-lg font-black text-rose-600 dark:text-rose-400 font-mono mt-0.5 block">
               -{breakdown.deletedCount ?? 0}
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">retired from Doc A</span>
+            <span className="text-[10px] text-slate-400 font-medium">removed from old version</span>
           </div>
 
           {/* Relocated / Unchanged */}
           <div className="p-3 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200/70 dark:border-white/[0.08] shadow-xs">
             <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">
-              Relocated Sections
+              Moved Content
             </span>
             <span className="text-lg font-black text-purple-600 dark:text-purple-400 font-mono mt-0.5 block">
               {breakdown.movedCount ?? 0}
@@ -139,7 +139,7 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
         </div>
       </div>
 
-      {/* Key Explanations & Takeaways List (The visual list requested by the user!) */}
+      {/* Key Explanations & Takeaways List */}
       {explanations.length > 0 && (
         <div className="space-y-3.5">
           <div className="flex items-center space-x-2">
@@ -147,7 +147,7 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
               <Layers className="w-3.5 h-3.5" />
             </div>
             <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-              Detailed Explanations & Strategic Takeaways
+              Specific Differences Explained in Simple English
             </h4>
           </div>
 
