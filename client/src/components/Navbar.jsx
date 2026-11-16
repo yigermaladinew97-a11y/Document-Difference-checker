@@ -5,7 +5,6 @@ import {
   Key, 
   Moon, 
   Sun, 
-  Github,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
@@ -221,17 +220,6 @@ export default function Navbar({
               <span>Sign In</span>
             </button>
           )}
-
-          {/* GitHub Repo */}
-          <a
-            href="https://github.com/yigermaladinew97-a11y/Document-Difference-checker"
-            target="_blank"
-            rel="noreferrer"
-            className="p-2.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 transition shadow-sm"
-            title="GitHub Repository"
-          >
-            <Github className="w-4 h-4" />
-          </a>
 
           {/* Theme Toggle */}
           <button
