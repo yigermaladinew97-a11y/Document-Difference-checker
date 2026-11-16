@@ -13,6 +13,8 @@ import {
   createUser,
   authenticateUser,
   authenticateGoogleUser,
+  updateUserProfile,
+  generateSvgAvatar,
   getUserById,
   verifyToken,
   saveCloudSession,
@@ -261,6 +263,23 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   const user = getUserById(req.userId);
   if (!user) return res.status(404).json({ error: 'User not found.' });
   res.json({ success: true, user });
+});
+
+// Auth: Update User Profile
+app.put('/api/auth/profile', requireAuth, (req, res) => {
+  try {
+    const updatedUser = updateUserProfile(req.userId, req.body);
+    res.json({ success: true, user: updatedUser });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to update profile.' });
+  }
+});
+
+// Auth: Generate SVG Avatar Data URI
+app.post('/api/auth/avatar-generator', (req, res) => {
+  const { name, theme } = req.body;
+  const avatar = generateSvgAvatar(name || 'User', theme || 'orange');
+  res.json({ success: true, avatar });
 });
 
 // Cloud History: Save session

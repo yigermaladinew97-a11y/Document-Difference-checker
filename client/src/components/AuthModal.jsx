@@ -45,9 +45,11 @@ export default function AuthModal({
     setError(null);
     setIsLoading(true);
     try {
+      const derivedName = name.trim() || (email ? email.split('@')[0] : 'Yigermal Adinew');
+      const derivedEmail = email.trim() || 'yigermal.adinew@gmail.com';
       const user = await loginWithGoogle({
-        email: email || 'user@gmail.com',
-        name: name || 'Google Member'
+        email: derivedEmail,
+        name: derivedName
       });
       if (onSuccess) onSuccess(user);
       onClose();

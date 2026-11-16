@@ -101,9 +101,48 @@ export function verifyToken(token) {
 }
 
 /**
+ * Generate a self-contained inline SVG Data URI avatar with radiant gradients
+ * (100% offline, zero network requests, NEVER broken or failed)
+ */
+export function generateSvgAvatar(name = 'User', bgGradient = 'orange') {
+  const cleanName = (name || 'User').trim();
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  let initials = 'U';
+  if (parts.length >= 2) {
+    initials = (parts[0][0] + parts[1][0]).toUpperCase();
+  } else if (parts.length === 1 && parts[0].length >= 1) {
+    initials = parts[0].slice(0, 2).toUpperCase();
+  }
+
+  const gradients = {
+    orange: { start: '#FF5E1E', end: '#FF8A50' },
+    indigo: { start: '#4F46E5', end: '#7C3AED' },
+    emerald: { start: '#059669', end: '#10B981' },
+    cyan: { start: '#0284C7', end: '#06B6D4' },
+    violet: { start: '#7C3AED', end: '#DB2777' },
+    amber: { start: '#D97706', end: '#F59E0B' }
+  };
+
+  const g = gradients[bgGradient] || gradients.orange;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+    <defs>
+      <linearGradient id="g_${bgGradient}" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="${g.start}" />
+        <stop offset="100%" stop-color="${g.end}" />
+      </linearGradient>
+    </defs>
+    <rect width="100" height="100" rx="50" fill="url(#g_${bgGradient})" />
+    <text x="50" y="55" fill="#ffffff" font-size="36" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="middle" letter-spacing="1">${initials}</text>
+  </svg>`;
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/**
  * Create a new user account
  */
-export async function createUser({ name, email, password, avatar }) {
+export async function createUser({ name, email, password, avatar, title, organization }) {
   const users = readUsers();
   const cleanEmail = (email || '').trim().toLowerCase();
 
@@ -124,17 +163,27 @@ export async function createUser({ name, email, password, avatar }) {
   const passwordHash = password ? hashPassword(password, salt) : null;
   const userId = `usr_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
   const userName = (name || cleanEmail.split('@')[0]).trim();
-  const userAvatar = avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(userName)}`;
+  const userAvatar = avatar && avatar.startsWith('data:') ? avatar : generateSvgAvatar(userName, 'orange');
 
   const newUser = {
     id: userId,
     name: userName,
     email: cleanEmail,
+    title: (title || 'Document Analyst').trim(),
+    organization: (organization || 'Team').trim(),
     passwordHash,
     salt,
     plan: 'pro',
     createdAt: new Date().toISOString(),
-    avatar: userAvatar
+    avatar: userAvatar,
+    preferences: {
+      autoCloudSync: true,
+      soundEnabled: true
+    },
+    stats: {
+      comparisonsCount: 0,
+      totalWordsCompared: 0
+    }
   };
 
   users.push(newUser);
@@ -168,6 +217,24 @@ export async function authenticateUser({ email, password }) {
     throw new Error('Invalid email or password.');
   }
 
+  // Ensure user has valid SVG avatar and stats
+  let changed = false;
+  if (!user.avatar || user.avatar.includes('dicebear')) {
+    user.avatar = generateSvgAvatar(user.name, 'orange');
+    changed = true;
+  }
+  if (!user.stats) {
+    user.stats = { comparisonsCount: 0, totalWordsCompared: 0 };
+    changed = true;
+  }
+  if (!user.title) {
+    user.title = 'Document Analyst';
+    changed = true;
+  }
+  if (changed) {
+    writeUsers(users);
+  }
+
   const { passwordHash: _, salt: __, ...safeUser } = user;
   const token = generateToken({ userId: safeUser.id, email: safeUser.email });
 
@@ -177,31 +244,100 @@ export async function authenticateUser({ email, password }) {
 /**
  * Authenticate or register 1-click Google user
  */
-export async function authenticateGoogleUser({ email, name, avatar }) {
+export async function authenticateGoogleUser({ email, name, avatar, title, organization }) {
   const users = readUsers();
   const cleanEmail = (email || '').trim().toLowerCase();
+  const userName = (name || (cleanEmail ? cleanEmail.split('@')[0] : 'User')).trim();
 
   let user = users.find(u => u.email === cleanEmail);
   if (!user) {
     const userId = `usr_g_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const userAvatar = avatar && avatar.startsWith('data:') ? avatar : generateSvgAvatar(userName, 'orange');
+
     user = {
       id: userId,
-      name: name || cleanEmail.split('@')[0],
+      name: userName,
       email: cleanEmail,
+      title: (title || 'Document Intelligence Specialist').trim(),
+      organization: (organization || 'Professional User').trim(),
       passwordHash: null,
       salt: null,
       plan: 'pro',
       createdAt: new Date().toISOString(),
-      avatar: avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || cleanEmail)}`
+      avatar: userAvatar,
+      preferences: {
+        autoCloudSync: true,
+        soundEnabled: true
+      },
+      stats: {
+        comparisonsCount: 0,
+        totalWordsCompared: 0
+      }
     };
     users.push(user);
     writeUsers(users);
+  } else {
+    // If user already exists, update name if provided and not generic
+    let changed = false;
+    if (name && user.name !== name && name !== 'Google Member') {
+      user.name = name;
+      changed = true;
+    }
+    if (!user.avatar || user.avatar.includes('dicebear')) {
+      user.avatar = generateSvgAvatar(user.name, 'orange');
+      changed = true;
+    }
+    if (!user.stats) {
+      user.stats = { comparisonsCount: 0, totalWordsCompared: 0 };
+      changed = true;
+    }
+    if (!user.title) {
+      user.title = 'Document Intelligence Specialist';
+      changed = true;
+    }
+    if (changed) {
+      writeUsers(users);
+    }
   }
 
   const { passwordHash: _, salt: __, ...safeUser } = user;
   const token = generateToken({ userId: safeUser.id, email: safeUser.email });
 
   return { user: safeUser, token };
+}
+
+/**
+ * Update user profile
+ */
+export function updateUserProfile(userId, { name, avatar, title, organization, preferences }) {
+  const users = readUsers();
+  const index = users.findIndex(u => u.id === userId);
+  if (index === -1) {
+    throw new Error('User not found.');
+  }
+
+  const existing = users[index];
+  const newName = name !== undefined && name.trim() ? name.trim() : existing.name;
+  let newAvatar = avatar !== undefined ? avatar : existing.avatar;
+
+  if (!avatar && (!existing.avatar || existing.avatar.includes('dicebear') || newName !== existing.name)) {
+    newAvatar = generateSvgAvatar(newName, 'orange');
+  }
+
+  const updatedUser = {
+    ...existing,
+    name: newName,
+    avatar: newAvatar,
+    title: title !== undefined ? title.trim() : (existing.title || 'Document Analyst'),
+    organization: organization !== undefined ? organization.trim() : (existing.organization || 'Team'),
+    preferences: preferences !== undefined ? { ...existing.preferences, ...preferences } : (existing.preferences || { autoCloudSync: true, soundEnabled: true })
+  };
+
+  users[index] = updatedUser;
+  writeUsers(users);
+
+  const { passwordHash: _, salt: __, ...safeUser } = updatedUser;
+  return safeUser;
 }
 
 /**
@@ -251,6 +387,22 @@ export function saveCloudSession(userId, sessionData) {
 
   // Keep latest 50 per user
   writeCloudHistory(history);
+
+  // Update user statistics
+  try {
+    const users = readUsers();
+    const u = users.find(user => user.id === userId);
+    if (u) {
+      if (!u.stats) u.stats = { comparisonsCount: 0, totalWordsCompared: 0 };
+      u.stats.comparisonsCount = (u.stats.comparisonsCount || 0) + 1;
+      const words = (sessionData.stats?.totalWordsA || 0) + (sessionData.stats?.totalWordsB || 0);
+      u.stats.totalWordsCompared = (u.stats.totalWordsCompared || 0) + words;
+      writeUsers(users);
+    }
+  } catch (err) {
+    console.warn('Failed to update user stats:', err);
+  }
+
   return record;
 }
 

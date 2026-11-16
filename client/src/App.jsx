@@ -11,8 +11,9 @@ import PdfReportModal from './components/PdfReportModal';
 import NoiseFiltersBar from './components/NoiseFiltersBar';
 import HistoryDrawer from './components/HistoryDrawer';
 import AuthModal from './components/AuthModal';
+import UserProfileModal from './components/UserProfileModal';
 import { saveComparisonSession, getAllSessions, updateSessionDecisions } from './utils/historyStorage';
-import { getCurrentUser, clearAuthSession, syncCloudSession } from './utils/authClient';
+import { getCurrentUser, clearAuthSession, syncCloudSession, fetchCurrentProfile } from './utils/authClient';
 import {
   Sparkles,
   AlertCircle,
@@ -126,6 +127,14 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState('login');
   const [authModalReason, setAuthModalReason] = useState(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  useEffect(() => {
+    // Keep user profile up-to-date from server
+    fetchCurrentProfile().then((profile) => {
+      if (profile) setCurrentUser(profile);
+    });
+  }, []);
 
   const handleOpenAuthModal = (mode = 'login', reason = null) => {
     setAuthModalMode(mode);
@@ -329,6 +338,7 @@ export default function App() {
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
         currentUser={currentUser}
         onOpenAuthModal={handleOpenAuthModal}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
         onLogout={handleLogout}
       />
 
@@ -355,6 +365,15 @@ export default function App() {
         initialMode={authModalMode}
         reasonMessage={authModalReason}
         onSuccess={handleAuthSuccess}
+      />
+
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        onUserUpdated={(updated) => setCurrentUser(updated)}
+        onLogout={handleLogout}
+        historyCount={historySessions.length}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12 relative z-10">
