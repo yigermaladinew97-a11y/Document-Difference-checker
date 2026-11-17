@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 
 import { extractDocumentContent } from './parsers.js';
 import { compareDocuments } from './comparator.js';
-import { analyzeDocumentContext } from './ai_summarizer.js';
+import { analyzeDocumentContext, generateLocalContextAnalysis } from './ai_summarizer.js';
 import { generateAnnotatedExcel } from './excelExporter.js';
 import {
   createUser,
@@ -179,6 +179,163 @@ app.post(
         success: false,
         error: error.message || 'An error occurred while comparing documents.'
       });
+    }
+  }
+);
+
+/**
+ * Batch Comparison Endpoint
+ * Ingests multiple files, pairs them up according to user mapping, and executes
+ * high-throughput word & structural diffing across all pairs.
+ */
+app.post(
+  '/api/batch-compare',
+  upload.any(),
+  async (req, res) => {
+    try {
+      const files = req.files || [];
+      if (!files.length) {
+        return res.status(400).json({ success: false, error: 'No files were uploaded for batch comparison.' });
+      }
+
+      let pairs = [];
+      try {
+        pairs = typeof req.body.pairs === 'string' ? JSON.parse(req.body.pairs) : req.body.pairs;
+      } catch (e) {
+        return res.status(400).json({ success: false, error: 'Malformed pairs mapping JSON.' });
+      }
+
+      if (!Array.isArray(pairs) || pairs.length === 0) {
+        return res.status(400).json({ success: false, error: 'No document pairs defined for comparison.' });
+      }
+
+      const userApiKey = req.body.apiKey;
+      const filterOptions = {
+        ignoreCase: req.body.ignoreCase === 'true' || req.body.ignoreCase === true,
+        ignorePunctuation: req.body.ignorePunctuation === 'true' || req.body.ignorePunctuation === true,
+        ignoreWhitespace: typeof req.body.ignoreWhitespace !== 'undefined' ? (req.body.ignoreWhitespace === 'true' || req.body.ignoreWhitespace === true) : true,
+        ignoreNumbers: req.body.ignoreNumbers === 'true' || req.body.ignoreNumbers === true,
+        trimLines: req.body.trimLines === 'true' || req.body.trimLines === true
+      };
+
+      // Map files by originalname (and sanitized safe key)
+      const fileMap = new Map();
+      files.forEach(f => {
+        fileMap.set(f.originalname, f);
+      });
+
+      // Cache parsed document contents across pairs to prevent duplicate parsing
+      const parsedCache = new Map();
+      const getParsedContent = async (filename) => {
+        if (parsedCache.has(filename)) return parsedCache.get(filename);
+        const fileObj = fileMap.get(filename);
+        if (!fileObj) {
+          throw new Error(`File "${filename}" was missing from uploaded batch payload.`);
+        }
+        const content = await extractDocumentContent(fileObj.buffer, fileObj.originalname);
+        parsedCache.set(filename, content);
+        return content;
+      };
+
+      const results = [];
+      let totalSim = 0;
+      let identicalCount = 0;
+      let mostChangedPair = null;
+
+      for (let idx = 0; idx < pairs.length; idx++) {
+        const pair = pairs[idx];
+        const { id, aName, bName } = pair;
+
+        const docAContent = await getParsedContent(aName);
+        const docBContent = await getParsedContent(bName);
+
+        const comparison = compareDocuments(docAContent, docBContent, filterOptions);
+
+        // Fast analytical context generation
+        let contextAnalysis;
+        if (userApiKey && pairs.length <= 3) {
+          try {
+            contextAnalysis = await analyzeDocumentContext({
+              textA: docAContent.text,
+              textB: docBContent.text,
+              stats: comparison.stats,
+              sectionReports: comparison.sectionReports,
+              summary: comparison.summary,
+              apiKey: userApiKey
+            });
+          } catch (e) {
+            contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary);
+          }
+        } else {
+          contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary);
+        }
+
+        const sim = comparison.similarityPercent;
+        totalSim += sim;
+        if (comparison.isIdentical) identicalCount++;
+
+        const pairResult = {
+          pairId: id || `pair_${idx}`,
+          index: idx,
+          meta: {
+            docA: {
+              filename: docAContent.filename,
+              format: docAContent.format,
+              wordCount: docAContent.wordCount,
+              charCount: docAContent.charCount,
+              sectionsCount: docAContent.sections.length
+            },
+            docB: {
+              filename: docBContent.filename,
+              format: docBContent.format,
+              wordCount: docBContent.wordCount,
+              charCount: docBContent.charCount,
+              sectionsCount: docBContent.sections.length
+            }
+          },
+          metrics: {
+            isIdentical: comparison.isIdentical,
+            lexicalSimilarityPercent: comparison.similarityPercent,
+            contextSimilarityPercent: contextAnalysis.contextSimilarityPercent,
+            analysisMode: contextAnalysis.mode || 'local'
+          },
+          stats: comparison.stats,
+          summary: comparison.summary,
+          contextAnalysis,
+          sectionReports: comparison.sectionReports,
+          spreadsheetDiff: comparison.spreadsheetDiff || null,
+          diffTokens: comparison.diffTokens,
+          filters: comparison.filters
+        };
+
+        if (!mostChangedPair || sim < mostChangedPair.similarityPercent) {
+          mostChangedPair = {
+            pairId: pairResult.pairId,
+            nameA: docAContent.filename,
+            nameB: docBContent.filename,
+            similarityPercent: sim,
+            changeCount: comparison.stats?.totalDifferences || 0
+          };
+        }
+
+        results.push(pairResult);
+      }
+
+      const avgSim = results.length > 0 ? Math.round(totalSim / results.length) : 0;
+
+      res.json({
+        success: true,
+        results,
+        batchMetrics: {
+          totalPairs: results.length,
+          averageSimilarityPercent: avgSim,
+          identicalCount,
+          mostChangedPair
+        }
+      });
+    } catch (err) {
+      console.error('[API Error /api/batch-compare]:', err);
+      res.status(500).json({ success: false, error: err.message || 'Batch comparison failed.' });
     }
   }
 );

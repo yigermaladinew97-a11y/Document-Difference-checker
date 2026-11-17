@@ -12,6 +12,8 @@ import NoiseFiltersBar from './components/NoiseFiltersBar';
 import HistoryDrawer from './components/HistoryDrawer';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
+import BatchDropzone from './components/BatchDropzone';
+import BatchDashboard from './components/BatchDashboard';
 import { saveComparisonSession, getAllSessions, updateSessionDecisions } from './utils/historyStorage';
 import { getCurrentUser, clearAuthSession, syncCloudSession, fetchCurrentProfile } from './utils/authClient';
 import {
@@ -26,7 +28,10 @@ import {
   ArrowRight,
   TrendingUp,
   Award,
-  SlidersHorizontal
+  SlidersHorizontal,
+  FolderUp,
+  Files,
+  ArrowLeft
 } from 'lucide-react';
 
 const SAMPLES = {
@@ -107,6 +112,16 @@ export default function App() {
   const [comparisonResult, setComparisonResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+
+  // Compare Mode: 'single' vs 'batch'
+  const [compareMode, setCompareMode] = useState('single');
+  const [batchPairs, setBatchPairs] = useState([]);
+  const [batchUnpaired, setBatchUnpaired] = useState([]);
+  const [batchResults, setBatchResults] = useState(null);
+  const [batchMetrics, setBatchMetrics] = useState({});
+  const [inspectedPair, setInspectedPair] = useState(null);
+  const [isBatchComparing, setIsBatchComparing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(null);
 
   // Smart Noise Filtering options
   const [filters, setFilters] = useState({
@@ -313,6 +328,81 @@ export default function App() {
     setErrorMessage(null);
   };
 
+  const handleRunBatch = async () => {
+    if (!batchPairs || batchPairs.length === 0) return;
+    setIsBatchComparing(true);
+    setErrorMessage(null);
+    setBatchProgress({ label: `Preparing ${batchPairs.length} document pairs...`, percent: 15 });
+
+    try {
+      const formData = new FormData();
+
+      // Collect all unique files
+      const uniqueFiles = new Map();
+      batchPairs.forEach(p => {
+        if (!uniqueFiles.has(p.docA.name)) uniqueFiles.set(p.docA.name, p.docA);
+        if (!uniqueFiles.has(p.docB.name)) uniqueFiles.set(p.docB.name, p.docB);
+      });
+
+      uniqueFiles.forEach(file => {
+        formData.append('files', file, file.name);
+      });
+
+      // Prepare mapping
+      const mapping = batchPairs.map(p => ({
+        id: p.id,
+        aName: p.docA.name,
+        bName: p.docB.name
+      }));
+      formData.append('pairs', JSON.stringify(mapping));
+
+      // Append noise filters
+      formData.append('ignoreCase', String(Boolean(filters.ignoreCase)));
+      formData.append('ignorePunctuation', String(Boolean(filters.ignorePunctuation)));
+      formData.append('ignoreWhitespace', String(Boolean(filters.ignoreWhitespace)));
+      formData.append('ignoreNumbers', String(Boolean(filters.ignoreNumbers)));
+      formData.append('trimLines', String(Boolean(filters.trimLines)));
+
+      if (apiKey) {
+        formData.append('apiKey', apiKey);
+      }
+
+      setBatchProgress({ label: `Comparing ${batchPairs.length} pairs with lexical Myers engine...`, percent: 50 });
+
+      const response = await fetch('/api/batch-compare', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Batch comparison failed');
+      }
+
+      setBatchProgress({ label: 'Synthesizing batch analytics...', percent: 90 });
+      setBatchResults(data.results);
+      setBatchMetrics(data.batchMetrics);
+      triggerCelebration();
+
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } catch (err) {
+      console.error('[Batch Error]:', err);
+      setErrorMessage(err.message || 'An error occurred during batch comparison.');
+    } finally {
+      setIsBatchComparing(false);
+      setBatchProgress(null);
+    }
+  };
+
+  const handleResetBatch = () => {
+    setBatchResults(null);
+    setBatchMetrics({});
+    setInspectedPair(null);
+    setErrorMessage(null);
+  };
+
   return (
     <div className="min-h-screen bg-[#FBFBFD] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans relative selection:bg-[#FF5E1E]/20 selection:text-[#FF5E1E] overflow-x-hidden">
       {/* Background Dot Pattern (Cambased Style) */}
@@ -428,116 +518,247 @@ export default function App() {
           </div>
         )}
 
-        {/* Dual 3D Tilt Upload / Input Cards */}
-        <DualDropzone
-          fileA={fileA}
-          setFileA={setFileA}
-          textA={textA}
-          setTextA={setTextA}
-          fileB={fileB}
-          setFileB={setFileB}
-          textB={textB}
-          setTextB={setTextB}
-          onCompare={(f) => handleCompare(f)}
-          isComparing={isComparing}
-          onLoadSample={handleLoadSample}
-          filters={filters}
-          onFilterChange={setFilters}
-        />
+        {/* Compare Mode Switcher (Single Pair vs Batch Folder) */}
+        <div className="flex justify-center pt-2">
+          <div className="p-1 rounded-2xl bg-slate-200/70 dark:bg-slate-900 border border-slate-300/60 dark:border-white/[0.08] inline-flex items-center space-x-1 shadow-inner">
+            <button
+              type="button"
+              onClick={() => { setCompareMode('single'); setInspectedPair(null); }}
+              className={`flex items-center space-x-2 px-5 py-2 rounded-xl text-xs font-black transition-all ${
+                compareMode === 'single'
+                  ? 'bg-white dark:bg-[#111726] text-[#FF5E1E] shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <FileDiff className="w-3.5 h-3.5" />
+              <span>Single Pair</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCompareMode('batch'); setComparisonResult(null); }}
+              className={`flex items-center space-x-2 px-5 py-2 rounded-xl text-xs font-black transition-all ${
+                compareMode === 'batch'
+                  ? 'bg-white dark:bg-[#111726] text-[#FF5E1E] shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <FolderUp className="w-3.5 h-3.5" />
+              <span>Batch Folder</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-[#FF5E1E]/15 text-[#FF5E1E] border border-[#FF5E1E]/20">
+                NEW
+              </span>
+            </button>
+          </div>
+        </div>
 
-        {/* Comparison Results Section */}
-        {comparisonResult && (
-          <div ref={resultsRef} className="pt-10 space-y-10 animate-in fade-in duration-700">
-            {/* Results Title Bar with Reset Button */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/[0.08]">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] flex items-center justify-center shadow-sm">
-                  <FileDiff className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Intelligence & Diff Results</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Multi-tier metrics, semantic breakdown, and synchronized view</p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleReset}
-                className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
-                <span>Compare Another Pair</span>
-              </button>
-            </div>
-
-            {/* Real-time Smart Noise Filters on Results Screen */}
-            <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06] gap-2">
-                <span className="text-xs font-black text-slate-900 dark:text-white flex items-center space-x-2">
-                  <SlidersHorizontal className="w-4 h-4 text-[#FF5E1E]" />
-                  <span>Real-Time Comparison Rules</span>
-                </span>
-                <span className="text-[11px] text-slate-400 font-medium">
-                  Toggle "Normalize Spaces" below to instantly switch between ignoring spaces and detecting exact whitespace
-                </span>
-              </div>
-              <NoiseFiltersBar
-                filters={filters}
-                onFilterChange={setFilters}
-                onApply={(newFilters) => handleCompare(newFilters)}
-                isComparing={isComparing}
-              />
-            </div>
-
-            {/* 1. Visual Match Scoreboard & Percentage Gauges (First immediately after running) */}
-            <Scoreboard
-              metrics={comparisonResult.metrics}
-              stats={comparisonResult.stats}
-              summary={comparisonResult.summary}
-              meta={comparisonResult.meta}
-              filters={comparisonResult.filters || filters}
-              onExportPdf={() => setIsPdfModalOpen(true)}
-            />
-
-            {/* 2. What Changed? (Detailed Plain-English Explanation) */}
-            <ExecutiveSummary
-              contextAnalysis={comparisonResult.contextAnalysis}
-              summary={comparisonResult.summary}
-            />
-
-            {/* 3. Section / Page / Slide Breakdown */}
-            <SectionBreakdown
-              sectionReports={comparisonResult.sectionReports}
-              meta={comparisonResult.meta}
-            />
-
-            {/* 4. Interactive Diff Viewer with Micro-Hover Tokens & Smart Noise Filter Toolbar */}
-            <DiffViewer
-              diffTokens={comparisonResult.diffTokens}
-              meta={comparisonResult.meta}
-              stats={comparisonResult.stats}
+        {/* Mode 1: Single Pair Comparison */}
+        {compareMode === 'single' && (
+          <>
+            <DualDropzone
+              fileA={fileA}
+              setFileA={setFileA}
+              textA={textA}
+              setTextA={setTextA}
+              fileB={fileB}
+              setFileB={setFileB}
+              textB={textB}
+              setTextB={setTextB}
+              onCompare={(f) => handleCompare(f)}
+              isComparing={isComparing}
+              onLoadSample={handleLoadSample}
               filters={filters}
               onFilterChange={setFilters}
-              onApplyFilters={handleCompare}
-              isComparing={isComparing}
-              onExportPdf={() => setIsPdfModalOpen(true)}
-              initialDecisions={comparisonResult.decisions || {}}
-              onDecisionsChange={(newDecisions) => {
-                if (activeSessionId) {
-                  updateSessionDecisions(activeSessionId, newDecisions);
-                }
-              }}
-              spreadsheetDiff={comparisonResult.spreadsheetDiff}
-              currentUser={currentUser}
-              onRequestAuth={handleOpenAuthModal}
             />
 
-            {/* 5. Executive PDF Audit Report Modal */}
-            <PdfReportModal
-              isOpen={isPdfModalOpen}
-              onClose={() => setIsPdfModalOpen(false)}
-              data={comparisonResult}
-            />
+            {/* Comparison Results Section */}
+            {comparisonResult && (
+              <div ref={resultsRef} className="pt-10 space-y-10 animate-in fade-in duration-700">
+                {/* Results Title Bar with Reset Button */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/[0.08]">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 text-[#FF5E1E] flex items-center justify-center shadow-sm">
+                      <FileDiff className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Intelligence & Diff Results</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Multi-tier metrics, semantic breakdown, and synchronized view</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
+                    <span>Compare Another Pair</span>
+                  </button>
+                </div>
+
+                {/* Real-time Smart Noise Filters on Results Screen */}
+                <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06] gap-2">
+                    <span className="text-xs font-black text-slate-900 dark:text-white flex items-center space-x-2">
+                      <SlidersHorizontal className="w-4 h-4 text-[#FF5E1E]" />
+                      <span>Real-Time Comparison Rules</span>
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      Toggle "Normalize Spaces" below to instantly switch between ignoring spaces and detecting exact whitespace
+                    </span>
+                  </div>
+                  <NoiseFiltersBar
+                    filters={filters}
+                    onFilterChange={setFilters}
+                    onApply={(newFilters) => handleCompare(newFilters)}
+                    isComparing={isComparing}
+                  />
+                </div>
+
+                {/* 1. Visual Match Scoreboard & Percentage Gauges (First immediately after running) */}
+                <Scoreboard
+                  metrics={comparisonResult.metrics}
+                  stats={comparisonResult.stats}
+                  summary={comparisonResult.summary}
+                  meta={comparisonResult.meta}
+                  filters={comparisonResult.filters || filters}
+                  onExportPdf={() => setIsPdfModalOpen(true)}
+                />
+
+                {/* 2. What Changed? (Detailed Plain-English Explanation) */}
+                <ExecutiveSummary
+                  contextAnalysis={comparisonResult.contextAnalysis}
+                  summary={comparisonResult.summary}
+                />
+
+                {/* 3. Section / Page / Slide Breakdown */}
+                <SectionBreakdown
+                  sectionReports={comparisonResult.sectionReports}
+                  meta={comparisonResult.meta}
+                />
+
+                {/* 4. Interactive Diff Viewer with Micro-Hover Tokens & Smart Noise Filter Toolbar */}
+                <DiffViewer
+                  diffTokens={comparisonResult.diffTokens}
+                  meta={comparisonResult.meta}
+                  stats={comparisonResult.stats}
+                  filters={filters}
+                  onFilterChange={setFilters}
+                  onApplyFilters={handleCompare}
+                  isComparing={isComparing}
+                  onExportPdf={() => setIsPdfModalOpen(true)}
+                  initialDecisions={comparisonResult.decisions || {}}
+                  onDecisionsChange={(newDecisions) => {
+                    if (activeSessionId) {
+                      updateSessionDecisions(activeSessionId, newDecisions);
+                    }
+                  }}
+                  spreadsheetDiff={comparisonResult.spreadsheetDiff}
+                  currentUser={currentUser}
+                  onRequestAuth={handleOpenAuthModal}
+                />
+
+                {/* 5. Executive PDF Audit Report Modal */}
+                <PdfReportModal
+                  isOpen={isPdfModalOpen}
+                  onClose={() => setIsPdfModalOpen(false)}
+                  data={comparisonResult}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Mode 2: Batch Folder Comparison */}
+        {compareMode === 'batch' && (
+          <div ref={resultsRef} className="space-y-8">
+            {inspectedPair ? (
+              /* Inspected Batch Pair Detailed Drill-Down */
+              <div className="pt-4 space-y-10 animate-in fade-in duration-500">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-white/[0.08] gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setInspectedPair(null)}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5 text-[#FF5E1E]" />
+                    <span>Back to Batch Dashboard</span>
+                  </button>
+
+                  <div className="text-left sm:text-right">
+                    <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
+                      Drill-Down Inspection
+                    </span>
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      {inspectedPair.meta.docA.filename} &bull; {inspectedPair.meta.docB.filename}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Match Scoreboard */}
+                <Scoreboard
+                  metrics={inspectedPair.metrics}
+                  stats={inspectedPair.stats}
+                  summary={inspectedPair.summary}
+                  meta={inspectedPair.meta}
+                  filters={inspectedPair.filters || filters}
+                  onExportPdf={() => setIsPdfModalOpen(true)}
+                />
+
+                {/* What Changed? */}
+                <ExecutiveSummary
+                  contextAnalysis={inspectedPair.contextAnalysis}
+                  summary={inspectedPair.summary}
+                />
+
+                {/* Section Breakdown */}
+                <SectionBreakdown
+                  sectionReports={inspectedPair.sectionReports}
+                  meta={inspectedPair.meta}
+                />
+
+                {/* Full Diff Viewer */}
+                <DiffViewer
+                  diffTokens={inspectedPair.diffTokens}
+                  meta={inspectedPair.meta}
+                  stats={inspectedPair.stats}
+                  filters={filters}
+                  onFilterChange={setFilters}
+                  onApplyFilters={handleCompare}
+                  isComparing={isComparing}
+                  onExportPdf={() => setIsPdfModalOpen(true)}
+                  initialDecisions={{}}
+                  spreadsheetDiff={inspectedPair.spreadsheetDiff}
+                  currentUser={currentUser}
+                  onRequestAuth={handleOpenAuthModal}
+                />
+
+                {/* PDF Modal */}
+                <PdfReportModal
+                  isOpen={isPdfModalOpen}
+                  onClose={() => setIsPdfModalOpen(false)}
+                  data={inspectedPair}
+                />
+              </div>
+            ) : batchResults ? (
+              /* Batch Results Dashboard Table */
+              <BatchDashboard
+                batchResults={batchResults}
+                batchMetrics={batchMetrics}
+                onInspectPair={(p) => setInspectedPair(p)}
+                onResetBatch={handleResetBatch}
+              />
+            ) : (
+              /* Batch Upload & Auto-Pairing Review */
+              <BatchDropzone
+                pairs={batchPairs}
+                setPairs={setBatchPairs}
+                unpaired={batchUnpaired}
+                setUnpaired={setBatchUnpaired}
+                onRunBatch={handleRunBatch}
+                isComparing={isBatchComparing}
+                progress={batchProgress}
+              />
+            )}
           </div>
         )}
       </main>

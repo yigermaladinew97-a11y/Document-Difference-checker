@@ -31,7 +31,7 @@ function cleanJsonResponse(rawText) {
  * Fallback generator when no Gemini API key is provided or on offline mode
  * Generates an articulate, human-grade analytical summary and specific change descriptions.
  */
-function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) {
+export function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) {
   const alerts = [];
   const changes = [];
 
