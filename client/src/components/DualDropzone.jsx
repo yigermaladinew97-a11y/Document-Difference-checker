@@ -117,44 +117,6 @@ export default function DualDropzone({
 
   return (
     <div className="space-y-6">
-      {/* Sample Quick Action Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-2">
-        <div className="flex items-center space-x-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-[#FF5E1E] animate-ping" />
-          <span>Upload any pair of files (<span className="text-slate-900 dark:text-white font-semibold">PDF, Word, Excel, PPTX, or TXT</span>) to compare.</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider hidden md:inline">
-            1-Click Demo:
-          </span>
-          <button
-            type="button"
-            onClick={() => onLoadSample && onLoadSample('contract')}
-            className="group inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] hover:border-[#FF5E1E]/50 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-[#FF5E1E] transition shadow-xs hover:-translate-y-0.5"
-            title="Load Master Services Agreement with pricing & warranty revisions"
-          >
-            <span>📜 Contract (v1 vs v2)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onLoadSample && onLoadSample('spreadsheet')}
-            className="group inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] hover:border-emerald-500/50 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition shadow-xs hover:-translate-y-0.5"
-            title="Load Financial Ledger with numerical drifts & added rows"
-          >
-            <span>📊 Financials (.csv/Excel)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onLoadSample && onLoadSample('tech')}
-            className="group inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.1] hover:border-blue-500/50 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition shadow-xs hover:-translate-y-0.5"
-            title="Load API architecture specification changes"
-          >
-            <span>⚡ API Spec</span>
-          </button>
-        </div>
-      </div>
-
       {/* Dual 3D Tilt Cards Container */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
         {/* Central Floating Swap Button with Hover Physics */}
