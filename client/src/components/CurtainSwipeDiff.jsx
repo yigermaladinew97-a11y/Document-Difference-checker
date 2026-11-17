@@ -121,11 +121,10 @@ export default function CurtainSwipeDiff({
           <button
             type="button"
             onClick={() => setIsAutoWiping(!isAutoWiping)}
-            className={`flex items-center space-x-1 px-3 py-1 rounded-full text-[11px] font-bold border transition ${
-              isAutoWiping
+            className={`flex items-center space-x-1 px-3 py-1 rounded-full text-[11px] font-bold border transition ${isAutoWiping
                 ? 'bg-[#FF5E1E] text-white border-transparent shadow-xs'
                 : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] hover:border-[#FF5E1E]'
-            }`}
+              }`}
             title="Auto-scan back and forth"
           >
             {isAutoWiping ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 fill-current" />}

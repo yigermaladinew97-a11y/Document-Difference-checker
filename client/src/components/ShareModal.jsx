@@ -10,7 +10,8 @@ import {
   Sparkles, 
   Mail, 
   MessageCircle,
-  FileDiff
+  FileDiff,
+  Send
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -187,6 +188,16 @@ export default function ShareModal({
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>WhatsApp</span>
+                </a>
+
+                <a
+                  href={`https://t.me/share/url?url=${encodeURIComponent(fullShareUrl)}&text=${encodeURIComponent(shareText)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-[#229ED9] hover:text-white text-slate-700 dark:text-slate-300 text-xs font-semibold transition"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Telegram</span>
                 </a>
 
                 <a
