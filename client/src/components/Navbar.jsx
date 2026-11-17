@@ -179,7 +179,7 @@ export default function Navbar({
             </button>
           )}
 
-          {/* Clean Tools & Quick Settings Toggle Menu */}
+          {/* Clean Tools & Quick Settings Toggle Menu (Icon Only) */}
           <div className="relative">
             <button
               type="button"
@@ -187,23 +187,15 @@ export default function Navbar({
                 setShowToolsMenu(!showToolsMenu);
                 setShowProfileMenu(false);
               }}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 shadow-xs cursor-pointer ${
+              className={`p-2.5 rounded-full border transition-all duration-200 shadow-xs cursor-pointer hover:scale-105 active:scale-95 ${
                 showToolsMenu
-                  ? 'bg-[#FF5E1E] text-white border-transparent shadow-md scale-100'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-white/[0.1] text-slate-700 dark:text-slate-200 hover:border-[#FF5E1E]/50 hover:text-[#FF5E1E]'
+                  ? 'bg-[#FF5E1E] text-white border-transparent shadow-md'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-white/[0.1] text-slate-700 dark:text-slate-300 hover:border-[#FF5E1E]/50 hover:text-[#FF5E1E]'
               }`}
               title="Quick Tools (History, AI Settings, Theme)"
+              aria-label="Quick Tools (History, AI Settings, Theme)"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Tools</span>
-              {historyCount > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
-                  showToolsMenu ? 'bg-white text-[#FF5E1E]' : 'bg-[#FF5E1E]/15 text-[#FF5E1E]'
-                }`}>
-                  {historyCount}
-                </span>
-              )}
-              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showToolsMenu ? 'rotate-180' : ''}`} />
+              <SlidersHorizontal className="w-4 h-4" />
             </button>
 
             {/* Floating Tools Dropdown Menu */}
