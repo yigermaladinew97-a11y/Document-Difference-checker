@@ -580,7 +580,7 @@ export default function App() {
                       <FileDiff className="w-5 h-5 stroke-[2.2]" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Intelligence & Diff Results</h2>
+                      <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Intelligence &amp; Diff Results</h2>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Multi-tier metrics, semantic breakdown, and synchronized view</p>
                     </div>
                   </div>
@@ -588,7 +588,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
+                    className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
                   >
                     <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
                     <span>Compare Another Pair</span>
@@ -598,7 +598,7 @@ export default function App() {
                 {/* Real-time Smart Noise Filters on Results Screen */}
                 <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06] gap-2">
-                    <span className="text-xs font-black text-slate-900 dark:text-white flex items-center space-x-2">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-2">
                       <SlidersHorizontal className="w-4 h-4 text-[#FF5E1E]" />
                       <span>Real-Time Comparison Rules</span>
                     </span>

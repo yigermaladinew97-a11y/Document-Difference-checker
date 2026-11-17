@@ -106,10 +106,10 @@ export default function NoiseFiltersBar({
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-black text-slate-900 dark:text-white tracking-tight">
+              <span className="text-xs font-bold text-slate-900 dark:text-white tracking-tight">
                 Smart Noise Filters
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
                 activeCount > 0 
                   ? 'bg-[#FF5E1E]/15 text-[#FF5E1E] border border-[#FF5E1E]/30' 
                   : 'bg-slate-200/70 dark:bg-slate-800 text-slate-500'
@@ -138,9 +138,9 @@ export default function NoiseFiltersBar({
                 type="button"
                 onClick={() => applyPreset(p)}
                 title={p.description}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
                   isSelected
-                    ? 'bg-[#FF5E1E] text-white shadow-xs scale-100'
+                    ? 'bg-[#FF5E1E] text-white shadow-xs'
                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200/60 dark:border-white/[0.06] hover:border-slate-300'
                 }`}
               >
@@ -158,7 +158,7 @@ export default function NoiseFiltersBar({
         <button
           type="button"
           onClick={() => toggleFilter('ignoreCase')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border ${
+          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-semibold transition-all border ${
             filters.ignoreCase
               ? 'bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border-[#FF5E1E]/40 text-[#FF5E1E] shadow-xs scale-[1.01]'
               : 'bg-white dark:bg-slate-800/80 border-slate-200/70 dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
@@ -179,7 +179,7 @@ export default function NoiseFiltersBar({
         <button
           type="button"
           onClick={() => toggleFilter('ignorePunctuation')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border ${
+          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-semibold transition-all border ${
             filters.ignorePunctuation
               ? 'bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border-[#FF5E1E]/40 text-[#FF5E1E] shadow-xs scale-[1.01]'
               : 'bg-white dark:bg-slate-800/80 border-slate-200/70 dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
@@ -191,7 +191,7 @@ export default function NoiseFiltersBar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px]">Ignore Punctuation</p>
-            <p className="text-[9px] font-semibold opacity-70 truncate">.,;:!?'""</p>
+            <p className="text-[9px] font-medium opacity-70 truncate">.,;:!?'""</p>
           </div>
           {filters.ignorePunctuation && <Check className="w-3 h-3 text-[#FF5E1E] shrink-0" />}
         </button>
@@ -200,7 +200,7 @@ export default function NoiseFiltersBar({
         <button
           type="button"
           onClick={() => toggleFilter('ignoreWhitespace')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border ${
+          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-semibold transition-all border ${
             filters.ignoreWhitespace
               ? 'bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border-[#FF5E1E]/40 text-[#FF5E1E] shadow-xs scale-[1.01]'
               : 'bg-white dark:bg-slate-800/80 border-slate-200/70 dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
@@ -212,7 +212,7 @@ export default function NoiseFiltersBar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px]">Normalize Spaces</p>
-            <p className="text-[9px] font-semibold opacity-70 truncate">
+            <p className="text-[9px] font-medium opacity-70 truncate">
               {filters.ignoreWhitespace ? 'Spaces ignored' : 'Spaces matter (OFF)'}
             </p>
           </div>
@@ -223,7 +223,7 @@ export default function NoiseFiltersBar({
         <button
           type="button"
           onClick={() => toggleFilter('ignoreNumbers')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border ${
+          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-semibold transition-all border ${
             filters.ignoreNumbers
               ? 'bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border-[#FF5E1E]/40 text-[#FF5E1E] shadow-xs scale-[1.01]'
               : 'bg-white dark:bg-slate-800/80 border-slate-200/70 dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
@@ -235,7 +235,7 @@ export default function NoiseFiltersBar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px]">Ignore Numbers</p>
-            <p className="text-[9px] font-semibold opacity-70 truncate">$10 vs $20</p>
+            <p className="text-[9px] font-medium opacity-70 truncate">$10 vs $20</p>
           </div>
           {filters.ignoreNumbers && <Check className="w-3 h-3 text-[#FF5E1E] shrink-0" />}
         </button>
@@ -244,7 +244,7 @@ export default function NoiseFiltersBar({
         <button
           type="button"
           onClick={() => toggleFilter('trimLines')}
-          className={`col-span-2 sm:col-span-1 flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-bold transition-all border ${
+          className={`col-span-2 sm:col-span-1 flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs font-semibold transition-all border ${
             filters.trimLines
               ? 'bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border-[#FF5E1E]/40 text-[#FF5E1E] shadow-xs scale-[1.01]'
               : 'bg-white dark:bg-slate-800/80 border-slate-200/70 dark:border-white/[0.06] text-slate-600 dark:text-slate-300 hover:border-slate-300 hover:text-slate-900'
@@ -256,7 +256,7 @@ export default function NoiseFiltersBar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px]">Trim Lines</p>
-            <p className="text-[9px] font-semibold opacity-70 truncate">Line padding</p>
+            <p className="text-[9px] font-medium opacity-70 truncate">Line padding</p>
           </div>
           {filters.trimLines && <Check className="w-3 h-3 text-[#FF5E1E] shrink-0" />}
         </button>
