@@ -20,6 +20,7 @@ import {
   saveCloudSession,
   getCloudSessions
 } from './authService.js';
+import { createShareReport, getShareReport } from './shareService.js';
 
 dotenv.config();
 
@@ -456,6 +457,69 @@ app.get('/api/user/cloud-history', requireAuth, (req, res) => {
     res.json({ success: true, records });
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve cloud history.' });
+  }
+});
+
+/**
+ * POST /api/share
+ * Generates an encrypted/short shareable public link for a comparison report
+ */
+app.post('/api/share', (req, res) => {
+  try {
+    const { comparisonData, title } = req.body;
+    if (!comparisonData) {
+      return res.status(400).json({ success: false, error: 'Missing comparisonData in request.' });
+    }
+
+    // Optional user ID from token if present
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const decoded = verifyToken(authHeader.split(' ')[1]);
+      if (decoded) userId = decoded.userId;
+    }
+
+    const share = createShareReport(comparisonData, { title, userId });
+    res.json({
+      success: true,
+      shareId: share.shareId,
+      shareUrl: `/share/${share.shareId}`,
+      expiresAt: share.expiresAt,
+      title: share.title
+    });
+  } catch (err) {
+    console.error('[API Error /api/share]:', err);
+    res.status(500).json({ success: false, error: err.message || 'Failed to create share link.' });
+  }
+});
+
+/**
+ * GET /api/share/:id
+ * Fetches a shared report for public read-only viewing
+ */
+app.get('/api/share/:id', (req, res) => {
+  try {
+    const share = getShareReport(req.params.id);
+    if (!share) {
+      return res.status(404).json({
+        success: false,
+        error: 'This shared report does not exist or has expired after 7 days.'
+      });
+    }
+
+    res.json({
+      success: true,
+      share: {
+        shareId: share.shareId,
+        createdAt: share.createdAt,
+        expiresAt: share.expiresAt,
+        title: share.title,
+        comparisonData: share.comparisonData
+      }
+    });
+  } catch (err) {
+    console.error('[API Error /api/share/:id]:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve shared report.' });
   }
 });
 

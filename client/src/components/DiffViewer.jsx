@@ -46,7 +46,8 @@ export default function DiffViewer({
   onDecisionsChange,
   spreadsheetDiff,
   currentUser = null,
-  onRequestAuth = null
+  onRequestAuth = null,
+  readOnly = false
 }) {
   const hasSpreadsheet = Boolean(spreadsheetDiff && spreadsheetDiff.length > 0);
   const [viewMode, setViewMode] = useState(() => (hasSpreadsheet ? 'spreadsheet' : 'sideBySide'));

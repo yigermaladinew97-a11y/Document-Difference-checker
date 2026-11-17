@@ -14,6 +14,8 @@ import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
 import BatchDropzone from './components/BatchDropzone';
 import BatchDashboard from './components/BatchDashboard';
+import ShareModal from './components/ShareModal';
+import SharedReportView from './components/SharedReportView';
 import { saveComparisonSession, getAllSessions, updateSessionDecisions } from './utils/historyStorage';
 import { getCurrentUser, clearAuthSession, syncCloudSession, fetchCurrentProfile } from './utils/authClient';
 import {
@@ -31,7 +33,8 @@ import {
   SlidersHorizontal,
   FolderUp,
   Files,
-  ArrowLeft
+  ArrowLeft,
+  Share2
 } from 'lucide-react';
 
 const SAMPLES = {
@@ -122,6 +125,22 @@ export default function App() {
   const [inspectedPair, setInspectedPair] = useState(null);
   const [isBatchComparing, setIsBatchComparing] = useState(false);
   const [batchProgress, setBatchProgress] = useState(null);
+
+  // 1-Click Public Share state & Route detection
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareToOpen, setShareToOpen] = useState(null);
+  const [activeShareId, setActiveShareId] = useState(() => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/share\/([a-zA-Z0-9]+)/);
+    if (match) return match[1];
+    const searchParams = new URLSearchParams(window.location.search);
+    return searchParams.get('share');
+  });
+
+  const handleExitSharedView = () => {
+    setActiveShareId(null);
+    window.history.pushState({}, '', '/');
+  };
 
   // Smart Noise Filtering options
   const [filters, setFilters] = useState({
@@ -466,8 +485,21 @@ export default function App() {
         historyCount={historySessions.length}
       />
 
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => { setIsShareModalOpen(false); setShareToOpen(null); }}
+        comparisonData={shareToOpen || comparisonResult}
+      />
+
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12 relative z-10">
-        {/* Hero Section (Matching Cambased Display Style) */}
+        {activeShareId ? (
+          <SharedReportView
+            shareId={activeShareId}
+            onExitSharedView={handleExitSharedView}
+          />
+        ) : (
+          <>
+            {/* Hero Section (Matching Cambased Display Style) */}
         <div className="max-w-4xl mx-auto text-center space-y-5">
           <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border border-[#FFD6C4] dark:border-[#FF5E1E]/30 text-xs font-bold text-[#FF5E1E] shadow-sm hover:scale-105 transition-transform cursor-default">
             <span className="w-2 h-2 rounded-full bg-[#FF5E1E] animate-ping" />
@@ -585,14 +617,26 @@ export default function App() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
-                    <span>Compare Another Pair</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShareToOpen(comparisonResult); setIsShareModalOpen(true); }}
+                      className="group flex items-center space-x-1.5 px-4 py-2 rounded-full bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 hover:bg-[#FF5E1E]/25 border border-[#FF5E1E]/30 text-xs font-semibold text-[#FF5E1E] shadow-xs transition hover:scale-105 active:scale-95 cursor-pointer"
+                      title="Generate public shareable link for clients &amp; teammates"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="group flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-[#FF5E1E] group-hover:rotate-180 transition-transform duration-500" />
+                      <span>Compare Another Pair</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Real-time Smart Noise Filters on Results Screen */}
@@ -684,13 +728,25 @@ export default function App() {
                     <span>Back to Batch Dashboard</span>
                   </button>
 
-                  <div className="text-left sm:text-right">
-                    <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-                      Drill-Down Inspection
-                    </span>
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
-                      {inspectedPair.meta.docA.filename} &bull; {inspectedPair.meta.docB.filename}
-                    </span>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => { setShareToOpen(inspectedPair); setIsShareModalOpen(true); }}
+                      className="flex items-center space-x-1.5 px-3.5 py-2 rounded-full bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 hover:bg-[#FF5E1E]/25 border border-[#FF5E1E]/30 text-xs font-semibold text-[#FF5E1E] shadow-xs transition hover:scale-105 active:scale-95"
+                      title="Share this specific pair"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Share Pair</span>
+                    </button>
+
+                    <div className="text-left sm:text-right">
+                      <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
+                        Drill-Down Inspection
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        {inspectedPair.meta.docA.filename} &bull; {inspectedPair.meta.docB.filename}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -760,6 +816,8 @@ export default function App() {
               />
             )}
           </div>
+        )}
+          </>
         )}
       </main>
 
