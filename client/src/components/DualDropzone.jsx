@@ -428,37 +428,61 @@ export default function DualDropzone({
       )}
 
       {/* Main Compare Action with Animated Glow & Ripple */}
-      <div className="flex flex-col items-center justify-center pt-3 space-y-3 px-2 sm:px-0">
-        <button
-          type="button"
-          onClick={() => onCompare && onCompare()}
-          disabled={!isReady || isComparing}
-          className={`group relative inline-flex items-center justify-center space-x-3 sm:space-x-4 px-6 sm:px-9 py-3.5 sm:py-4 rounded-full font-bold text-xs sm:text-sm transition-all duration-300 overflow-hidden w-full sm:w-auto ${
-            isReady && !isComparing
-              ? 'bg-[#FF5E1E] hover:bg-[#E04A0E] text-white hover:scale-105 active:scale-95 shadow-orange-soft hover:shadow-orange-glow cursor-pointer'
-              : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none'
-          }`}
-        >
-          {/* Subtle Light Shimmer Sweep */}
+      <div className="flex flex-col items-center justify-center pt-5 pb-2 space-y-3 px-2 sm:px-0">
+        <div className="relative group inline-flex w-full sm:w-auto justify-center">
+          {/* Luminous Pulsing Glow Aura behind the button */}
           {isReady && !isComparing && (
-            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#FF5E1E] via-[#FF8A50] to-[#FF4500] opacity-60 blur-xl group-hover:opacity-100 transition-all duration-500 group-hover:duration-200 animate-pulse pointer-events-none" />
           )}
 
-          {isComparing ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Comparing...</span>
-            </>
-          ) : (
-            <>
-              <Zap className="w-4 h-4 text-white group-hover:rotate-12 transition-transform" />
-              <span>Compare</span>
-              <span className="w-8 h-8 rounded-full bg-white text-[#FF5E1E] flex items-center justify-center shadow-md group-hover:translate-x-1.5 transition-transform duration-200">
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              </span>
-            </>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={() => onCompare && onCompare()}
+            disabled={!isReady || isComparing}
+            className={`relative inline-flex items-center justify-center space-x-3.5 sm:space-x-5 px-7 sm:px-11 py-3.5 sm:py-4.5 rounded-full font-black transition-all duration-300 overflow-hidden w-full sm:w-auto shadow-2xl ${
+              isReady && !isComparing
+                ? 'bg-gradient-to-r from-[#FF5E1E] via-[#FF6D2C] to-[#FF4500] hover:from-[#FF4500] hover:to-[#FF5E1E] text-white hover:scale-[1.03] active:scale-[0.97] border-t border-white/25 cursor-pointer shadow-[#FF5E1E]/35'
+                : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none border-transparent'
+            }`}
+          >
+            {/* Prismatic Light Shimmer Sweep on Hover */}
+            {isReady && !isComparing && (
+              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+            )}
+
+            {isComparing ? (
+              <div className="flex items-center space-x-3 py-1">
+                <div className="w-6 h-6 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="text-base sm:text-lg tracking-wide font-black">Comparing...</span>
+              </div>
+            ) : (
+              <>
+                {/* Left Creative Glow Pill Icon */}
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 ${
+                  isReady 
+                    ? 'bg-white/20 backdrop-blur-md text-amber-200 group-hover:scale-110 group-hover:rotate-12 border border-white/25 shadow-inner'
+                    : 'bg-slate-300/40 text-slate-400'
+                }`}>
+                  <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                </div>
+
+                {/* Big Beautiful Creative Typography */}
+                <span className="text-base sm:text-lg tracking-wider font-black text-white drop-shadow-sm select-none">
+                  Compare
+                </span>
+
+                {/* Right Interactive Action Disc */}
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-md shrink-0 ${
+                  isReady
+                    ? 'bg-white text-[#FF5E1E] group-hover:scale-110 group-hover:translate-x-1 group-hover:shadow-lg'
+                    : 'bg-slate-300 dark:bg-slate-700 text-slate-400'
+                }`}>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                </div>
+              </>
+            )}
+          </button>
+        </div>
 
         {!isReady ? (
           <p className="text-xs text-slate-400 font-medium">
