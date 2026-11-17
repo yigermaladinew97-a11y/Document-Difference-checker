@@ -447,12 +447,12 @@ export default function DualDropzone({
           {isComparing ? (
             <>
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Comparing documents & finding what changed...</span>
+              <span>Comparing...</span>
             </>
           ) : (
             <>
               <Zap className="w-4 h-4 text-white group-hover:rotate-12 transition-transform" />
-              <span>Compare Both Documents Now</span>
+              <span>Compare</span>
               <span className="w-8 h-8 rounded-full bg-white text-[#FF5E1E] flex items-center justify-center shadow-md group-hover:translate-x-1.5 transition-transform duration-200">
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </span>
