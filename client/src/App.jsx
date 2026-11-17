@@ -489,13 +489,7 @@ export default function App() {
               />
             </div>
 
-            {/* 1. What Changed? (Plain English Summary First for Maximum Clarity) */}
-            <ExecutiveSummary
-              contextAnalysis={comparisonResult.contextAnalysis}
-              summary={comparisonResult.summary}
-            />
-
-            {/* 2. Visual Match Scoreboard & Metrics */}
+            {/* 1. Visual Match Scoreboard & Percentage Gauges (First immediately after running) */}
             <Scoreboard
               metrics={comparisonResult.metrics}
               stats={comparisonResult.stats}
@@ -503,6 +497,12 @@ export default function App() {
               meta={comparisonResult.meta}
               filters={comparisonResult.filters || filters}
               onExportPdf={() => setIsPdfModalOpen(true)}
+            />
+
+            {/* 2. What Changed? (Detailed Plain-English Explanation) */}
+            <ExecutiveSummary
+              contextAnalysis={comparisonResult.contextAnalysis}
+              summary={comparisonResult.summary}
             />
 
             {/* 3. Section / Page / Slide Breakdown */}
