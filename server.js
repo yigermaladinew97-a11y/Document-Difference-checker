@@ -532,7 +532,13 @@ app.get('*', (req, res) => {
   });
 });
 
-export const server = app.listen(PORT, () => {
-  console.log(`\n🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`📡 Compare API ready at POST http://localhost:${PORT}/api/compare`);
-});
+let server;
+if (!process.env.VERCEL) {
+  server = app.listen(PORT, () => {
+    console.log(`\n🚀 Server is running on http://localhost:${PORT}`);
+    console.log(`📡 Compare API ready at POST http://localhost:${PORT}/api/compare`);
+  });
+}
+
+export { server };
+export default app;
