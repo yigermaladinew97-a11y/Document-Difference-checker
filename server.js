@@ -4,6 +4,7 @@ if (typeof globalThis.Iterator === 'undefined') {
 }
 
 import express from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
@@ -35,13 +36,27 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Enable high-performance HTTP compression (reduces payload sizes by up to 80%)
+app.use(compression());
+
 // Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve frontend static assets from public/ directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve frontend static assets with aggressive caching for hashed assets
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1y',
+  immutable: true,
+  setHeaders: (res, filePath) => {
+    // Never cache index.html so frontend updates are fetched immediately
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // Configure Multer for in-memory file handling (up to 50MB per file)
 const storage = multer.memoryStorage();
@@ -542,6 +557,22 @@ if (!process.env.VERCEL) {
   server = app.listen(PORT, () => {
     console.log(`\n🚀 Server is running on http://localhost:${PORT}`);
     console.log(`📡 Compare API ready at POST http://localhost:${PORT}/api/compare`);
+
+    // Keep-Alive Self-Pinger for Render Free Tier
+    // Automatically pings /api/health every 13 minutes to prevent the service from sleeping
+    const externalUrl = process.env.RENDER_EXTERNAL_URL;
+    if (externalUrl) {
+      console.log(`⏱️ Keep-Alive service active for: ${externalUrl}`);
+      const pingUrl = `${externalUrl.replace(/\/+$/, '')}/api/health`;
+      setInterval(async () => {
+        try {
+          const pingRes = await fetch(pingUrl);
+          console.log(`[Keep-Alive Ping] Status: ${pingRes.status} at ${new Date().toISOString()}`);
+        } catch (pingErr) {
+          console.warn('[Keep-Alive Ping] Failed to ping:', pingErr.message);
+        }
+      }, 13 * 60 * 1000); // Every 13 minutes (Render free tier sleeps at 15m)
+    }
   });
 }
 

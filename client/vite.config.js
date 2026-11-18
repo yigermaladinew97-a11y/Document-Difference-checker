@@ -7,6 +7,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../public'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-docx': ['docx'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-confetti': ['canvas-confetti'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
   },
   server: {
     port: 5173,

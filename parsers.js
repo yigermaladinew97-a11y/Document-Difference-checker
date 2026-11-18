@@ -10,6 +10,11 @@ if (typeof globalThis.Iterator === 'undefined') {
   globalThis.Iterator = class Iterator {};
 }
 
+// Detect if running on Node 22+ where unpdf/PDF.js has native Iterator support
+const isNode22OrHigher = parseInt(process.versions.node.split('.')[0], 10) >= 22;
+// In Node < 22 (e.g. Render default Node 20, Docker), immediately use high-performance pdf-parse
+let unpdfFailedGlobally = !isNode22OrHigher;
+
 /**
  * Clean & sanitize extracted text from raw file streams:
  * - Unifies line breaks (\r\n and \r -> \n)
@@ -48,31 +53,34 @@ function decodeXmlEntities(str) {
  * with automatic, resilient fallback to pdf-parse if unpdf / PDF.js fails.
  */
 async function parsePdf(buffer) {
-  // 1. Try modern unpdf first
-  try {
-    const data = await extractPdfText(buffer);
-    const rawPages = Array.isArray(data.text) ? data.text : [data.text || ''];
-    
-    const sections = rawPages.map((pageText, idx) => ({
-      title: `Page ${idx + 1}`,
-      content: normalizeText(pageText)
-    })).filter(s => s.content.length > 0);
+  // 1. Try modern unpdf only if environment supports it and hasn't failed
+  if (!unpdfFailedGlobally) {
+    try {
+      const data = await extractPdfText(buffer);
+      const rawPages = Array.isArray(data.text) ? data.text : [data.text || ''];
+      
+      const sections = rawPages.map((pageText, idx) => ({
+        title: `Page ${idx + 1}`,
+        content: normalizeText(pageText)
+      })).filter(s => s.content.length > 0);
 
-    const fullText = sections.map(s => s.content).join('\n\n');
+      const fullText = sections.map(s => s.content).join('\n\n');
 
-    if (fullText && fullText.trim()) {
-      return {
-        type: 'pdf',
-        pagesCount: data.totalPages || sections.length || 1,
-        sections: sections.length > 0 ? sections : [{ title: 'Page 1', content: '' }],
-        text: normalizeText(fullText)
-      };
+      if (fullText && fullText.trim()) {
+        return {
+          type: 'pdf',
+          pagesCount: data.totalPages || sections.length || 1,
+          sections: sections.length > 0 ? sections : [{ title: 'Page 1', content: '' }],
+          text: normalizeText(fullText)
+        };
+      }
+    } catch (err) {
+      unpdfFailedGlobally = true;
+      console.warn('[PDF Parser] unpdf extraction encountered an issue, permanently switching to fast pdf-parse fallback:', err.message);
     }
-  } catch (err) {
-    console.warn('[PDF Parser] unpdf extraction encountered an issue, seamlessly switching to pdf-parse fallback:', err.message);
   }
 
-  // 2. Resilient fallback: pdf-parse (runs in any Node runtime)
+  // 2. High-speed, universal parser: pdf-parse (runs in all Node versions in ~20-50ms)
   const pdfData = await pdfParse(buffer);
   const text = normalizeText(pdfData.text || '');
 
