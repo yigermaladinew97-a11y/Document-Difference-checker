@@ -1,3 +1,8 @@
+// Polyfill globalThis.Iterator for Node runtimes < 22 where PDF.js expects it
+if (typeof globalThis.Iterator === 'undefined') {
+  globalThis.Iterator = class Iterator {};
+}
+
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';

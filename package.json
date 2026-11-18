@@ -4,6 +4,9 @@
   "description": "Multi-format document comparison system with word-level diff, contextual analysis, and beautiful UI",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "build": "npm --prefix client install && npm --prefix client run build",

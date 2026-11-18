@@ -1,8 +1,14 @@
 import path from 'path';
 import { extractText as extractPdfText } from 'unpdf';
+import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import AdmZip from 'adm-zip';
+
+// Polyfill globalThis.Iterator for Node runtimes (< v22) where PDF.js expects it
+if (typeof globalThis.Iterator === 'undefined') {
+  globalThis.Iterator = class Iterator {};
+}
 
 /**
  * Clean & sanitize extracted text from raw file streams:
@@ -39,23 +45,52 @@ function decodeXmlEntities(str) {
 
 /**
  * Extract text from PDF buffer using modern unpdf (per-page extraction)
+ * with automatic, resilient fallback to pdf-parse if unpdf / PDF.js fails.
  */
 async function parsePdf(buffer) {
-  const data = await extractPdfText(buffer);
-  const rawPages = Array.isArray(data.text) ? data.text : [data.text || ''];
-  
-  const sections = rawPages.map((pageText, idx) => ({
+  // 1. Try modern unpdf first
+  try {
+    const data = await extractPdfText(buffer);
+    const rawPages = Array.isArray(data.text) ? data.text : [data.text || ''];
+    
+    const sections = rawPages.map((pageText, idx) => ({
+      title: `Page ${idx + 1}`,
+      content: normalizeText(pageText)
+    })).filter(s => s.content.length > 0);
+
+    const fullText = sections.map(s => s.content).join('\n\n');
+
+    if (fullText && fullText.trim()) {
+      return {
+        type: 'pdf',
+        pagesCount: data.totalPages || sections.length || 1,
+        sections: sections.length > 0 ? sections : [{ title: 'Page 1', content: '' }],
+        text: normalizeText(fullText)
+      };
+    }
+  } catch (err) {
+    console.warn('[PDF Parser] unpdf extraction encountered an issue, seamlessly switching to pdf-parse fallback:', err.message);
+  }
+
+  // 2. Resilient fallback: pdf-parse (runs in any Node runtime)
+  const pdfData = await pdfParse(buffer);
+  const text = normalizeText(pdfData.text || '');
+
+  // Split by form feeds or generate page sections
+  const pageChunks = text.split(/\f+/).map((p, idx) => ({
     title: `Page ${idx + 1}`,
-    content: normalizeText(pageText)
+    content: normalizeText(p)
   })).filter(s => s.content.length > 0);
 
-  const fullText = sections.map(s => s.content).join('\n\n');
+  const sections = pageChunks.length > 0
+    ? pageChunks
+    : [{ title: 'Page 1', content: text }];
 
   return {
     type: 'pdf',
-    pagesCount: data.totalPages || sections.length,
-    sections: sections.length > 0 ? sections : [{ title: 'Page 1', content: '' }],
-    text: normalizeText(fullText)
+    pagesCount: pdfData.numpages || sections.length || 1,
+    sections,
+    text
   };
 }
 
