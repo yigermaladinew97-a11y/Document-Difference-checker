@@ -10,7 +10,12 @@ const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const CLOUD_HISTORY_FILE = path.join(DATA_DIR, 'cloud_history.json');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'docdiff_super_secret_signing_key_2026';
+const configuredJwtSecret = process.env.JWT_SECRET;
+if (process.env.NODE_ENV === 'production' && (!configuredJwtSecret || configuredJwtSecret.length < 32)) {
+  throw new Error('JWT_SECRET must be set to a random value of at least 32 characters in production.');
+}
+// Keep local development convenient without shipping a predictable production key.
+const JWT_SECRET = configuredJwtSecret || crypto.randomBytes(32).toString('hex');
 
 // Ensure data directory and files exist
 if (!fs.existsSync(DATA_DIR)) {

@@ -122,4 +122,6 @@ Document-Difference-checker/
 
 ## 🔒 Privacy & Security
 
-All document comparisons and text extractions are processed **100% in-memory**. No uploaded files are ever saved to disk or permanent databases, and user API keys are stored only in the browser's local storage.
+Uploaded comparison files are handled in memory and are not written to the server's document directory. Comparison history is stored in the browser's IndexedDB; when a user signs in, cloud history is also written to `data/cloud_history.json`. Creating a share link stores the full comparison result in `data/shares/` and makes it publicly readable by anyone with the link for seven days. Do not share reports containing sensitive material.
+
+In production, set `JWT_SECRET` to a unique random secret of at least 32 characters. The server refuses to start without it. For cross-origin browser clients, set `CORS_ORIGINS` to a comma-separated list of exact trusted origins; same-origin deployments can leave it empty. The Google sign-in UI and endpoint are disabled until verified OAuth credentials are implemented; browser-submitted profile details are not authentication.

@@ -18,7 +18,6 @@ import { generateAnnotatedExcel } from './excelExporter.js';
 import {
   createUser,
   authenticateUser,
-  authenticateGoogleUser,
   updateUserProfile,
   generateSvgAvatar,
   getUserById,
@@ -39,8 +38,19 @@ const PORT = process.env.PORT || 3000;
 // Enable high-performance HTTP compression (reduces payload sizes by up to 80%)
 app.use(compression());
 
-// Enable CORS and JSON parsing
-app.use(cors());
+// Same-origin requests do not need CORS. Cross-origin clients must be listed explicitly.
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean)
+);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error('Origin is not allowed by CORS.'));
+  }
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -425,15 +435,9 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Auth: 1-Click Google Sign-In
-app.post('/api/auth/google', async (req, res) => {
-  try {
-    const { email, name, avatar } = req.body;
-    const result = await authenticateGoogleUser({ email, name, avatar });
-    res.json({ success: true, ...result });
-  } catch (err) {
-    res.status(400).json({ error: err.message || 'Google authentication failed.' });
-  }
+// Never trust profile data submitted by a browser as proof of Google identity.
+app.post('/api/auth/google', (req, res) => {
+  res.status(501).json({ error: 'Google sign-in is unavailable until verified OAuth is configured.' });
 });
 
 // Auth: Current User Profile
