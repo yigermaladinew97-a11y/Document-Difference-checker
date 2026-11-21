@@ -121,8 +121,41 @@ function build2FAEmailHtml({ name = 'User', code, email }) {
  */
 export async function send2FACodeEmail({ email, code, name = 'User' }) {
   const cleanEmail = (email || '').trim().toLowerCase();
-  const transporter = getTransporter();
 
+  // 1. Try Resend API if RESEND_API_KEY is configured (Easiest, 1-click cloud email service)
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey && resendApiKey.trim()) {
+    try {
+      const from = process.env.EMAIL_FROM || 'DocDiff Security <onboarding@resend.dev>';
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from,
+          to: [cleanEmail],
+          subject: `Your DocDiff Verification Code: ${code}`,
+          text: `Your DocDiff 2FA verification code is: ${code}. It expires in 10 minutes.`,
+          html: build2FAEmailHtml({ name, code, email: cleanEmail })
+        })
+      });
+
+      const resData = await res.json();
+      if (res.ok && resData.id) {
+        console.log(`[2FA Email Service] ✅ Real email delivered via Resend to ${cleanEmail} (ID: ${resData.id})`);
+        return { success: true, simulated: false, messageId: resData.id };
+      } else {
+        console.warn(`[2FA Email Service] Resend API responded with error:`, resData);
+      }
+    } catch (err) {
+      console.warn(`[2FA Email Service] Resend API call failed (${err.message}). Trying SMTP fallback...`);
+    }
+  }
+
+  // 2. Try SMTP via Nodemailer if configured
+  const transporter = getTransporter();
   if (transporter) {
     try {
       const from = process.env.EMAIL_FROM || '"DocDiff Security" <security@docdiff.io>';
