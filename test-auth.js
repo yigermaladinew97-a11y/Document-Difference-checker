@@ -37,10 +37,24 @@ async function testAuthEngine() {
     throw new Error('Token payload mismatch!');
   }
 
-  // Test 3: Duplicate Email Check
-  console.log('\n[3/6] Testing Duplicate Email Prevention...');
+  // Test 3: Duplicate Email Check & Validation Rules
+  console.log('\n[3/6] Testing Input Validation & Duplicate Email Prevention...');
   try {
-    await createUser({ name: 'Duplicate User', email: testEmail, password: 'password123' });
+    await createUser({ name: 'Invalid Email User', email: 'not-an-email', password: 'SecurePassword2026!' });
+    throw new Error('Expected invalid email error to be thrown!');
+  } catch (err) {
+    console.log(`✓ Invalid email correctly rejected: "${err.message}"`);
+  }
+
+  try {
+    await createUser({ name: 'Weak Pwd User', email: `valid_${Date.now()}@test.com`, password: 'weak' });
+    throw new Error('Expected weak password error to be thrown!');
+  } catch (err) {
+    console.log(`✓ Weak password correctly rejected: "${err.message}"`);
+  }
+
+  try {
+    await createUser({ name: 'Duplicate User', email: testEmail, password: 'SecurePassword2026!' });
     throw new Error('Expected duplicate email error to be thrown!');
   } catch (err) {
     console.log(`✓ Duplicate email correctly rejected: "${err.message}"`);

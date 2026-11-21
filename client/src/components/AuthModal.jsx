@@ -1,7 +1,56 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Lock, Mail, User, Eye, EyeOff, CheckCircle2, Shield, ArrowRight, ArrowLeft, RefreshCw, Sparkles, Upload, Trash2 } from 'lucide-react';
+import { X, Lock, Mail, User, Eye, EyeOff, CheckCircle2, Shield, ArrowRight, ArrowLeft, RefreshCw, Sparkles, Upload, Trash2, Check, AlertCircle } from 'lucide-react';
 import { loginWithEmail, signupWithEmail, verify2FACode, resend2FACode } from '../utils/authClient';
 import UserAvatar from './UserAvatar';
+
+export function isValidEmail(val) {
+  if (!val || typeof val !== 'string') return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val.trim());
+}
+
+export function evaluatePasswordStrength(pwd) {
+  const p = pwd || '';
+  const checks = {
+    minLength: p.length >= 8,
+    hasUpper: /[A-Z]/.test(p),
+    hasLower: /[a-z]/.test(p),
+    hasNumberOrSpecial: /[0-9]|[^A-Za-z0-9]/.test(p)
+  };
+  const passedCount = Object.values(checks).filter(Boolean).length;
+
+  let label = '';
+  let color = 'bg-slate-200 dark:bg-slate-700';
+  let textColor = 'text-slate-400';
+
+  if (p.length === 0) {
+    label = '';
+  } else if (passedCount <= 1) {
+    label = 'Weak';
+    color = 'bg-rose-500';
+    textColor = 'text-rose-500';
+  } else if (passedCount === 2) {
+    label = 'Fair';
+    color = 'bg-amber-500';
+    textColor = 'text-amber-500';
+  } else if (passedCount === 3) {
+    label = 'Good';
+    color = 'bg-blue-500';
+    textColor = 'text-blue-500';
+  } else {
+    label = 'Strong';
+    color = 'bg-emerald-500';
+    textColor = 'text-emerald-500';
+  }
+
+  return {
+    checks,
+    passedCount,
+    isStrong: passedCount === 4,
+    label,
+    color,
+    textColor
+  };
+}
 
 export default function AuthModal({
   isOpen,
@@ -20,6 +69,18 @@ export default function AuthModal({
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  // Validation & Security Evaluations
+  const isEmailValid = isValidEmail(email);
+  const showEmailError = emailTouched && email.trim().length > 0 && !isEmailValid;
+  const pwdStrength = evaluatePasswordStrength(password);
+  const isSubmitDisabled =
+    isLoading ||
+    (mode === 'signup'
+      ? !name.trim() || !isEmailValid || !pwdStrength.isStrong
+      : !isEmailValid || !password);
 
   // 2FA State
   const [isTwoFactorStep, setIsTwoFactorStep] = useState(false);
@@ -86,6 +147,30 @@ export default function AuthModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setEmailTouched(true);
+    setPasswordTouched(true);
+
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address (e.g. name@company.com).');
+      return;
+    }
+
+    if (mode === 'signup') {
+      if (!name.trim()) {
+        setError('Please enter your full name.');
+        return;
+      }
+      if (!pwdStrength.isStrong) {
+        setError('Please ensure your password meets all 4 security criteria.');
+        return;
+      }
+    } else {
+      if (!password) {
+        setError('Please enter your password.');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
@@ -393,7 +478,12 @@ export default function AuthModal({
             <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200/60 dark:border-white/[0.06] text-xs font-bold">
               <button
                 type="button"
-                onClick={() => { setMode('login'); setError(null); }}
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setEmailTouched(false);
+                  setPasswordTouched(false);
+                }}
                 className={`flex-1 py-1.5 rounded-xl transition ${
                   mode === 'login'
                     ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
@@ -404,7 +494,12 @@ export default function AuthModal({
               </button>
               <button
                 type="button"
-                onClick={() => { setMode('signup'); setError(null); }}
+                onClick={() => {
+                  setMode('signup');
+                  setError(null);
+                  setEmailTouched(false);
+                  setPasswordTouched(false);
+                }}
                 className={`flex-1 py-1.5 rounded-xl transition ${
                   mode === 'signup'
                     ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
@@ -422,7 +517,11 @@ export default function AuthModal({
                 {mode === 'login' && error.toLowerCase().includes('create account') && (
                   <button
                     type="button"
-                    onClick={() => { setMode('signup'); setError(null); }}
+                    onClick={() => {
+                      setMode('signup');
+                      setError(null);
+                      if (email) setEmailTouched(true);
+                    }}
                     className="inline-flex items-center space-x-1 font-bold text-[#FF5E1E] hover:underline text-[11px]"
                   >
                     <span>👉 Switch to "Create Account" with this email</span>
@@ -501,25 +600,57 @@ export default function AuthModal({
               )}
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Email Address
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    Email Address
+                  </label>
+                  {isEmailValid && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center space-x-1 animate-in fade-in">
+                      <Check className="w-3 h-3" />
+                      <span>Valid email</span>
+                    </span>
+                  )}
+                </div>
                 <div className="relative">
                   <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (!emailTouched && e.target.value.length > 5) {
+                        setEmailTouched(true);
+                      }
+                      setError(null);
+                    }}
+                    onBlur={() => {
+                      if (email.trim().length > 0) setEmailTouched(true);
+                    }}
                     placeholder="name@company.com"
-                    className="w-full pl-9 pr-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30"
+                    className={`w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-900 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition ${
+                      showEmailError
+                        ? 'border-rose-400 dark:border-rose-500/80 focus:ring-2 focus:ring-rose-500/20'
+                        : isEmailValid
+                        ? 'border-emerald-400 dark:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20'
+                        : 'border-slate-200 dark:border-white/[0.08] focus:ring-2 focus:ring-[#FF5E1E]/30'
+                    }`}
                   />
+                  {isEmailValid && (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2 animate-in zoom-in-50 duration-150" />
+                  )}
                 </div>
+                {showEmailError && (
+                  <div className="flex items-center space-x-1.5 mt-1.5 text-[11px] text-rose-500 font-medium animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Please enter a valid email address (e.g. name@domain.com)</span>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Password {mode === 'signup' && <span className="text-slate-400 font-normal">(6+ characters)</span>}
+                  Password {mode === 'signup' && <span className="text-slate-400 font-normal">(8+ characters, strong)</span>}
                 </label>
                 <div className="relative">
                   <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -527,9 +658,19 @@ export default function AuthModal({
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30"
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordTouched(true);
+                      setError(null);
+                    }}
+                    placeholder={mode === 'signup' ? 'Create a strong password' : '••••••••'}
+                    className={`w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-900 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition ${
+                      mode === 'signup' && password.length > 0
+                        ? pwdStrength.isStrong
+                          ? 'border-emerald-400 dark:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20'
+                          : 'border-amber-400 dark:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/[0.08] focus:ring-2 focus:ring-[#FF5E1E]/30'
+                    }`}
                   />
                   <button
                     type="button"
@@ -539,12 +680,75 @@ export default function AuthModal({
                     {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
+
+                {/* Password Strength Meter & Interactive Checklist (Sign Up Mode only) */}
+                {mode === 'signup' && (
+                  <div className="space-y-2 mt-2 pt-1">
+                    {/* Visual Strength Meter Bar */}
+                    {password.length > 0 && (
+                      <div className="space-y-1 animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-slate-500 dark:text-slate-400">Security rating:</span>
+                          <span className={`font-bold ${pwdStrength.textColor}`}>
+                            {pwdStrength.label}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          {[1, 2, 3, 4].map((step) => (
+                            <div
+                              key={step}
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                step <= pwdStrength.passedCount ? pwdStrength.color : 'bg-transparent'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 4 Interactive Security Criteria */}
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10.5px]">
+                      <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.minLength ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
+                        {pwdStrength.checks.minLength ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />
+                        )}
+                        <span>8+ characters</span>
+                      </div>
+                      <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.hasUpper ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
+                        {pwdStrength.checks.hasUpper ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />
+                        )}
+                        <span>Uppercase (A-Z)</span>
+                      </div>
+                      <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.hasLower ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
+                        {pwdStrength.checks.hasLower ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />
+                        )}
+                        <span>Lowercase (a-z)</span>
+                      </div>
+                      <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.hasNumberOrSpecial ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
+                        {pwdStrength.checks.hasNumberOrSpecial ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />
+                        )}
+                        <span>Number or symbol</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 flex items-center justify-center space-x-2"
+                disabled={isSubmitDisabled}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center space-x-2"
               >
                 <span>{isLoading ? 'Processing...' : mode === 'signup' ? 'Continue with 2FA' : 'Sign In with 2FA'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />

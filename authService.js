@@ -175,17 +175,26 @@ export async function createUser({ name, email, password, avatar, title, organiz
   const users = readUsers();
   const cleanEmail = (email || '').trim().toLowerCase();
 
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    throw new Error('Please enter a valid email address.');
-  }
-
-  if (password && password.length < 6) {
-    throw new Error('Password must be at least 6 characters long.');
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    throw new Error('Please enter a valid email address (e.g. name@domain.com).');
   }
 
   const existing = users.find(u => u.email === cleanEmail);
   if (existing) {
     throw new Error('An account with this email address already exists. Please log in.');
+  }
+
+  // Enforce strong password requirements on signup
+  if (!password || password.length < 8) {
+    throw new Error('Password must be at least 8 characters long.');
+  }
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumberOrSpecial = /[0-9]|[^A-Za-z0-9]/.test(password);
+
+  if (!hasUpper || !hasLower || !hasNumberOrSpecial) {
+    throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number or special character.');
   }
 
   const salt = crypto.randomBytes(16).toString('hex');
@@ -263,6 +272,11 @@ export async function initiate2FALogin(user) {
 export async function authenticateUser({ email, password }) {
   const users = readUsers();
   const cleanEmail = (email || '').trim().toLowerCase();
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
 
   const user = users.find(u => u.email === cleanEmail);
   if (!user) {
