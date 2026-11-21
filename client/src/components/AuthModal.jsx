@@ -75,6 +75,8 @@ export default function AuthModal({
   // Validation & Security Evaluations
   const isEmailValid = isValidEmail(email);
   const showEmailError = emailTouched && email.trim().length > 0 && !isEmailValid;
+  const isAlreadyExistsError = error && error.toLowerCase().includes('already exists');
+  const isNoAccountError = error && error.toLowerCase().includes('create account');
   const pwdStrength = evaluatePasswordStrength(password);
   const isSubmitDisabled =
     isLoading ||
@@ -512,9 +514,37 @@ export default function AuthModal({
 
             {/* Error Banner */}
             {error && (
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in space-y-1.5">
-                <div>{error}</div>
-                {mode === 'login' && error.toLowerCase().includes('create account') && (
+              isAlreadyExistsError && mode === 'signup' ? (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs animate-in fade-in space-y-2">
+                  <div className="flex items-center space-x-2 font-bold text-amber-900 dark:text-amber-200">
+                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Account already exists!</span>
+                  </div>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                    An account with <strong className="font-semibold text-slate-900 dark:text-white">{email}</strong> has already been registered. One email can only have one account.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setError(null);
+                      setEmailTouched(true);
+                    }}
+                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF5E1E] to-[#FF8A50] hover:opacity-95 text-white font-bold text-xs shadow-sm flex items-center justify-center space-x-1.5 transition active:scale-[0.99]"
+                  >
+                    <span>👉 Switch to Sign In with this email</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : isNoAccountError && mode === 'login' ? (
+                <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-800 dark:text-blue-300 text-xs animate-in fade-in space-y-2">
+                  <div className="flex items-center space-x-2 font-bold text-blue-900 dark:text-blue-200">
+                    <AlertCircle className="w-4 h-4 text-blue-500 shrink-0" />
+                    <span>No account found</span>
+                  </div>
+                  <p className="text-[11px] text-blue-700 dark:text-blue-400 leading-relaxed">
+                    We couldn't find an account for <strong className="font-semibold text-slate-900 dark:text-white">{email}</strong>. Would you like to create one now?
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
@@ -522,12 +552,17 @@ export default function AuthModal({
                       setError(null);
                       if (email) setEmailTouched(true);
                     }}
-                    className="inline-flex items-center space-x-1 font-bold text-[#FF5E1E] hover:underline text-[11px]"
+                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF5E1E] to-[#FF8A50] hover:opacity-95 text-white font-bold text-xs shadow-sm flex items-center justify-center space-x-1.5 transition active:scale-[0.99]"
                   >
                     <span>👉 Switch to "Create Account" with this email</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in space-y-1.5">
+                  <div>{error}</div>
+                </div>
+              )
             )}
 
             {/* Form */}
@@ -604,12 +639,17 @@ export default function AuthModal({
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
                     Email Address
                   </label>
-                  {isEmailValid && (
+                  {isAlreadyExistsError && mode === 'signup' ? (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center space-x-1 animate-in fade-in">
+                      <AlertCircle className="w-3 h-3 text-amber-500" />
+                      <span>Already registered</span>
+                    </span>
+                  ) : isEmailValid ? (
                     <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center space-x-1 animate-in fade-in">
                       <Check className="w-3 h-3" />
                       <span>Valid email</span>
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <div className="relative">
                   <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -629,23 +669,32 @@ export default function AuthModal({
                     }}
                     placeholder="name@company.com"
                     className={`w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-900 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition ${
-                      showEmailError
+                      isAlreadyExistsError && mode === 'signup'
+                        ? 'border-amber-400 dark:border-amber-500/80 focus:ring-2 focus:ring-amber-500/20'
+                        : showEmailError
                         ? 'border-rose-400 dark:border-rose-500/80 focus:ring-2 focus:ring-rose-500/20'
                         : isEmailValid
                         ? 'border-emerald-400 dark:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20'
                         : 'border-slate-200 dark:border-white/[0.08] focus:ring-2 focus:ring-[#FF5E1E]/30'
                     }`}
                   />
-                  {isEmailValid && (
+                  {isAlreadyExistsError && mode === 'signup' ? (
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500 absolute right-3 top-1/2 -translate-y-1/2 animate-in zoom-in-50 duration-150" />
+                  ) : isEmailValid ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2 animate-in zoom-in-50 duration-150" />
-                  )}
+                  ) : null}
                 </div>
-                {showEmailError && (
+                {isAlreadyExistsError && mode === 'signup' ? (
+                  <div className="flex items-center space-x-1.5 mt-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    <span>This email is already registered. Please sign in instead.</span>
+                  </div>
+                ) : showEmailError ? (
                   <div className="flex items-center space-x-1.5 mt-1.5 text-[11px] text-rose-500 font-medium animate-in fade-in duration-150">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>Please enter a valid email address (e.g. name@domain.com)</span>
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div>
