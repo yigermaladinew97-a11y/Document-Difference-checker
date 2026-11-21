@@ -18,6 +18,8 @@ import { generateAnnotatedExcel } from './excelExporter.js';
 import {
   createUser,
   authenticateUser,
+  verify2FACode,
+  resend2FACode,
   updateUserProfile,
   generateSvgAvatar,
   getUserById,
@@ -452,6 +454,28 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(400).json({ error: err.message || 'Login failed.' });
+  }
+});
+
+// Auth: Verify Two-Factor Authentication (2FA) Code
+app.post('/api/auth/verify-2fa', async (req, res) => {
+  try {
+    const { tempToken, code } = req.body;
+    const result = await verify2FACode({ tempToken, code });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Verification failed.' });
+  }
+});
+
+// Auth: Resend Two-Factor Authentication (2FA) Code
+app.post('/api/auth/resend-2fa', async (req, res) => {
+  try {
+    const { tempToken } = req.body;
+    const result = await resend2FACode({ tempToken });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to resend code.' });
   }
 });
 

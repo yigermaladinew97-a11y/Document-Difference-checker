@@ -2,6 +2,7 @@ import {
   createUser,
   authenticateUser,
   authenticateGoogleUser,
+  verify2FACode,
   getUserById,
   verifyToken,
   saveCloudSession,
@@ -11,16 +12,21 @@ import {
 async function testAuthEngine() {
   console.log('--- Testing Hybrid Authentication & Cloud History Engine ---\n');
 
-  // Test 1: User Signup
-  console.log('[1/6] Testing User Registration...');
+  // Test 1: User Signup with 2FA
+  console.log('[1/6] Testing User Registration with 2FA...');
   const testEmail = `alex_${Date.now()}@example.com`;
-  const { user: newUser, token } = await createUser({
+  const signupRes = await createUser({
     name: 'Alex Mercer',
     email: testEmail,
     password: 'SecurePassword2026!'
   });
 
-  console.log(`✓ User created: ID=${newUser.id}, Name="${newUser.name}", Plan=${newUser.plan}`);
+  const { user: newUser, token } = await verify2FACode({
+    tempToken: signupRes.tempToken,
+    code: signupRes.devCode
+  });
+
+  console.log(`✓ User created & 2FA verified: ID=${newUser.id}, Name="${newUser.name}", Plan=${newUser.plan}`);
   console.log(`✓ Token generated: ${token.substring(0, 30)}...`);
 
   // Test 2: Token Verification
@@ -40,13 +46,18 @@ async function testAuthEngine() {
     console.log(`✓ Duplicate email correctly rejected: "${err.message}"`);
   }
 
-  // Test 4: User Login
-  console.log('\n[4/6] Testing User Login...');
-  const { user: loggedInUser, token: loginToken } = await authenticateUser({
+  // Test 4: User Login with 2FA
+  console.log('\n[4/6] Testing User Login with 2FA...');
+  const loginChallenge = await authenticateUser({
     email: testEmail,
     password: 'SecurePassword2026!'
   });
-  console.log(`✓ Login successful for: ${loggedInUser.email} (Token valid: ${Boolean(loginToken)})`);
+
+  const { user: loggedInUser, token: loginToken } = await verify2FACode({
+    tempToken: loginChallenge.tempToken,
+    code: loginChallenge.devCode
+  });
+  console.log(`✓ 2FA Login successful for: ${loggedInUser.email} (Token valid: ${Boolean(loginToken)})`);
 
   // Test 5: 1-Click Google Auth
   console.log('\n[5/6] Testing 1-Click Google Authentication...');

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { send2FACodeEmail } from './emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,21 @@ if (!fs.existsSync(USERS_FILE)) {
 if (!fs.existsSync(CLOUD_HISTORY_FILE)) {
   fs.writeFileSync(CLOUD_HISTORY_FILE, JSON.stringify([], null, 2), 'utf8');
 }
+
+// In-memory store for pending Two-Factor Authentication (2FA) verification challenges
+// Key: tempToken -> { userId, email, name, code, expiresAt, attempts, resendAfter }
+const pending2FA = new Map();
+
+// Periodic cleanup of expired 2FA challenges every 5 minutes
+const cleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of pending2FA.entries()) {
+    if (now > data.expiresAt) {
+      pending2FA.delete(token);
+    }
+  }
+}, 5 * 60 * 1000);
+if (cleanupTimer.unref) cleanupTimer.unref();
 
 function readUsers() {
   try {
@@ -202,15 +218,47 @@ export async function createUser({ name, email, password, avatar, title, organiz
   users.push(newUser);
   writeUsers(users);
 
-  // Return public safe profile
+  // Return public safe profile and initiate Two-Factor Authentication (2FA)
   const { passwordHash: _, salt: __, ...safeUser } = newUser;
-  const token = generateToken({ userId: safeUser.id, email: safeUser.email });
-
-  return { user: safeUser, token };
+  return initiate2FALogin(safeUser);
 }
 
 /**
- * Authenticate existing user with email and password
+ * Initiate Two-Factor Authentication (2FA) challenge:
+ * Generates a 6-digit random code, saves to pending store, and dispatches via email
+ */
+export async function initiate2FALogin(user) {
+  const code = crypto.randomInt(100000, 999999).toString();
+  const tempToken = `2fa_${Date.now()}_${crypto.randomBytes(16).toString('hex')}`;
+
+  pending2FA.set(tempToken, {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    code,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    attempts: 0,
+    resendAfter: Date.now() + 45 * 1000 // 45 seconds rate limit
+  });
+
+  const emailResult = await send2FACodeEmail({
+    email: user.email,
+    code,
+    name: user.name
+  });
+
+  return {
+    requires2FA: true,
+    tempToken,
+    email: user.email,
+    message: `A 6-digit verification code has been sent to ${user.email}.`,
+    devCode: emailResult.simulated ? code : undefined
+  };
+}
+
+/**
+ * Authenticate existing user with email and password, then initiate 2FA
  */
 export async function authenticateUser({ email, password }) {
   const users = readUsers();
@@ -249,9 +297,93 @@ export async function authenticateUser({ email, password }) {
   }
 
   const { passwordHash: _, salt: __, ...safeUser } = user;
+  return initiate2FALogin(safeUser);
+}
+
+/**
+ * Verify 6-digit Two-Factor Authentication (2FA) code and issue full session JWT token
+ */
+export async function verify2FACode({ tempToken, code }) {
+  if (!tempToken || !code) {
+    throw new Error('Verification token and 6-digit code are required.');
+  }
+
+  const cleanToken = tempToken.trim();
+  const cleanCode = String(code).trim().replace(/\s+/g, '');
+
+  const entry = pending2FA.get(cleanToken);
+  if (!entry) {
+    throw new Error('Verification session has expired or is invalid. Please sign in again.');
+  }
+
+  if (Date.now() > entry.expiresAt) {
+    pending2FA.delete(cleanToken);
+    throw new Error('Verification code has expired. Please request a new code.');
+  }
+
+  if (entry.attempts >= 5) {
+    pending2FA.delete(cleanToken);
+    throw new Error('Too many invalid attempts. For your security, this session was invalidated. Please sign in again.');
+  }
+
+  if (entry.code !== cleanCode) {
+    entry.attempts++;
+    const remaining = 5 - entry.attempts;
+    throw new Error(`Invalid verification code. ${remaining} ${remaining === 1 ? 'attempt' : 'attempts'} remaining.`);
+  }
+
+  // 2FA Verified successfully!
+  pending2FA.delete(cleanToken);
+
+  const users = readUsers();
+  const user = users.find(u => u.id === entry.userId);
+  if (!user) {
+    throw new Error('User account not found.');
+  }
+
+  const { passwordHash: _, salt: __, ...safeUser } = user;
   const token = generateToken({ userId: safeUser.id, email: safeUser.email });
 
-  return { user: safeUser, token };
+  return { success: true, user: safeUser, token };
+}
+
+/**
+ * Resend 2FA verification code with rate-limiting
+ */
+export async function resend2FACode({ tempToken }) {
+  if (!tempToken) {
+    throw new Error('Verification token is required.');
+  }
+
+  const entry = pending2FA.get(tempToken.trim());
+  if (!entry) {
+    throw new Error('Verification session has expired. Please sign in again.');
+  }
+
+  const now = Date.now();
+  if (now < entry.resendAfter) {
+    const secondsLeft = Math.ceil((entry.resendAfter - now) / 1000);
+    throw new Error(`Please wait ${secondsLeft}s before requesting a new code.`);
+  }
+
+  // Generate new 6-digit code and refresh expiry
+  const newCode = crypto.randomInt(100000, 999999).toString();
+  entry.code = newCode;
+  entry.expiresAt = now + 10 * 60 * 1000;
+  entry.resendAfter = now + 45 * 1000;
+  entry.attempts = 0;
+
+  const emailResult = await send2FACodeEmail({
+    email: entry.email,
+    code: newCode,
+    name: entry.name
+  });
+
+  return {
+    success: true,
+    message: `A new 6-digit verification code has been sent to ${entry.email}.`,
+    devCode: emailResult.simulated ? newCode : undefined
+  };
 }
 
 /**

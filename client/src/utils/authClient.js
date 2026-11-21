@@ -46,6 +46,11 @@ export async function loginWithEmail(email, password) {
     throw new Error(data.error || 'Failed to log in.');
   }
 
+  // Two-Factor Authentication required
+  if (data.requires2FA) {
+    return data;
+  }
+
   setAuthSession(data.token, data.user);
   return data.user;
 }
@@ -63,8 +68,44 @@ export async function signupWithEmail(name, email, password, avatar = null) {
     throw new Error(data.error || 'Failed to create account.');
   }
 
+  // Two-Factor Authentication required to verify new account
+  if (data.requires2FA) {
+    return data;
+  }
+
   setAuthSession(data.token, data.user);
   return data.user;
+}
+
+export async function verify2FACode(tempToken, code) {
+  const res = await fetch('/api/auth/verify-2fa', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tempToken, code })
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Verification failed.');
+  }
+
+  setAuthSession(data.token, data.user);
+  return data.user;
+}
+
+export async function resend2FACode(tempToken) {
+  const res = await fetch('/api/auth/resend-2fa', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tempToken })
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to resend code.');
+  }
+
+  return data;
 }
 
 export async function loginWithGoogle(demoData = {}) {
