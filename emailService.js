@@ -16,6 +16,16 @@ function getTransporter() {
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
+  // Gmail-specific simplified transport
+  if (user && pass && (host?.toLowerCase().includes('gmail') || process.env.SMTP_SERVICE === 'gmail')) {
+    cachedTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass }
+    });
+    return cachedTransporter;
+  }
+
+  // Standard generic SMTP transport
   if (host && user && pass) {
     cachedTransporter = nodemailer.createTransport({
       host,
