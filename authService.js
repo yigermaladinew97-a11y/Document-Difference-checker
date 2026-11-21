@@ -266,16 +266,16 @@ export async function authenticateUser({ email, password }) {
 
   const user = users.find(u => u.email === cleanEmail);
   if (!user) {
-    throw new Error('Invalid email or password.');
+    throw new Error('No account found with this email. Please switch to "Create Account" to register first.');
   }
 
   if (!user.passwordHash || !user.salt) {
-    throw new Error('This account was created with Google Sign-In. Please click "Continue with Google".');
+    throw new Error('This account was created with Google Sign-In.');
   }
 
   const hash = hashPassword(password, user.salt);
   if (hash !== user.passwordHash) {
-    throw new Error('Invalid email or password.');
+    throw new Error('Incorrect password. Please check your password and try again.');
   }
 
   // Ensure user has valid SVG avatar and stats

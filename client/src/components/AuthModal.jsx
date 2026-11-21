@@ -304,8 +304,17 @@ export default function AuthModal({
 
             {/* Error Banner */}
             {error && (
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in">
-                {error}
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in space-y-1.5">
+                <div>{error}</div>
+                {mode === 'login' && error.toLowerCase().includes('create account') && (
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signup'); setError(null); }}
+                    className="inline-flex items-center space-x-1 font-bold text-[#FF5E1E] hover:underline text-[11px]"
+                  >
+                    <span>👉 Switch to "Create Account" with this email</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -408,8 +417,17 @@ export default function AuthModal({
 
             {/* Error Banner */}
             {error && (
-              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in">
-                {error}
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in space-y-1.5">
+                <div>{error}</div>
+                {mode === 'login' && error.toLowerCase().includes('create account') && (
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signup'); setError(null); }}
+                    className="inline-flex items-center space-x-1 font-bold text-[#FF5E1E] hover:underline text-[11px]"
+                  >
+                    <span>👉 Switch to "Create Account" with this email</span>
+                  </button>
+                )}
               </div>
             )}
 
