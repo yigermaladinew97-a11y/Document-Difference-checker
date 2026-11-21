@@ -11,11 +11,19 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const CLOUD_HISTORY_FILE = path.join(DATA_DIR, 'cloud_history.json');
 
 const configuredJwtSecret = process.env.JWT_SECRET;
-if (process.env.NODE_ENV === 'production' && (!configuredJwtSecret || configuredJwtSecret.length < 32)) {
-  throw new Error('JWT_SECRET must be set to a random value of at least 32 characters in production.');
+let JWT_SECRET;
+
+if (configuredJwtSecret && configuredJwtSecret.length >= 32) {
+  JWT_SECRET = configuredJwtSecret;
+} else {
+  // Generate a cryptographically secure 256-bit random key
+  JWT_SECRET = crypto.randomBytes(32).toString('hex');
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️ [Auth] Warning: JWT_SECRET environment variable is missing or shorter than 32 characters.');
+    console.warn('⚠️ [Auth] An in-memory 256-bit cryptographic secret has been auto-generated for this session.');
+    console.warn('⚠️ [Auth] To persist user login sessions across server restarts, set JWT_SECRET in your Render dashboard.');
+  }
 }
-// Keep local development convenient without shipping a predictable production key.
-const JWT_SECRET = configuredJwtSecret || crypto.randomBytes(32).toString('hex');
 
 // Ensure data directory and files exist
 if (!fs.existsSync(DATA_DIR)) {

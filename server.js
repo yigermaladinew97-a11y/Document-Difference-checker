@@ -38,18 +38,38 @@ const PORT = process.env.PORT || 3000;
 // Enable high-performance HTTP compression (reduces payload sizes by up to 80%)
 app.use(compression());
 
-// Same-origin requests do not need CORS. Cross-origin clients must be listed explicitly.
-const allowedOrigins = new Set(
-  (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(Boolean)
-);
+// CORS Configuration:
+// Automatically allows same-origin requests, Render deployed domain, and local development.
+// Additional external domains can be specified via comma-separated CORS_ORIGINS.
+const configuredOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+const allowedOrigins = new Set(configuredOrigins);
+if (process.env.RENDER_EXTERNAL_URL) {
+  allowedOrigins.add(process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, ''));
+}
+
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
-    return callback(new Error('Origin is not allowed by CORS.'));
-  }
+    // Requests with no origin (e.g. same-origin fetch, curl) are always allowed
+    if (!origin) return callback(null, true);
+
+    const normalizedOrigin = origin.replace(/\/+$/, '');
+
+    // If no explicit whitelist is configured, allow all origins by default (public web service)
+    if (configuredOrigins.length === 0) return callback(null, true);
+
+    // If a whitelist is specified, verify against allowed origins or local development
+    if (allowedOrigins.has(normalizedOrigin) || normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+
+    // Cleanly reject unauthorized cross-origin requests without throwing an unhandled Express error
+    return callback(null, false);
+  },
+  credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
