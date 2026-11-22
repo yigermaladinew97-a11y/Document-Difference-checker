@@ -14,14 +14,17 @@ import {
   Layers, 
   BarChart3,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  Lock
 } from 'lucide-react';
 
 export default function BatchDashboard({
   batchResults = [],
   batchMetrics = {},
   onInspectPair,
-  onResetBatch
+  onResetBatch,
+  currentUser = null,
+  onRequestAuth = null
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, major, moderate, high, identical
@@ -92,6 +95,10 @@ export default function BatchDashboard({
 
   // Export batch summary to CSV
   const handleExportCsv = () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to export Batch Diff CSV summaries.');
+      return;
+    }
     if (!batchResults.length) return;
 
     const headers = [
@@ -161,10 +168,10 @@ export default function BatchDashboard({
             type="button"
             onClick={handleExportCsv}
             className="flex items-center space-x-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm transition hover:scale-105 active:scale-95"
-            title="Download CSV report of all comparisons"
+            title={currentUser ? "Download CSV report of all comparisons" : "Sign in to export CSV report"}
           >
-            <Download className="w-3.5 h-3.5 text-[#FF5E1E]" />
-            <span>Export CSV</span>
+            {currentUser ? <Download className="w-3.5 h-3.5 text-[#FF5E1E]" /> : <Lock className="w-3.5 h-3.5 text-[#FF5E1E]" />}
+            <span>{currentUser ? 'Export CSV' : 'Export CSV (Sign In)'}</span>
           </button>
 
           <button

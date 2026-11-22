@@ -23,7 +23,8 @@ import {
   Keyboard,
   Info,
   Image as ImageIcon,
-  Camera
+  Camera,
+  Lock
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
 import MergeResolver from './MergeResolver';
@@ -287,6 +288,10 @@ export default function DiffViewer({
   };
 
   const handleExportReport = () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to download comparison JSON reports.');
+      return;
+    }
     const reportData = {
       timestamp: new Date().toISOString(),
       meta,
@@ -463,21 +468,27 @@ export default function DiffViewer({
             type="button"
             onClick={handleExportReport}
             className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:scale-105 active:scale-95 transition"
-            title="Export JSON report"
+            title={currentUser ? "Export JSON report" : "Sign in to export JSON report"}
           >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden xs:inline">Export</span>
+            {currentUser ? <Download className="w-3.5 h-3.5 text-slate-400" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
+            <span className="hidden xs:inline">{currentUser ? 'Export' : 'Export (Sign In)'}</span>
           </button>
 
           {onExportPdf && (
             <button
               type="button"
-              onClick={onExportPdf}
+              onClick={() => {
+                if (!currentUser && onRequestAuth) {
+                  onRequestAuth('signup', 'Create a free account or sign in to export agency-grade PDF Audit Reports.');
+                  return;
+                }
+                onExportPdf();
+              }}
               className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-[#FF5E1E]/10 hover:bg-[#FF5E1E]/20 text-[#FF5E1E] border border-[#FF5E1E]/30 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition"
-              title="1-Click Download Executive PDF Audit Report"
+              title={currentUser ? "1-Click Download Executive PDF Audit Report" : "Sign in to download PDF report"}
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>PDF Report</span>
+              {currentUser ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+              <span>{currentUser ? 'PDF Report' : 'PDF (Sign In)'}</span>
             </button>
           )}
 
@@ -486,11 +497,11 @@ export default function DiffViewer({
             onClick={handleExportRedlineWord}
             disabled={isExportingWord}
             className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition disabled:opacity-50"
-            title="Download Legal Redline Word Document (.docx) with strikethrough & underline markup"
+            title={currentUser ? "Download Legal Redline Word Document (.docx)" : "Sign in to download Redline Word (.docx)"}
           >
-            <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span className="hidden xs:inline">{isExportingWord ? 'Exporting...' : 'Redline Word'}</span>
-            <span className="xs:hidden">{isExportingWord ? '...' : 'Word'}</span>
+            {currentUser ? <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> : <Lock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+            <span className="hidden xs:inline">{isExportingWord ? 'Exporting...' : (currentUser ? 'Redline Word' : 'Word (Sign In)')}</span>
+            <span className="xs:hidden">{isExportingWord ? '...' : (currentUser ? 'Word' : 'Word 🔒')}</span>
           </button>
 
           {/* Sound Feedback Toggle */}

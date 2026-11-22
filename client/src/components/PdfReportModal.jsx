@@ -7,11 +7,18 @@ import {
   ShieldCheck, 
   ShieldAlert,
   CheckCircle2, 
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
 import { openPrintPdfReport, downloadHtmlAuditReport } from '../utils/reportGenerator';
 
-export default function PdfReportModal({ isOpen, onClose, data }) {
+export default function PdfReportModal({ 
+  isOpen, 
+  onClose, 
+  data,
+  currentUser = null,
+  onRequestAuth = null
+}) {
   if (!isOpen || !data) return null;
 
   const meta = data.meta || {};
@@ -29,10 +36,18 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
   const docB = meta.docB || { filename: 'Document B', format: 'unknown', wordCount: 0 };
 
   const handlePrint = () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to print or save your PDF Audit Report.');
+      return;
+    }
     openPrintPdfReport(data);
   };
 
   const handleDownloadHtml = () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to download standalone HTML Audit Reports.');
+      return;
+    }
     downloadHtmlAuditReport(data);
   };
 
@@ -68,8 +83,8 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
               onClick={handlePrint}
               className="flex items-center space-x-2 px-5 py-2.5 rounded-full bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95"
             >
-              <Printer className="w-4 h-4" />
-              <span>Print / Save as PDF</span>
+              {currentUser ? <Printer className="w-4 h-4" /> : <Lock className="w-4 h-4 text-white/90" />}
+              <span>{currentUser ? 'Print / Save as PDF' : 'Save PDF (Sign In)'}</span>
             </button>
 
             {/* Offline HTML Download */}
@@ -79,8 +94,8 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
               className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm hover:scale-105 active:scale-95"
               title="Download standalone offline report"
             >
-              <Download className="w-4 h-4 text-slate-400" />
-              <span className="hidden sm:inline">Download HTML</span>
+              {currentUser ? <Download className="w-4 h-4 text-slate-400" /> : <Lock className="w-4 h-4 text-slate-400" />}
+              <span className="hidden sm:inline">{currentUser ? 'Download HTML' : 'Download HTML (Sign In)'}</span>
             </button>
 
             <button

@@ -15,7 +15,8 @@ import {
   Sparkles,
   ExternalLink,
   Cloud,
-  ShieldCheck
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { deleteSession, clearAllSessions, exportHistoryToJson, importHistoryFromJson } from '../utils/historyStorage';
 
@@ -79,12 +80,20 @@ export default function HistoryDrawer({
 
   // Handle Export Backup
   const handleExport = async () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to download your comparison history backup.');
+      return;
+    }
     await exportHistoryToJson();
     showFeedback('History backup downloaded.');
   };
 
   // Handle Import Backup
   const handleImportClick = () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to restore comparison history backups.');
+      return;
+    }
     fileInputRef.current?.click();
   };
 
@@ -273,8 +282,35 @@ export default function HistoryDrawer({
           )}
 
           {/* Sessions List Stream */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
-            {filteredSessions.length === 0 ? (
+          <div className="flex-1 overflow-y-auto p-5 space-y-3.5 flex flex-col">
+            {!currentUser ? (
+              <div className="my-auto py-12 px-6 text-center space-y-4">
+                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center border border-amber-500/20 shadow-inner">
+                  <Lock className="w-8 h-8 stroke-[1.8]" />
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="font-black text-base text-slate-900 dark:text-white">
+                    Comparison History is Locked
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                    Comparison tracking, session restoration, and exportable audit backups are available for registered users.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      if (onRequestAuth) onRequestAuth('signup', 'Sign up or sign in to save and access your comparison history.');
+                    }}
+                    className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-full text-xs font-bold bg-[#FF5E1E] hover:bg-[#E04A0E] text-white shadow-md hover:scale-105 active:scale-95 transition"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Sign In or Sign Up Free</span>
+                  </button>
+                </div>
+              </div>
+            ) : filteredSessions.length === 0 ? (
               <div className="py-16 text-center space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-900 text-slate-400 mx-auto flex items-center justify-center">
                   <Clock className="w-6 h-6 stroke-[1.5]" />

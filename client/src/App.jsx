@@ -32,7 +32,8 @@ import {
   SlidersHorizontal,
   FolderUp,
   ArrowLeft,
-  Share2
+  Share2,
+  Lock
 } from 'lucide-react';
 
 const SAMPLES = {
@@ -214,17 +215,38 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  const handleAuthSuccess = (user) => {
+  const handleAuthSuccess = async (user) => {
     setCurrentUser(user);
     if (comparisonResult) {
-      syncCloudSession(comparisonResult);
+      // Auto-save the current session to history now that user has authenticated
+      try {
+        const saved = await saveComparisonSession({
+          ...comparisonResult,
+          filters
+        });
+        if (saved) {
+          setActiveSessionId(saved.id);
+          syncCloudSession({
+            id: saved.id,
+            ...comparisonResult,
+            filters
+          }).catch((err) => console.warn('Cloud sync error:', err));
+        }
+      } catch (err) {
+        console.warn('Failed to save session upon sign-in:', err);
+      }
     }
+    loadHistorySessions(user);
   };
 
   const resultsRef = useRef(null);
 
-  const loadHistorySessions = async () => {
+  const loadHistorySessions = async (activeUser = currentUser) => {
     try {
+      if (!activeUser) {
+        setHistorySessions([]);
+        return;
+      }
       const list = await getAllSessions();
       setHistorySessions(list);
     } catch (e) {
@@ -233,8 +255,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadHistorySessions();
-  }, []);
+    loadHistorySessions(currentUser);
+  }, [currentUser]);
 
   const handleRestoreSession = (session) => {
     setComparisonResult(session);
@@ -341,27 +363,27 @@ export default function App() {
       setComparisonResult(data);
       triggerCelebration();
 
-      // Automatically preserve comparison in private IndexedDB
-      try {
-        const saved = await saveComparisonSession({
-          ...data,
-          filters: activeFilters
-        });
-        if (saved) {
-          setActiveSessionId(saved.id);
-          loadHistorySessions();
-        }
+      // Automatically preserve comparison in private IndexedDB ONLY for registered users
+      if (currentUser) {
+        try {
+          const saved = await saveComparisonSession({
+            ...data,
+            filters: activeFilters
+          });
+          if (saved) {
+            setActiveSessionId(saved.id);
+            loadHistorySessions(currentUser);
+          }
 
-        // Auto-sync with cloud history if user is logged in
-        if (currentUser) {
+          // Auto-sync with cloud history
           syncCloudSession({
             id: saved?.id || activeSessionId,
             ...data,
             filters: activeFilters
           }).catch((err) => console.warn('Cloud sync error:', err));
+        } catch (saveErr) {
+          console.warn('Failed to auto-save session to history:', saveErr);
         }
-      } catch (saveErr) {
-        console.warn('Failed to auto-save session to history:', saveErr);
       }
 
       setTimeout(() => {
@@ -690,6 +712,32 @@ export default function App() {
                   />
                 </div>
 
+                {/* Ephemeral Guest Mode Notice (Zero retention, sign in to save & download) */}
+                {!currentUser && (
+                  <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in duration-300">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                        <Lock className="w-4 h-4 stroke-[2.2]" />
+                      </div>
+                      <div>
+                        <p className="font-extrabold text-slate-900 dark:text-white">
+                          Guest Mode &bull; Ephemeral In-Memory Diff
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          This comparison is private in memory and will not be saved to history. Sign up free to save past comparisons and unlock PDF &amp; Word exports.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAuthModal('signup', 'Create a free account to save your comparisons and download audit reports.')}
+                      className="px-4 py-2 rounded-full bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-xs hover:scale-105 active:scale-95 shrink-0"
+                    >
+                      Sign Up to Save &amp; Download
+                    </button>
+                  </div>
+                )}
+
                 {/* 1. Visual Match Scoreboard & Percentage Gauges (First immediately after running) */}
                 <Scoreboard
                   metrics={comparisonResult.metrics}
@@ -698,6 +746,8 @@ export default function App() {
                   meta={comparisonResult.meta}
                   filters={comparisonResult.filters || filters}
                   onExportPdf={() => setIsPdfModalOpen(true)}
+                  currentUser={currentUser}
+                  onRequestAuth={handleOpenAuthModal}
                 />
 
                 {/* 2. What Changed? (Detailed Plain-English Explanation) */}
@@ -742,6 +792,8 @@ export default function App() {
                   isOpen={isPdfModalOpen}
                   onClose={() => setIsPdfModalOpen(false)}
                   data={comparisonResult}
+                  currentUser={currentUser}
+                  onRequestAuth={handleOpenAuthModal}
                 />
               </div>
             )}
@@ -794,6 +846,8 @@ export default function App() {
                   meta={inspectedPair.meta}
                   filters={inspectedPair.filters || filters}
                   onExportPdf={() => setIsPdfModalOpen(true)}
+                  currentUser={currentUser}
+                  onRequestAuth={handleOpenAuthModal}
                 />
 
                 {/* What Changed? */}
@@ -829,6 +883,8 @@ export default function App() {
                   isOpen={isPdfModalOpen}
                   onClose={() => setIsPdfModalOpen(false)}
                   data={inspectedPair}
+                  currentUser={currentUser}
+                  onRequestAuth={handleOpenAuthModal}
                 />
               </div>
             ) : batchResults ? (
@@ -838,6 +894,8 @@ export default function App() {
                 batchMetrics={batchMetrics}
                 onInspectPair={(p) => setInspectedPair(p)}
                 onResetBatch={handleResetBatch}
+                currentUser={currentUser}
+                onRequestAuth={handleOpenAuthModal}
               />
             ) : (
               /* Batch Upload & Auto-Pairing Review */

@@ -14,7 +14,8 @@ import {
   FileEdit,
   Eye,
   SlidersHorizontal,
-  Info
+  Info,
+  Lock
 } from 'lucide-react';
 import { extractChangeBlocks, computeMergedDocumentText, exportMergedDocx, exportMergedTxt, exportRedlineDocx } from '../utils/mergeExporter';
 
@@ -101,6 +102,10 @@ export default function MergeResolver({
 
   // Export handlers
   const handleDownloadDocx = async () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to export resolved Word (.docx) documents.');
+      return;
+    }
     try {
       setIsExportingDocx(true);
       await exportMergedDocx(blocks, decisions, meta);
@@ -127,6 +132,10 @@ export default function MergeResolver({
   };
 
   const handleDownloadTxt = () => {
+    if (!currentUser && onRequestAuth) {
+      onRequestAuth('signup', 'Create a free account or sign in to export plain-text (.txt) documents.');
+      return;
+    }
     exportMergedTxt(blocks, decisions, meta);
   };
 
@@ -282,9 +291,10 @@ export default function MergeResolver({
               type="button"
               onClick={handleDownloadTxt}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] text-xs font-bold transition hover:scale-105 active:scale-95"
+              title={currentUser ? "Export clean plain-text file" : "Sign in to export plain-text"}
             >
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
-              <span>Export .TXT</span>
+              {currentUser ? <FileText className="w-3.5 h-3.5 text-slate-400" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
+              <span>{currentUser ? 'Export .TXT' : '.TXT (Sign In)'}</span>
             </button>
 
             <button
@@ -292,10 +302,10 @@ export default function MergeResolver({
               onClick={handleDownloadRedline}
               disabled={isExportingRedline}
               className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold transition hover:scale-105 active:scale-95 disabled:opacity-50"
-              title="Download marked-up Word document with all revisions highlighted in red & green"
+              title={currentUser ? "Download marked-up Word document with all revisions highlighted in red & green" : "Sign in to export Redline .DOCX"}
             >
-              <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{isExportingRedline ? 'Generating...' : 'Redline .DOCX'}</span>
+              {currentUser ? <FileEdit className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> : <Lock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+              <span>{isExportingRedline ? 'Generating...' : (currentUser ? 'Redline .DOCX' : 'Redline (Sign In)')}</span>
             </button>
 
             <button
@@ -303,9 +313,10 @@ export default function MergeResolver({
               onClick={handleDownloadDocx}
               disabled={isExportingDocx}
               className="flex items-center space-x-1.5 px-4 py-1.5 rounded-full bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
+              title={currentUser ? "Export merged document as Microsoft Word .docx" : "Sign in to export final .DOCX"}
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isExportingDocx ? 'Generating DOCX...' : 'Export Final .DOCX'}</span>
+              {currentUser ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-white/90" />}
+              <span>{isExportingDocx ? 'Generating DOCX...' : (currentUser ? 'Export Final .DOCX' : 'Export .DOCX (Sign In)')}</span>
             </button>
           </div>
         </div>

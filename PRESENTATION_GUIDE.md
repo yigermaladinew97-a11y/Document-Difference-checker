@@ -134,16 +134,44 @@ Evaluators love security and edge-case intelligence. Here is your 60-second live
 
 ---
 
-## 🚀 7. Quick Commands for Live Demo
+## 🔒 8. Zero-Retention Security & Product-Led Growth (PLG) Architecture
+
+Evaluators and professors look for practical business logic, resource protection, and privacy compliance.
+
+### 🌟 Core Architectural Design:
+1. **Zero-Retention Ephemeral Mode (Guests)**:
+   - When a guest visitor runs a comparison, it executes **100% in-memory**.
+   - The comparison is **NOT saved** to browser IndexedDB or server databases. If the guest closes the browser tab, all document fragments are immediately garbage-collected with zero residual footprint on shared/public machines (e.g., computer labs, cybercafés, company kiosks).
+2. **Gated Deliverables & History**:
+   - High-value business assets are secured behind user authentication:
+     - 📄 **Executive PDF Audit Reports**
+     - 📝 **Legal Redline Word Documents (`.docx`)**
+     - 📑 **Resolved & Merged Documents**
+     - 📊 **Batch Comparison CSV Summaries**
+     - 🕒 **Persistent Cloud & Local Comparison History**
+   - When an unauthenticated user clicks any export or past history button, the app displays a conversion-friendly modal: *"Create a free account or sign in to download your reports and enable comparison history."*
+
+### 💡 Top Evaluator Viva Questions:
+* **Q: "Why didn't you persist comparison history for anonymous users in local storage?"**
+  > **Answer:** *"For strict enterprise privacy and zero-leakage compliance. Storing confidential employment contracts or financial sheets in browser storage on a public computer exposes private data to subsequent users. By enforcing ephemeral in-memory processing for guests, we guarantee zero disk retention until the user registers an authenticated account."*
+* **Q: "What is the rationale behind gating PDF and Word downloads behind authentication?"**
+  > **Answer:** *"It follows modern SaaS Product-Led Growth (PLG): we give visitors immediate value by letting them inspect diffs with zero initial signup friction. However, generating and downloading permanent business deliverables (branded audit PDFs, tracked redlines) consumes compute resources and represents core intellectual value, so gating them drives user conversion while preventing bot scraping and abuse."*
+
+---
+
+## 🚀 9. Quick Commands for Live Demo
 
 ```bash
 # 1. Run full test suite (Shows green checkmarks across all 7 engines)
 npm test
 
-# 2. Start the local server
+# 2. Run enterprise security test suite
+npm run test:security
+
+# 3. Start the local server
 npm start
 # -> Opens on http://localhost:3000
 
-# 3. Build frontend bundle (if modified)
+# 4. Build frontend bundle (if modified)
 npm run build
 ```

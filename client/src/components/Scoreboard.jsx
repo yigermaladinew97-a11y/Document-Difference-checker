@@ -5,7 +5,8 @@ import {
   MinusCircle, 
   CheckCircle2, 
   Download,
-  Hash
+  Hash,
+  Lock
 } from 'lucide-react';
 import CountUp from './CountUp';
 import TiltCard from './TiltCard';
@@ -64,7 +65,16 @@ function CircularGauge({ value, label, sublabel, strokeColor, size = 125 }) {
   );
 }
 
-export default function Scoreboard({ metrics, stats, summary, meta, filters, onExportPdf }) {
+export default function Scoreboard({ 
+  metrics, 
+  stats, 
+  summary, 
+  meta, 
+  filters, 
+  onExportPdf,
+  currentUser = null,
+  onRequestAuth = null
+}) {
   if (!metrics || !stats) return null;
 
   const getCategoryBadge = (category) => {
@@ -137,12 +147,18 @@ export default function Scoreboard({ metrics, stats, summary, meta, filters, onE
           {onExportPdf && (
             <button
               type="button"
-              onClick={onExportPdf}
+              onClick={() => {
+                if (!currentUser && onRequestAuth) {
+                  onRequestAuth('signup', 'Create a free account or sign in to export agency-grade PDF Audit Reports.');
+                  return;
+                }
+                onExportPdf();
+              }}
               className="flex items-center space-x-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95 shrink-0"
-              title="1-Click Download Branded PDF Redline & Audit Report"
+              title={currentUser ? "1-Click Download Branded PDF Redline & Audit Report" : "Sign in or create an account to download PDF report"}
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download PDF Report</span>
+              {currentUser ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-white/90" />}
+              <span>{currentUser ? 'Download PDF Report' : 'Download PDF (Sign In)'}</span>
             </button>
           )}
 

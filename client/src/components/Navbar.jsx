@@ -13,7 +13,8 @@ import {
   User,
   ChevronDown,
   Cloud,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Lock
 } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 
@@ -222,7 +223,11 @@ export default function Navbar({
                         type="button"
                         onClick={() => {
                           setShowToolsMenu(false);
-                          onOpenHistory();
+                          if (!currentUser && onOpenAuthModal) {
+                            onOpenAuthModal('login', 'Sign in or create a free account to view and access your comparison history.');
+                          } else {
+                            onOpenHistory();
+                          }
                         }}
                         className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-[#FFF4EF] dark:hover:bg-[#FF5E1E]/15 hover:text-[#FF5E1E] rounded-2xl transition text-left group cursor-pointer"
                       >
@@ -234,10 +239,17 @@ export default function Navbar({
                             <p className="font-bold text-slate-900 dark:text-white group-hover:text-[#FF5E1E]">
                               Comparison History
                             </p>
-                            <p className="text-[10px] text-slate-400 font-medium">Reopen past sessions &amp; audits</p>
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              {currentUser ? 'Reopen past sessions & audits' : 'Sign in to access past diffs'}
+                            </p>
                           </div>
                         </div>
-                        {historyCount > 0 ? (
+                        {!currentUser ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>Sign In</span>
+                          </span>
+                        ) : historyCount > 0 ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF5E1E]/15 text-[#FF5E1E]">
                             {historyCount} saved
                           </span>
