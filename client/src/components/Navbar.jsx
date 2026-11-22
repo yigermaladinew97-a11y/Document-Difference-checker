@@ -23,6 +23,7 @@ export default function Navbar({
   onOpenApiKeyModal, 
   isDark, 
   onToggleTheme, 
+  themeSource = 'system',
   isComparing,
   historyCount = 0,
   onOpenHistory,
@@ -307,8 +308,17 @@ export default function Navbar({
                           {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{isDark ? 'Dark Mode' : 'Light Mode'}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">Switch app color theme</p>
+                          <div className="flex items-center space-x-1.5">
+                            <p className="font-bold text-slate-900 dark:text-white">{isDark ? 'Dark Mode' : 'Light Mode'}</p>
+                            {themeSource === 'system' && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                Auto
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {themeSource === 'system' ? 'Synced with your device' : 'Custom preference saved'}
+                          </p>
                         </div>
                       </div>
                       <button

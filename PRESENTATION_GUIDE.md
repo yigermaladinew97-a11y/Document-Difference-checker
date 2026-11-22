@@ -150,6 +150,9 @@ Evaluators and professors look for practical business logic, resource protection
      - 📊 **Batch Comparison CSV Summaries**
      - 🕒 **Persistent Cloud & Local Comparison History**
    - When an unauthenticated user clicks any export or past history button, the app displays a conversion-friendly modal: *"Create a free account or sign in to download your reports and enable comparison history."*
+3. **Zero-Flicker System-Adaptive Theming**:
+   - On first visit, the app detects `window.matchMedia('(prefers-color-scheme: dark)')` to automatically match the visitor's device environment.
+   - A pre-hydration head script in `index.html` eliminates white-flash on Dark Mode devices, with dynamic OS event listeners and persistent manual overrides.
 
 ### 💡 Top Evaluator Viva Questions:
 * **Q: "Why didn't you persist comparison history for anonymous users in local storage?"**

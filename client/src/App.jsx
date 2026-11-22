@@ -143,7 +143,23 @@ export default function App() {
 
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('docdiff_gemini_key') || '');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem('docdiff_theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+      return Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    } catch (_) {
+      return false;
+    }
+  });
+  const [themeSource, setThemeSource] = useState(() => {
+    try {
+      return localStorage.getItem('docdiff_theme') ? 'custom' : 'system';
+    } catch (_) {
+      return 'system';
+    }
+  });
 
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState(null);
@@ -279,6 +295,32 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDark]);
+
+  // Dynamically sync with OS theme changes if user has not set a custom override
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = (e) => {
+      try {
+        const saved = localStorage.getItem('docdiff_theme');
+        if (!saved) {
+          setIsDark(e.matches);
+          setThemeSource('system');
+        }
+      } catch (_) {}
+    };
+    mediaQuery.addEventListener('change', handleMediaChange);
+    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+  }, []);
+
+  const handleToggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    setThemeSource('custom');
+    try {
+      localStorage.setItem('docdiff_theme', next ? 'dark' : 'light');
+    } catch (_) {}
+  };
 
   const handleSaveApiKey = (newKey) => {
     setApiKey(newKey);
@@ -496,7 +538,8 @@ export default function App() {
         apiKey={apiKey}
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
         isDark={isDark}
-        onToggleTheme={() => setIsDark(!isDark)}
+        onToggleTheme={handleToggleTheme}
+        themeSource={themeSource}
         isComparing={isComparing}
         historyCount={historySessions.length}
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
