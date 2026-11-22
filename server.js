@@ -128,7 +128,8 @@ app.get('/api/formats', (req, res) => {
       { ext: '.docx', label: 'Word Document', desc: 'Paragraphs, headers, and bullet points' },
       { ext: '.xlsx', label: 'Excel Spreadsheet', desc: 'Multi-sheet tabular grid comparisons' },
       { ext: '.pptx', label: 'PowerPoint Presentation', desc: 'Slide-by-slide sequence matching' },
-      { ext: '.txt', label: 'Plain Text & Markdown', desc: 'Raw character and token comparison' }
+      { ext: '.txt', label: 'Plain Text & Markdown', desc: 'Raw character and token comparison' },
+      { ext: '.png, .jpg', label: 'Visual Photos & Images', desc: 'Profile photo and visual asset mismatch comparison' }
     ]
   });
 });
@@ -200,7 +201,9 @@ app.post(
         stats: comparison.stats,
         sectionReports: comparison.sectionReports,
         summary: comparison.summary,
-        apiKey: userApiKey
+        apiKey: userApiKey,
+        entitySwaps: comparison.entitySwaps || [],
+        imageDiff: comparison.imageDiff || null
       });
 
       // 6. Build Unified Result Payload
@@ -213,14 +216,16 @@ app.post(
             format: docAContent.format,
             wordCount: docAContent.wordCount,
             charCount: docAContent.charCount,
-            sectionsCount: docAContent.sections.length
+            sectionsCount: docAContent.sections.length,
+            imagesCount: (docAContent.images || []).length
           },
           docB: {
             filename: docBContent.filename,
             format: docBContent.format,
             wordCount: docBContent.wordCount,
             charCount: docBContent.charCount,
-            sectionsCount: docBContent.sections.length
+            sectionsCount: docBContent.sections.length,
+            imagesCount: (docBContent.images || []).length
           }
         },
         metrics: {
@@ -232,6 +237,8 @@ app.post(
         stats: comparison.stats,
         summary: comparison.summary,
         contextAnalysis,
+        entitySwaps: comparison.entitySwaps || [],
+        imageDiff: comparison.imageDiff || null,
         sectionReports: comparison.sectionReports,
         spreadsheetDiff: comparison.spreadsheetDiff || null,
         diffTokens: comparison.diffTokens
@@ -324,13 +331,15 @@ app.post(
               stats: comparison.stats,
               sectionReports: comparison.sectionReports,
               summary: comparison.summary,
-              apiKey: userApiKey
+              apiKey: userApiKey,
+              entitySwaps: comparison.entitySwaps || [],
+              imageDiff: comparison.imageDiff || null
             });
           } catch (e) {
-            contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary);
+            contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary, docAContent.text, docBContent.text, comparison.entitySwaps || [], comparison.imageDiff || null);
           }
         } else {
-          contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary);
+          contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary, docAContent.text, docBContent.text, comparison.entitySwaps || [], comparison.imageDiff || null);
         }
 
         const sim = comparison.similarityPercent;
@@ -346,14 +355,16 @@ app.post(
               format: docAContent.format,
               wordCount: docAContent.wordCount,
               charCount: docAContent.charCount,
-              sectionsCount: docAContent.sections.length
+              sectionsCount: docAContent.sections.length,
+              imagesCount: (docAContent.images || []).length
             },
             docB: {
               filename: docBContent.filename,
               format: docBContent.format,
               wordCount: docBContent.wordCount,
               charCount: docBContent.charCount,
-              sectionsCount: docBContent.sections.length
+              sectionsCount: docBContent.sections.length,
+              imagesCount: (docBContent.images || []).length
             }
           },
           metrics: {
@@ -365,6 +376,8 @@ app.post(
           stats: comparison.stats,
           summary: comparison.summary,
           contextAnalysis,
+          entitySwaps: comparison.entitySwaps || [],
+          imageDiff: comparison.imageDiff || null,
           sectionReports: comparison.sectionReports,
           spreadsheetDiff: comparison.spreadsheetDiff || null,
           diffTokens: comparison.diffTokens,

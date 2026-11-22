@@ -15,16 +15,22 @@ import {
   PlusCircle,
   MinusCircle,
   RefreshCw,
-  FileText
+  FileText,
+  UserX,
+  Fingerprint,
+  Image as ImageIcon,
+  Camera
 } from 'lucide-react';
 
-export default function ExecutiveSummary({ contextAnalysis, summary }) {
+export default function ExecutiveSummary({ contextAnalysis, summary, entitySwaps = [], imageDiff = null }) {
   if (!contextAnalysis) return null;
 
   const isAi = contextAnalysis.mode === 'ai';
   const breakdown = contextAnalysis.structuralBreakdown || {};
   const explanations = contextAnalysis.explanations || [];
   const verdictHeadline = contextAnalysis.verdictHeadline || summary?.headline || 'Executive Difference Summary';
+  const swaps = (entitySwaps && entitySwaps.length > 0) ? entitySwaps : (contextAnalysis.entitySwaps || []);
+  const visualDiff = imageDiff || contextAnalysis.imageDiff;
 
   return (
     <div className="rounded-[32px] bg-white dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] p-4 sm:p-7 md:p-9 shadow-card space-y-6 sm:space-y-7 transition-all">
@@ -139,6 +145,195 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
           </div>
         </div>
       </div>
+
+      {/* Identity & Entity Swap Sentinel Alert (Detects systematic name replacement in high-similarity docs) */}
+      {swaps.length > 0 && (
+        <div className="rounded-3xl bg-gradient-to-br from-rose-50 via-white to-rose-50/40 dark:from-rose-950/30 dark:via-slate-900/90 dark:to-rose-950/20 border-2 border-rose-300 dark:border-rose-800/60 p-5 sm:p-7 shadow-md space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-rose-200/70 dark:border-rose-900/50 gap-2">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 shadow-xs">
+                <UserX className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm sm:text-base text-rose-950 dark:text-rose-100 flex items-center gap-2">
+                  <span>Critical Alert: Identity &amp; Party Name Substitution</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
+                    High Priority
+                  </span>
+                </h4>
+                <p className="text-xs text-rose-700 dark:text-rose-300 font-medium">
+                  Document text is highly similar, but key person or party identity has been systematically substituted.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 text-xs font-bold text-rose-700 dark:text-rose-300">
+              <Fingerprint className="w-4 h-4" />
+              <span>{swaps.length} Entity {swaps.length === 1 ? 'Substitution' : 'Substitutions'}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+            {swaps.map((swap, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-2.5"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-900">
+                    Entity Swap #{idx + 1}
+                  </span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    {swap.occurrences}x {swap.occurrences === 1 ? 'occurrence' : 'occurrences'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 font-mono text-sm py-1">
+                  <div className="flex-1 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300 font-bold truncate">
+                    <span className="text-[10px] uppercase tracking-wider text-rose-400 block font-sans">Original (Doc A)</span>
+                    <span className="truncate block font-semibold">{swap.entityA}</span>
+                  </div>
+
+                  <ArrowRight className="w-4 h-4 text-rose-500 shrink-0" />
+
+                  <div className="flex-1 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold truncate">
+                    <span className="text-[10px] uppercase tracking-wider text-emerald-400 block font-sans">Revised (Doc B)</span>
+                    <span className="truncate block font-semibold">{swap.entityB}</span>
+                  </div>
+                </div>
+
+                {swap.context && (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-950/50 p-2 rounded-xl border border-slate-100 dark:border-white/[0.04]">
+                    Excerpt: &ldquo;{swap.context}&rdquo;
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Embedded Photos & Visual Media Inspection Card */}
+      {visualDiff && visualDiff.hasImages && (
+        <div className="rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/[0.08] p-5 sm:p-7 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06] gap-2">
+            <div className="flex items-center space-x-3">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${
+                visualDiff.status === 'REPLACED'
+                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                  : visualDiff.status === 'MODIFIED'
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                  : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                <Camera className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Embedded Photos &amp; Visual Media Inspection</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    visualDiff.status === 'REPLACED'
+                      ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                      : visualDiff.status === 'MODIFIED'
+                      ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                      : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                  }`}>
+                    {visualDiff.status === 'REPLACED' ? 'Photo / Image Replaced' : visualDiff.status === 'MODIFIED' ? 'Visuals Modified' : 'Identical Visuals'}
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Audits embedded profile pictures, portraits, and diagrams extracted from DOCX, PPTX, PDF, and direct image uploads.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3 text-xs font-bold text-slate-600 dark:text-slate-300">
+              <span>Doc A: {visualDiff.countA} {visualDiff.countA === 1 ? 'image' : 'images'}</span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span>Doc B: {visualDiff.countB} {visualDiff.countB === 1 ? 'image' : 'images'}</span>
+            </div>
+          </div>
+
+          {/* Image Mismatches / Changes List */}
+          {visualDiff.mismatches && visualDiff.mismatches.length > 0 ? (
+            <div className="space-y-3">
+              {visualDiff.mismatches.map((mismatch, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                    mismatch.type === 'REPLACED'
+                      ? 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50'
+                      : mismatch.type === 'REMOVED'
+                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50'
+                      : 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                        mismatch.type === 'REPLACED'
+                          ? 'bg-rose-600 text-white'
+                          : mismatch.type === 'REMOVED'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-blue-600 text-white'
+                      }`}>
+                        {mismatch.type}
+                      </span>
+                      <h5 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                        {mismatch.title}
+                      </h5>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                      {mismatch.description}
+                    </p>
+                  </div>
+
+                  {/* Side-by-Side Thumbnail Previews (if available) */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    {mismatch.imgA && (
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-xl border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-slate-950 flex items-center justify-center overflow-hidden shadow-xs">
+                          {mismatch.imgA.dataUri ? (
+                            <img src={mismatch.imgA.dataUri} alt="Doc A" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-6 h-6 text-slate-400" />
+                          )}
+                        </div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 block">
+                          Doc A ({mismatch.imgA.sizeKb} KB)
+                        </span>
+                      </div>
+                    )}
+
+                    {mismatch.imgA && mismatch.imgB && (
+                      <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+                    )}
+
+                    {mismatch.imgB && (
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-xl border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-slate-950 flex items-center justify-center overflow-hidden shadow-xs">
+                          {mismatch.imgB.dataUri ? (
+                            <img src={mismatch.imgB.dataUri} alt="Doc B" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-6 h-6 text-[#FF5E1E]" />
+                          )}
+                        </div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 block">
+                          Doc B ({mismatch.imgB.sizeKb} KB)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>All embedded photos, images, and diagrams in both documents are 100% byte-for-byte identical (SHA-256 fingerprint verified).</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Legal & Financial Risk Radar Card */}
       {contextAnalysis.riskRadar && (

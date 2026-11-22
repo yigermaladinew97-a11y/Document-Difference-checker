@@ -12,7 +12,7 @@
     "build": "npm --prefix client install && npm --prefix client run build",
     "dev": "node --watch server.js",
     "client:dev": "cd client && npm run dev",
-    "test": "node test-parsers.js && node test-comparator.js && node test-ai.js && node test-auth.js && node test-2fa.js && node test-forgot-password.js",
+    "test": "node test-parsers.js && node test-comparator.js && node test-ai.js && node test-auth.js && node test-2fa.js && node test-forgot-password.js && node test-identity-and-images.js",
     "test:parsers": "node test-parsers.js",
     "test:comparator": "node test-comparator.js",
     "test:ai": "node test-ai.js",

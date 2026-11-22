@@ -938,6 +938,190 @@ export function compareSpreadsheetSheets(sheetsA = [], sheetsB = [], filterOpts 
   return comparedSheets.length > 0 ? comparedSheets : null;
 }
 
+const PROPER_NAME_STOPWORDS = new Set([
+  'the', 'this', 'that', 'these', 'those', 'section', 'article', 'clause',
+  'schedule', 'page', 'table', 'item', 'chapter', 'part', 'header', 'footer',
+  'exhibit', 'attachment', 'in', 'on', 'at', 'to', 'for', 'with', 'by',
+  'from', 'and', 'or', 'but', 'if', 'then', 'when', 'while', 'where',
+  'whereas', 'therefore', 'however', 'moreover', 'furthermore', 'all',
+  'any', 'each', 'every', 'some', 'none', 'no', 'yes', 'we', 'they', 'you',
+  'our', 'their', 'your', 'his', 'her', 'its', 'not', 'as', 'is', 'are', 'was', 'were'
+]);
+
+function isProperEntityName(str) {
+  if (!str) return false;
+  const words = str.trim().split(/\s+/);
+  if (words.length < 1 || words.length > 5) return false;
+
+  for (const w of words) {
+    const clean = w.replace(/^[\("'\[]+|[)"'\],.:;?!]+$/g, '');
+    if (!clean) return false;
+    if (PROPER_NAME_STOPWORDS.has(clean.toLowerCase())) return false;
+    if (!/^[A-Z][a-zA-Z0-9'’.-]*$/.test(clean)) return false;
+  }
+  return true;
+}
+
+/**
+ * Detect systematic Entity / Identity / Party name swaps between two versions.
+ * Especially crucial when textual similarity is high (> 65%), but a key person,
+ * candidate, client, or corporate name was substituted.
+ */
+export function detectEntitySwaps(wordDiffs = [], textA = '', textB = '', similarityPercent = 100) {
+  if (!wordDiffs || wordDiffs.length === 0) return [];
+
+  const clusters = [];
+  let curRemoved = [];
+  let curAdded = [];
+
+  for (let i = 0; i < wordDiffs.length; i++) {
+    const item = wordDiffs[i];
+    if (item.removed) {
+      curRemoved.push(item.value);
+    } else if (item.added) {
+      curAdded.push(item.value);
+    } else {
+      if (/^\s+$/.test(item.value) && (wordDiffs[i + 1]?.removed || wordDiffs[i + 1]?.added)) {
+        continue;
+      }
+      if (curRemoved.length || curAdded.length) {
+        const prevSnippet = wordDiffs.slice(Math.max(0, i - 4), i)
+          .filter(t => !t.removed && !t.added)
+          .map(t => t.value).join('').trim();
+        const nextSnippet = wordDiffs.slice(i, Math.min(wordDiffs.length, i + 4))
+          .filter(t => !t.removed && !t.added)
+          .map(t => t.value).join('').trim();
+
+        clusters.push({
+          removed: curRemoved.join(' ').replace(/\s+/g, ' ').trim(),
+          added: curAdded.join(' ').replace(/\s+/g, ' ').trim(),
+          context: `...${prevSnippet} [swap] ${nextSnippet}...`
+        });
+        curRemoved = [];
+        curAdded = [];
+      }
+    }
+  }
+
+  if (curRemoved.length || curAdded.length) {
+    clusters.push({
+      removed: curRemoved.join(' ').replace(/\s+/g, ' ').trim(),
+      added: curAdded.join(' ').replace(/\s+/g, ' ').trim(),
+      context: '...document clause...'
+    });
+  }
+
+  const swapCounts = new Map();
+  for (const c of clusters) {
+    if (c.removed && c.added && c.removed !== c.added) {
+      if (isProperEntityName(c.removed) && isProperEntityName(c.added)) {
+        const key = `${c.removed}:::${c.added}`;
+        const existing = swapCounts.get(key) || {
+          entityA: c.removed,
+          entityB: c.added,
+          count: 0,
+          context: c.context
+        };
+        existing.count++;
+        swapCounts.set(key, existing);
+      }
+    }
+  }
+
+  return Array.from(swapCounts.values()).map(swap => {
+    const severity = similarityPercent >= 75 ? 'CRITICAL' : 'HIGH';
+    return {
+      entityA: swap.entityA,
+      entityB: swap.entityB,
+      count: swap.count,
+      severity,
+      title: `Identity / Entity Name Swap: "${swap.entityA}" ➔ "${swap.entityB}"`,
+      description: `Primary named entity was substituted from "${swap.entityA}" in Document A to "${swap.entityB}" in Document B (${swap.count} occurrence(s)).`,
+      context: swap.context
+    };
+  });
+}
+
+/**
+ * Compare embedded images between Document A and Document B
+ */
+export function compareDocumentImages(imagesA = [], imagesB = []) {
+  const countA = (imagesA || []).length;
+  const countB = (imagesB || []).length;
+
+  if (countA === 0 && countB === 0) {
+    return {
+      hasImages: false,
+      status: 'NO_IMAGES',
+      countA: 0,
+      countB: 0,
+      mismatchesCount: 0,
+      mismatches: [],
+      imagesA: [],
+      imagesB: []
+    };
+  }
+
+  const mismatches = [];
+  const maxLen = Math.max(countA, countB);
+
+  for (let i = 0; i < maxLen; i++) {
+    const imgA = imagesA[i] || null;
+    const imgB = imagesB[i] || null;
+
+    if (imgA && imgB) {
+      if (imgA.hash !== imgB.hash) {
+        mismatches.push({
+          index: i + 1,
+          type: 'REPLACED',
+          severity: 'HIGH',
+          title: `Embedded Photo / Image #${i + 1} Replaced`,
+          description: `Document A contains image "${imgA.name}" (${imgA.sizeKb} KB), which was replaced with a different image "${imgB.name}" (${imgB.sizeKb} KB) in Document B.`,
+          imgA,
+          imgB
+        });
+      }
+    } else if (imgA && !imgB) {
+      mismatches.push({
+        index: i + 1,
+        type: 'REMOVED',
+        severity: 'MEDIUM',
+        title: `Embedded Photo / Image #${i + 1} Removed`,
+        description: `Image "${imgA.name}" (${imgA.sizeKb} KB) from Document A is missing in Document B.`,
+        imgA,
+        imgB: null
+      });
+    } else if (!imgA && imgB) {
+      mismatches.push({
+        index: i + 1,
+        type: 'ADDED',
+        severity: 'LOW',
+        title: `New Embedded Photo / Image #${i + 1} Added`,
+        description: `Document B includes a new embedded image "${imgB.name}" (${imgB.sizeKb} KB).`,
+        imgA: null,
+        imgB
+      });
+    }
+  }
+
+  const status = mismatches.some(m => m.type === 'REPLACED')
+    ? 'REPLACED'
+    : mismatches.some(m => m.type === 'REMOVED' || m.type === 'ADDED')
+    ? 'MODIFIED'
+    : 'IDENTICAL';
+
+  return {
+    hasImages: true,
+    status,
+    countA,
+    countB,
+    mismatchesCount: mismatches.length,
+    mismatches,
+    imagesA: imagesA || [],
+    imagesB: imagesB || []
+  };
+}
+
 /**
  * Compare two extracted document objects
  * @param {Object} docA - Extracted content of Document A { text, sections, format, filename }
@@ -986,22 +1170,47 @@ export function compareDocuments(docA, docB, options = {}) {
   // 5. If spreadsheet data (XLSX, XLS, CSV) exists, compute structured cell-by-cell matrix diff
   const spreadsheetDiff = compareSpreadsheetSheets(docA.sheets || [], docB.sheets || [], filterOpts);
 
+  // 6. Detect Entity / Identity / Party Name Swaps
+  const entitySwaps = detectEntitySwaps(wordDiffs, rawTextA, rawTextB, stats.similarityPercent);
+
+  // 7. Compare Embedded Images & Photos
+  const imageDiff = compareDocumentImages(docA.images || [], docB.images || []);
+
+  if (entitySwaps.length > 0) {
+    stats.hasEntitySwaps = true;
+    stats.entitySwapsCount = entitySwaps.length;
+    summary.keyPoints.unshift(`🚨 Identity/Party swap detected: ${entitySwaps.map(s => `"${s.entityA}" ➔ "${s.entityB}"`).join(', ')}`);
+  }
+
+  if (imageDiff.hasImages) {
+    stats.hasImages = true;
+    stats.hasImageDiff = imageDiff.status !== 'IDENTICAL';
+    stats.imageMismatchesCount = imageDiff.mismatchesCount;
+    if (imageDiff.status === 'REPLACED') {
+      summary.keyPoints.push(`🖼️ Embedded photo / image replaced (${imageDiff.mismatchesCount} mismatch detected)`);
+    } else if (imageDiff.status === 'MODIFIED') {
+      summary.keyPoints.push(`🖼️ Embedded media altered (${imageDiff.mismatchesCount} change(s))`);
+    }
+  }
+
   const isStrictExact = filterOpts.ignoreWhitespace
     ? (stats.similarityPercent === 100)
     : (textA === textB || (filterOpts.ignoreCase ? textA.toLowerCase() === textB.toLowerCase() : false));
 
   return {
-    isIdentical: isStrictExact && stats.similarityPercent === 100,
+    isIdentical: isStrictExact && stats.similarityPercent === 100 && (!imageDiff.hasImages || imageDiff.status === 'IDENTICAL'),
     similarityPercent: isStrictExact ? 100 : stats.similarityPercent,
     stats,
     summary,
     sectionReports,
     spreadsheetDiff,
+    entitySwaps,
+    imageDiff,
     diffTokens: formattedDiffs,
     filters: filterOpts,
     meta: {
-      docA: { filename: docA.filename, format: docA.format, wordCount: docA.wordCount },
-      docB: { filename: docB.filename, format: docB.format, wordCount: docB.wordCount }
+      docA: { filename: docA.filename, format: docA.format, wordCount: docA.wordCount, imagesCount: (docA.images || []).length },
+      docB: { filename: docB.filename, format: docB.format, wordCount: docB.wordCount, imagesCount: (docB.images || []).length }
     }
   };
 }

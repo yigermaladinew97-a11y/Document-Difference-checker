@@ -15,11 +15,13 @@
  */
 
 import path from 'path';
+import crypto from 'crypto';
 import { extractText as extractPdfText } from 'unpdf';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import AdmZip from 'adm-zip';
+import { PDFDocument, PDFRawStream, PDFName } from 'pdf-lib';
 
 // Polyfill globalThis.Iterator for Node runtimes (< v22) where PDF.js expects it
 if (typeof globalThis.Iterator === 'undefined') {
@@ -65,6 +67,136 @@ function decodeXmlEntities(str) {
 }
 
 /**
+ * Extract embedded images from a zip package (.docx or .pptx)
+ */
+function extractImagesFromZip(buffer, mediaPrefix = 'word/media/') {
+  try {
+    const zip = new AdmZip(buffer);
+    const entries = zip.getEntries();
+    const images = [];
+
+    for (const entry of entries) {
+      if (entry.entryName.startsWith(mediaPrefix) && !entry.isDirectory) {
+        const filename = path.basename(entry.entryName);
+        const ext = path.extname(filename).toLowerCase();
+        if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp'].includes(ext)) {
+          const imgBuffer = entry.getData();
+          const hash = crypto.createHash('sha256').update(imgBuffer).digest('hex');
+          const mimeType = ext === '.png' ? 'image/png'
+            : (ext === '.jpg' || ext === '.jpeg') ? 'image/jpeg'
+            : ext === '.webp' ? 'image/webp'
+            : ext === '.svg' ? 'image/svg+xml'
+            : 'image/png';
+
+          const dataUri = imgBuffer.length <= 2 * 1024 * 1024
+            ? `data:${mimeType};base64,${imgBuffer.toString('base64')}`
+            : null;
+
+          images.push({
+            id: `img_${images.length + 1}`,
+            name: filename,
+            ext,
+            size: imgBuffer.length,
+            sizeKb: Math.round(imgBuffer.length / 1024),
+            hash,
+            mimeType,
+            dataUri
+          });
+        }
+      }
+    }
+    return images;
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
+ * Extract embedded image streams from a PDF document
+ */
+async function extractImagesFromPdf(buffer) {
+  try {
+    const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+    const images = [];
+    const context = pdfDoc.context;
+    let idx = 1;
+
+    for (const [ref, obj] of context.enumerateIndirectObjects()) {
+      if (obj instanceof PDFRawStream) {
+        const dict = obj.dict;
+        const subtype = dict.get(PDFName.of('Subtype'));
+        if (subtype && subtype.toString() === '/Image') {
+          const filter = dict.get(PDFName.of('Filter'))?.toString() || '';
+          const rawBytes = obj.contents;
+          if (!rawBytes || rawBytes.length === 0) continue;
+
+          const hash = crypto.createHash('sha256').update(rawBytes).digest('hex');
+          let ext = '.jpg';
+          let mimeType = 'image/jpeg';
+          if (filter.includes('FlateDecode')) {
+            ext = '.png';
+            mimeType = 'image/png';
+          }
+
+          const dataUri = (rawBytes.length <= 2 * 1024 * 1024 && (ext === '.jpg' || filter.includes('DCTDecode')))
+            ? `data:${mimeType};base64,${Buffer.from(rawBytes).toString('base64')}`
+            : null;
+
+          images.push({
+            id: `pdf_img_${idx}`,
+            name: `PDF_Embedded_Image_${idx}${ext}`,
+            ext,
+            size: rawBytes.length,
+            sizeKb: Math.round(rawBytes.length / 1024),
+            hash,
+            mimeType,
+            dataUri
+          });
+          idx++;
+        }
+      }
+    }
+    return images;
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
+ * Parse standalone image file (.png, .jpg, .jpeg, .webp, .svg)
+ */
+function parseImageFile(buffer, originalname, ext) {
+  const mimeType = ext === '.png' ? 'image/png'
+    : (ext === '.jpg' || ext === '.jpeg') ? 'image/jpeg'
+    : ext === '.webp' ? 'image/webp'
+    : ext === '.svg' ? 'image/svg+xml'
+    : 'image/png';
+
+  const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+  const sizeKb = Math.round(buffer.length / 1024);
+  const dataUri = `data:${mimeType};base64,${buffer.toString('base64')}`;
+
+  return {
+    type: 'image',
+    images: [{
+      id: 'img_1',
+      name: originalname,
+      ext,
+      size: buffer.length,
+      sizeKb,
+      hash,
+      mimeType,
+      dataUri
+    }],
+    sections: [{
+      title: 'Visual Asset',
+      content: `[Visual Asset / Profile Photo: ${originalname} (${sizeKb} KB, Hash: ${hash.slice(0, 12)})]`
+    }],
+    text: `[Visual Asset / Profile Photo: ${originalname} (${sizeKb} KB, Hash: ${hash.slice(0, 12)})]`
+  };
+}
+
+/**
  * Extract text from PDF buffer using modern unpdf (per-page extraction)
  * with automatic, resilient fallback to pdf-parse if unpdf / PDF.js fails.
  */
@@ -81,13 +213,15 @@ async function parsePdf(buffer) {
       })).filter(s => s.content.length > 0);
 
       const fullText = sections.map(s => s.content).join('\n\n');
+      const images = await extractImagesFromPdf(buffer);
 
       if (fullText && fullText.trim()) {
         return {
           type: 'pdf',
           pagesCount: data.totalPages || sections.length || 1,
           sections: sections.length > 0 ? sections : [{ title: 'Page 1', content: '' }],
-          text: normalizeText(fullText)
+          text: normalizeText(fullText),
+          images
         };
       }
     } catch (err) {
@@ -99,6 +233,7 @@ async function parsePdf(buffer) {
   // 2. High-speed, universal parser: pdf-parse (runs in all Node versions in ~20-50ms)
   const pdfData = await pdfParse(buffer);
   const text = normalizeText(pdfData.text || '');
+  const images = await extractImagesFromPdf(buffer);
 
   // Split by form feeds or generate page sections
   const pageChunks = text.split(/\f+/).map((p, idx) => ({
@@ -114,7 +249,8 @@ async function parsePdf(buffer) {
     type: 'pdf',
     pagesCount: pdfData.numpages || sections.length || 1,
     sections,
-    text
+    text,
+    images
   };
 }
 
@@ -122,8 +258,20 @@ async function parsePdf(buffer) {
  * Extract text from Word (.docx) buffer
  */
 async function parseDocx(buffer) {
-  const result = await mammoth.extractRawText({ buffer });
-  const text = normalizeText(result.value);
+  let text = '';
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    text = normalizeText(result.value);
+  } catch (err) {
+    try {
+      const zip = new AdmZip(buffer);
+      const docXml = zip.readAsText('word/document.xml');
+      text = normalizeText(docXml.replace(/<[^>]+>/g, ' '));
+    } catch {
+      text = '';
+    }
+  }
+  const images = extractImagesFromZip(buffer, 'word/media/');
 
   // Group into logical paragraph blocks as sections
   const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
@@ -135,7 +283,8 @@ async function parseDocx(buffer) {
   return {
     type: 'docx',
     sections: sections.length > 0 ? sections : [{ title: 'Document Body', content: text }],
-    text
+    text,
+    images
   };
 }
 
@@ -308,11 +457,13 @@ function parsePptx(buffer) {
   }
 
   const text = fullTextParts.join('\n\n');
+  const images = extractImagesFromZip(buffer, 'ppt/media/');
   return {
     type: 'pptx',
     slidesCount: slideEntries.length,
     sections: sections.length > 0 ? sections : [{ title: 'Slide 1', content: '' }],
-    text
+    text,
+    images
   };
 }
 
@@ -379,6 +530,13 @@ export async function extractDocumentContent(buffer, originalname) {
     case '.json':
       parsedResult = parsePlainText(buffer, ext);
       break;
+    case '.png':
+    case '.jpg':
+    case '.jpeg':
+    case '.webp':
+    case '.svg':
+      parsedResult = parseImageFile(buffer, originalname, ext);
+      break;
     default:
       // Try text fallback, or throw helpful error
       try {
@@ -396,6 +554,8 @@ export async function extractDocumentContent(buffer, originalname) {
     text: parsedResult.text,
     sections: parsedResult.sections,
     sheets: parsedResult.sheets || [],
+    images: parsedResult.images || [],
+    imagesCount: (parsedResult.images || []).length,
     wordCount: words.length,
     charCount: parsedResult.text.length
   };

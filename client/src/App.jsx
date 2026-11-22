@@ -669,6 +669,8 @@ export default function App() {
                 <ExecutiveSummary
                   contextAnalysis={comparisonResult.contextAnalysis}
                   summary={comparisonResult.summary}
+                  entitySwaps={comparisonResult.entitySwaps}
+                  imageDiff={comparisonResult.imageDiff}
                 />
 
                 {/* 3. Section / Page / Slide Breakdown */}
@@ -694,6 +696,8 @@ export default function App() {
                     }
                   }}
                   spreadsheetDiff={comparisonResult.spreadsheetDiff}
+                  imageDiff={comparisonResult.imageDiff}
+                  entitySwaps={comparisonResult.entitySwaps}
                   currentUser={currentUser}
                   onRequestAuth={handleOpenAuthModal}
                 />

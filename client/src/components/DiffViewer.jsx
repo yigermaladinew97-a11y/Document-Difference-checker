@@ -21,7 +21,9 @@ import {
   Volume2,
   VolumeX,
   Keyboard,
-  Info
+  Info,
+  Image as ImageIcon,
+  Camera
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
 import MergeResolver from './MergeResolver';
@@ -45,11 +47,14 @@ export default function DiffViewer({
   initialDecisions = {},
   onDecisionsChange,
   spreadsheetDiff,
+  imageDiff = null,
+  entitySwaps = [],
   currentUser = null,
   onRequestAuth = null,
   readOnly = false
 }) {
   const hasSpreadsheet = Boolean(spreadsheetDiff && spreadsheetDiff.length > 0);
+  const hasImages = Boolean(imageDiff && imageDiff.hasImages);
   const [viewMode, setViewMode] = useState(() => (hasSpreadsheet ? 'spreadsheet' : 'sideBySide'));
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
   const [wrapText, setWrapText] = useState(true);
@@ -369,6 +374,23 @@ export default function DiffViewer({
               <FileEdit className="w-3.5 h-3.5" />
               <span>Track Changes</span>
             </button>
+            {hasImages && (
+              <button
+                type="button"
+                onClick={() => setViewMode('images')}
+                className={`shrink-0 flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all duration-200 ${viewMode === 'images'
+                    ? 'bg-[#FF5E1E] text-white shadow-sm scale-100'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                title="View embedded photos and visual media diff"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>Visuals ({imageDiff.countA + imageDiff.countB})</span>
+                {imageDiff.status === 'REPLACED' && (
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                )}
+              </button>
+            )}
           </div>
 
           <button
@@ -671,6 +693,159 @@ export default function DiffViewer({
             currentUser={currentUser}
             onRequestAuth={onRequestAuth}
           />
+        </div>
+      ) : viewMode === 'images' && hasImages ? (
+        <div className="p-6 sm:p-8 bg-slate-50/40 dark:bg-transparent space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/80 dark:border-white/[0.08] gap-3">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <Camera className="w-5 h-5 text-[#FF5E1E]" />
+                <span>Embedded Photos &amp; Visual Media Studio</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                  imageDiff.status === 'REPLACED'
+                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                    : imageDiff.status === 'MODIFIED'
+                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                    : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                }`}>
+                  {imageDiff.status}
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                Side-by-side inspection of all embedded photos, diagrams, and portraits extracted from both documents.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 text-xs font-mono font-bold text-slate-600 dark:text-slate-300">
+              <span className="px-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08]">
+                Doc A: {imageDiff.countA} visual(s)
+              </span>
+              <span className="px-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08]">
+                Doc B: {imageDiff.countB} visual(s)
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            {imageDiff.mismatches && imageDiff.mismatches.length > 0 ? (
+              imageDiff.mismatches.map((mismatch, idx) => (
+                <div
+                  key={idx}
+                  className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] shadow-sm space-y-4"
+                >
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                        mismatch.type === 'REPLACED'
+                          ? 'bg-rose-600 text-white'
+                          : mismatch.type === 'REMOVED'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-blue-600 text-white'
+                      }`}>
+                        {mismatch.type}
+                      </span>
+                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                        {mismatch.title}
+                      </h4>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400">
+                      Visual Asset #{mismatch.index}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                    {mismatch.description}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                    {/* Doc A Image Card */}
+                    <div className={`p-4 rounded-2xl border ${
+                      mismatch.imgA ? 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-white/[0.08]' : 'bg-slate-100/50 dark:bg-slate-900/30 border-dashed border-slate-200 dark:border-white/[0.06]'
+                    }`}>
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-3">
+                        <span className="uppercase tracking-wider">Document A Asset</span>
+                        {mismatch.imgA && <span className="font-mono">{mismatch.imgA.sizeKb} KB</span>}
+                      </div>
+
+                      {mismatch.imgA ? (
+                        <div className="flex flex-col items-center space-y-3">
+                          <div className="w-full h-56 rounded-xl border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-slate-950 flex items-center justify-center overflow-hidden shadow-inner">
+                            {mismatch.imgA.dataUri ? (
+                              <img src={mismatch.imgA.dataUri} alt="Doc A" className="max-h-full max-w-full object-contain" />
+                            ) : (
+                              <ImageIcon className="w-12 h-12 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="w-full text-xs space-y-1 font-mono">
+                            <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                              <span>Name:</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{mismatch.imgA.name}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-500">
+                              <span>SHA-256:</span>
+                              <span className="truncate max-w-[180px] text-[10px]">{mismatch.imgA.hash}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-56 flex flex-col items-center justify-center text-slate-400 text-xs font-medium">
+                          <ImageIcon className="w-8 h-8 opacity-40 mb-2" />
+                          <span>No corresponding image in Document A</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Doc B Image Card */}
+                    <div className={`p-4 rounded-2xl border ${
+                      mismatch.imgB ? 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-white/[0.08]' : 'bg-slate-100/50 dark:bg-slate-900/30 border-dashed border-slate-200 dark:border-white/[0.06]'
+                    }`}>
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-3">
+                        <span className="uppercase tracking-wider">Document B Asset</span>
+                        {mismatch.imgB && <span className="font-mono">{mismatch.imgB.sizeKb} KB</span>}
+                      </div>
+
+                      {mismatch.imgB ? (
+                        <div className="flex flex-col items-center space-y-3">
+                          <div className="w-full h-56 rounded-xl border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-slate-950 flex items-center justify-center overflow-hidden shadow-inner">
+                            {mismatch.imgB.dataUri ? (
+                              <img src={mismatch.imgB.dataUri} alt="Doc B" className="max-h-full max-w-full object-contain" />
+                            ) : (
+                              <ImageIcon className="w-12 h-12 text-[#FF5E1E]" />
+                            )}
+                          </div>
+                          <div className="w-full text-xs space-y-1 font-mono">
+                            <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                              <span>Name:</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{mismatch.imgB.name}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-500">
+                              <span>SHA-256:</span>
+                              <span className="truncate max-w-[180px] text-[10px]">{mismatch.imgB.hash}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-56 flex flex-col items-center justify-center text-slate-400 text-xs font-medium">
+                          <ImageIcon className="w-8 h-8 opacity-40 mb-2" />
+                          <span>Image was removed from Document B</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/[0.08] text-center space-y-3">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                <h4 className="font-black text-slate-900 dark:text-white text-base">
+                  All Embedded Images Are 100% Identical
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  Every embedded image in Document A has a matching byte-for-byte counterpart in Document B with an identical SHA-256 fingerprint.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="relative flex">

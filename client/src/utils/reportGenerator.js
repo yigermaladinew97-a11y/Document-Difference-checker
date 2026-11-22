@@ -22,6 +22,8 @@ export function generateStandaloneReportHtml(data) {
   const sectionReports = data?.sectionReports || [];
   const diffTokens = data?.diffTokens || [];
   const filters = data?.filters || {};
+  const entitySwaps = data?.entitySwaps || [];
+  const imageDiff = data?.imageDiff || null;
 
   const docA = meta.docA || { filename: 'Document A', format: 'unknown', wordCount: 0 };
   const docB = meta.docB || { filename: 'Document B', format: 'unknown', wordCount: 0 };
@@ -714,6 +716,58 @@ export function generateStandaloneReportHtml(data) {
       </div>
       ` : ''}
     </div>
+
+    <!-- Identity & Entity Substitution Alert (if present) -->
+    ${entitySwaps.length > 0 ? `
+    <div style="padding: 20px; background: #FFF1F2; border: 2px solid #FDA4AF; border-radius: 16px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span style="font-size: 12px; font-weight: 800; color: #E11D48; text-transform: uppercase; letter-spacing: 0.5px;">
+          🚨 Critical Alert: Identity &amp; Party Name Substitution
+        </span>
+        <span class="badge badge-rose">${entitySwaps.length} Entity Substitution(s)</span>
+      </div>
+      <div style="font-size: 12px; color: #881337; margin-bottom: 12px; font-weight: 600;">
+        Document text is highly similar, but the primary person or party identity has been systematically substituted.
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        ${entitySwaps.map(swap => `
+          <div style="padding: 10px 14px; background: #FFFFFF; border: 1px solid #FECDD3; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+            <div>
+              <span style="text-decoration: line-through; color: #E11D48; font-weight: 700;">${escapeHtml(swap.entityA)}</span>
+              <span style="margin: 0 8px; color: #94A3B8;">➔</span>
+              <span style="color: #059669; font-weight: 700;">${escapeHtml(swap.entityB)}</span>
+            </div>
+            <span style="font-size: 11px; font-family: monospace; color: #64748B;">${swap.occurrences}x</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- Embedded Photos & Visual Media Audit (if present) -->
+    ${imageDiff && imageDiff.hasImages ? `
+    <div style="padding: 20px; background: #F8FAFC; border: 1px solid var(--border); border-radius: 16px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span style="font-size: 12px; font-weight: 800; color: #0F172A; text-transform: uppercase; letter-spacing: 0.5px;">
+          📷 Embedded Photos &amp; Visual Media Audit
+        </span>
+        <span class="badge ${imageDiff.status === 'REPLACED' ? 'badge-rose' : imageDiff.status === 'MODIFIED' ? 'badge-amber' : 'badge-emerald'}">
+          ${escapeHtml(imageDiff.status)}
+        </span>
+      </div>
+      ${imageDiff.mismatches && imageDiff.mismatches.length > 0 ? `
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        ${imageDiff.mismatches.map(m => `
+          <div style="padding: 10px 14px; background: #FFFFFF; border: 1px solid var(--border); border-radius: 10px; font-size: 12px;">
+            <strong>${escapeHtml(m.title)}:</strong> <span style="color: #475569;">${escapeHtml(m.description)}</span>
+          </div>
+        `).join('')}
+      </div>
+      ` : `
+        <div style="font-size: 12px; color: #059669; font-weight: 600;">All embedded images are 100% identical (matching SHA-256 fingerprints).</div>
+      `}
+    </div>
+    ` : ''}
 
     <!-- Legal & Commercial Risk Radar (if present) -->
     ${contextAnalysis.riskRadar ? `

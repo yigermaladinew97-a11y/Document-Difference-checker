@@ -43,11 +43,52 @@ function cleanJsonResponse(rawText) {
 }
 
 /**
- * Detect Legal, Financial, and Operational Risk Radar Heuristics
+ * Detect Legal, Financial, Identity, and Operational Risk Radar Heuristics
  */
-export function detectLocalRiskRadar(textA = '', textB = '', sectionReports = [], stats = {}) {
+export function detectLocalRiskRadar(textA = '', textB = '', sectionReports = [], stats = {}, entitySwaps = [], imageDiff = null) {
   const flags = [];
   let score = 0;
+
+  // 1. Identity / Person / Entity Substitution (Highest Priority)
+  if (entitySwaps && entitySwaps.length > 0) {
+    score += 65;
+    entitySwaps.forEach(swap => {
+      flags.push({
+        category: 'IDENTITY_SWAP',
+        severity: 'CRITICAL',
+        title: `Identity / Entity Name Swap: "${swap.entityA}" ➔ "${swap.entityB}"`,
+        impact: `Document B is ${stats.similarityPercent || 0}% identical to Document A, but the primary party/person name has been substituted from "${swap.entityA}" to "${swap.entityB}" (${swap.count} occurrence(s)). This indicates a candidate replacement, contract transfer, or template plagiarism.`,
+        clause: swap.context ? `Clause snippet: ${swap.context}` : 'Party / Identity Clause'
+      });
+    });
+  }
+
+  // 2. Embedded Photo & Visual Asset Discrepancy
+  if (imageDiff && imageDiff.hasImages && imageDiff.status !== 'IDENTICAL') {
+    if (imageDiff.status === 'REPLACED') {
+      score += 35;
+      imageDiff.mismatches.forEach(m => {
+        flags.push({
+          category: 'PHOTO_MISMATCH',
+          severity: 'HIGH',
+          title: m.title || 'Embedded Photo / Image Mismatch',
+          impact: m.description || 'Embedded visual assets or profile images differ between Document A and Document B.',
+          clause: 'Embedded Visual Media'
+        });
+      });
+    } else if (imageDiff.status === 'MODIFIED') {
+      score += 20;
+      imageDiff.mismatches.forEach(m => {
+        flags.push({
+          category: 'PHOTO_MISMATCH',
+          severity: m.severity || 'MEDIUM',
+          title: m.title || 'Embedded Media Asset Difference',
+          impact: m.description || 'Embedded visual assets were added or deleted.',
+          clause: 'Embedded Visual Media'
+        });
+      });
+    }
+  }
 
   const modified = (sectionReports || []).filter(s => s.status === 'MODIFIED');
   const deleted = (sectionReports || []).filter(s => s.status === 'DELETED');
@@ -56,7 +97,7 @@ export function detectLocalRiskRadar(textA = '', textB = '', sectionReports = []
   const combinedDiffs = modified.map(m => `${m.title || ''} ${m.description || ''}`).join(' ') + ' ' + deleted.map(d => d.title || '').join(' ');
   const fullText = `${textA || ''} ${textB || ''}`;
 
-  // 1. Financial & Numerical Commercial Terms
+  // 3. Financial & Numerical Commercial Terms
   const numRegex = /(\$\s*\d+[\d,]*(\.\d+)?|\b\d+[\d,]*(?:\.\d+)?\s*(?:days?|months?|years?|%|USD|EUR|GBP))/gi;
   const numsA = (textA.match(numRegex) || []).map(s => s.trim().toLowerCase());
   const numsB = (textB.match(numRegex) || []).map(s => s.trim().toLowerCase());
@@ -167,9 +208,10 @@ export function detectLocalRiskRadar(textA = '', textB = '', sectionReports = []
  * Fallback generator when no Gemini API key is provided or on offline mode
  * Generates an articulate, human-grade analytical summary and specific change descriptions.
  */
-export function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}, textA = '', textB = '') {
+export function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}, textA = '', textB = '', entitySwaps = [], imageDiff = null) {
   const alerts = [];
   const changes = [];
+  const explanations = [];
 
   const modified = sectionReports.filter(s => s.status === 'MODIFIED');
   const moved = sectionReports.filter(s => s.status === 'MOVED');
@@ -188,7 +230,11 @@ export function generateLocalContextAnalysis(stats, sectionReports = [], summary
 
   // 1. Executive Verdict Headline
   let verdictHeadline = '';
-  if (stats.similarityPercent === 100) {
+  if (entitySwaps && entitySwaps.length > 0) {
+    verdictHeadline = `CRITICAL ALERT: Identity & Entity Name Swap Detected (${entitySwaps.map(s => `"${s.entityA}" ➔ "${s.entityB}"`).join(', ')})`;
+  } else if (imageDiff && imageDiff.hasImages && imageDiff.status === 'REPLACED') {
+    verdictHeadline = `Visual Asset Mismatch: Embedded Photo / Image Replaced in Document B`;
+  } else if (stats.similarityPercent === 100) {
     verdictHeadline = 'Documents are 100% Identical in Content & Structure';
   } else if (stats.similarityPercent >= 85) {
     verdictHeadline = `High Content Alignment (${stats.similarityPercent}% Match) with Targeted Edits`;
@@ -217,8 +263,28 @@ export function generateLocalContextAnalysis(stats, sectionReports = [], summary
     executiveSummary = `The comparison between the two documents reveals a ${stats.similarityPercent}% overall alignment. Key updates include: ${structuralNotes.join('; ')}. Overall diff reflects +${stats.addedWords} words added and -${stats.deletedWords} words removed across ${stats.totalWordsB} total words in Document B.`;
   }
 
+  // Highlight Identity Swap if present
+  if (entitySwaps && entitySwaps.length > 0) {
+    executiveSummary = `⚠️ CRITICAL NOTICE: Primary named entity or person was systematically substituted (${entitySwaps.map(s => `"${s.entityA}" ➔ "${s.entityB}" (${s.count}x)`).join(', ')}). Despite high similarity, this indicates contract reassignment or identity transfer. ${executiveSummary}`;
+    alerts.unshift(`Identity Swap Alert: Document B replaces "${entitySwaps[0].entityA}" with "${entitySwaps[0].entityB}" across key clauses.`);
+    explanations.unshift({
+      title: 'Identity / Party Name Substitution',
+      detail: `Named entity swapped from "${entitySwaps[0].entityA}" to "${entitySwaps[0].entityB}" across ${entitySwaps.reduce((acc, s) => acc + s.count, 0)} reference(s).`,
+      type: 'danger'
+    });
+  }
+
+  // Highlight Image / Photo Mismatch if present
+  if (imageDiff && imageDiff.hasImages && imageDiff.status !== 'IDENTICAL') {
+    alerts.push(`Visual Media Alert: ${imageDiff.mismatchesCount} embedded photo or media difference(s) detected.`);
+    explanations.push({
+      title: 'Embedded Photo / Image Mismatch',
+      detail: `${imageDiff.mismatchesCount} embedded visual asset(s) differ or were replaced between Document A and Document B.`,
+      type: 'warning'
+    });
+  }
+
   // 3. Structured Explanations & Key Insights List (For rich visual presentation)
-  const explanations = [];
 
   // Item 1: Alignment & Retention Insight
   if (stats.similarityPercent === 100) {
@@ -338,7 +404,7 @@ export function generateLocalContextAnalysis(stats, sectionReports = [], summary
     contextScore = Math.min(99, Math.round(stats.similarityPercent * 1.05 * 10) / 10);
   }
 
-  const riskRadar = detectLocalRiskRadar(textA, textB, sectionReports, stats);
+  const riskRadar = detectLocalRiskRadar(textA, textB, sectionReports, stats, entitySwaps, imageDiff);
 
   return {
     mode: 'local_fallback',
@@ -365,16 +431,18 @@ export async function analyzeDocumentContext({
   stats,
   sectionReports = [],
   summary,
-  apiKey
+  apiKey,
+  entitySwaps = [],
+  imageDiff = null
 }) {
   const resolvedKey = apiKey || process.env.GEMINI_API_KEY;
 
   // If no API key is provided, return rich local fallback immediately
   if (!resolvedKey || resolvedKey.trim() === '') {
-    return generateLocalContextAnalysis(stats, sectionReports, summary, textA, textB);
+    return generateLocalContextAnalysis(stats, sectionReports, summary, textA, textB, entitySwaps, imageDiff);
   }
 
-  const localFallback = generateLocalContextAnalysis(stats, sectionReports, summary, textA, textB);
+  const localFallback = generateLocalContextAnalysis(stats, sectionReports, summary, textA, textB, entitySwaps, imageDiff);
 
   try {
     const genAI = new GoogleGenerativeAI(resolvedKey);
@@ -387,6 +455,16 @@ export async function analyzeDocumentContext({
         sectionReports.slice(0, 40).map(s => `- ${s.title}: [${s.status}] (${s.similarityPercent}% match) -> ${s.description}`).join('\n')
       : '';
 
+    const entityContext = entitySwaps && entitySwaps.length > 0
+      ? `\n\n--- DETECTED IDENTITY/PARTY NAME SUBSTITUTIONS ---\n` +
+        entitySwaps.map(s => `• Swapped "${s.entityA}" in Doc A with "${s.entityB}" in Doc B (${s.count} occurrences)`).join('\n')
+      : '';
+
+    const imageContext = imageDiff && imageDiff.hasImages && imageDiff.status !== 'IDENTICAL'
+      ? `\n\n--- EMBEDDED IMAGE / MEDIA DIFFERENCES ---\n` +
+        imageDiff.mismatches.map(m => `• ${m.title}: ${m.description}`).join('\n')
+      : '';
+
     const prompt = `You are an expert document comparison, contract audit, and corporate legal analyst.
 Compare the following two documents:
 
@@ -396,11 +474,14 @@ ${safeTruncate(textA)}
 --- DOCUMENT B (MODIFIED) ---
 ${safeTruncate(textB)}
 ${sectionsContext}
+${entityContext}
+${imageContext}
 
 Analyze the contextual, substantive, financial, and legal differences between them.
+NOTE: If high textual similarity hides a party, person, or candidate identity swap (e.g. Alice Walker vs Bob Jenkins) or replaced embedded profile photos, explicitly highlight this in verdictHeadline, executiveSummary, and riskRadar flags.
 Provide:
 1. Executive Summary in plain English (2-3 sentences explaining what changed, what was added/removed, and real-world impact).
-2. Legal & Financial Risk Radar (risk level, risk score 0-100, concise risk summary, and specific risk flags for changes in liability, pricing, termination, IP, or compliance).
+2. Legal & Financial Risk Radar (risk level, risk score 0-100, concise risk summary, and specific risk flags for changes in liability, pricing, termination, IP, compliance, or identity swap).
 3. Specific Key Semantic Changes (3-6 clear bullet points with exact values, dates, percentages, and section references).
 
 Return a STRICT JSON object matching this exact schema:

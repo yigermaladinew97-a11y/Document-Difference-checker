@@ -22,6 +22,8 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
   const sectionReports = data.sectionReports || [];
   const diffTokens = data.diffTokens || [];
   const filters = data.filters || {};
+  const entitySwaps = data.entitySwaps || [];
+  const imageDiff = data.imageDiff || null;
 
   const docA = meta.docA || { filename: 'Document A', format: 'unknown', wordCount: 0 };
   const docB = meta.docB || { filename: 'Document B', format: 'unknown', wordCount: 0 };
@@ -197,6 +199,63 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
                     <li key={idx}>{a}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Identity & Entity Swap Sentinel Alert */}
+            {entitySwaps.length > 0 && (
+              <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-300 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5 text-rose-700 text-xs font-black uppercase tracking-wider">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    <span>Critical Alert: Identity &amp; Party Name Substitution</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase bg-rose-600 text-white px-2 py-0.5 rounded">
+                    {entitySwaps.length} Entity Substitution(s)
+                  </span>
+                </div>
+                <div className="space-y-1.5 pt-1">
+                  {entitySwaps.map((swap, idx) => (
+                    <div key={idx} className="p-2.5 rounded-lg bg-white border border-rose-200 text-xs flex items-center justify-between">
+                      <div>
+                        <span className="line-through text-rose-600 font-bold">{swap.entityA}</span>
+                        <span className="mx-2 text-slate-400">➔</span>
+                        <span className="text-emerald-700 font-bold">{swap.entityB}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500 font-semibold">{swap.occurrences}x</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Embedded Photos & Visual Media Audit */}
+            {imageDiff && imageDiff.hasImages && (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-slate-800 text-xs font-black uppercase tracking-wider">
+                    Embedded Photos &amp; Visual Media Audit
+                  </div>
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                    imageDiff.status === 'REPLACED' ? 'bg-rose-100 text-rose-700' : imageDiff.status === 'MODIFIED' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {imageDiff.status}
+                  </span>
+                </div>
+                {imageDiff.mismatches && imageDiff.mismatches.length > 0 ? (
+                  <div className="space-y-1.5 pt-1">
+                    {imageDiff.mismatches.map((m, idx) => (
+                      <div key={idx} className="p-2 rounded-lg bg-white border border-slate-200 text-xs flex items-center justify-between">
+                        <div>
+                          <strong>{m.title}:</strong> <span className="text-slate-600">{m.description}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 shrink-0 ml-2">#{m.index}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-emerald-700 font-medium">All embedded images are 100% identical (matching SHA-256 fingerprints).</p>
+                )}
               </div>
             )}
 
