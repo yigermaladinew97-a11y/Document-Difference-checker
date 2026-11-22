@@ -67,11 +67,44 @@ function decodeXmlEntities(str) {
 }
 
 /**
+ * Validate zip archive against Zip Bomb and decompression memory exhaustion attacks
+ */
+function validateZipSafety(buffer) {
+  const MAX_ENTRIES = 1500;
+  const MAX_TOTAL_UNCOMPRESSED = 150 * 1024 * 1024; // 150 MB max uncompressed
+  const MAX_RATIO = 100;
+
+  const zip = new AdmZip(buffer);
+  const entries = zip.getEntries();
+  if (entries.length > MAX_ENTRIES) {
+    throw new Error(`Security Exception: Compressed archive contains too many entries (${entries.length} > ${MAX_ENTRIES}).`);
+  }
+
+  let totalUncompressed = 0;
+  for (const entry of entries) {
+    const uncompressedSize = entry.header ? entry.header.size : 0;
+    const compressedSize = entry.header ? entry.header.compressedSize : 0;
+    totalUncompressed += uncompressedSize;
+
+    if (totalUncompressed > MAX_TOTAL_UNCOMPRESSED) {
+      throw new Error('Security Exception: Decompressed archive exceeds maximum safe memory threshold (150MB).');
+    }
+    if (compressedSize > 0 && uncompressedSize > 10 * 1024 * 1024) {
+      const ratio = uncompressedSize / compressedSize;
+      if (ratio > MAX_RATIO) {
+        throw new Error('Security Exception: Suspicious compression ratio detected (potential Zip Bomb).');
+      }
+    }
+  }
+  return zip;
+}
+
+/**
  * Extract embedded images from a zip package (.docx or .pptx)
  */
 function extractImagesFromZip(buffer, mediaPrefix = 'word/media/') {
   try {
-    const zip = new AdmZip(buffer);
+    const zip = validateZipSafety(buffer);
     const entries = zip.getEntries();
     const images = [];
 
@@ -258,13 +291,14 @@ async function parsePdf(buffer) {
  * Extract text from Word (.docx) buffer
  */
 async function parseDocx(buffer) {
+  validateZipSafety(buffer);
   let text = '';
   try {
     const result = await mammoth.extractRawText({ buffer });
     text = normalizeText(result.value);
   } catch (err) {
     try {
-      const zip = new AdmZip(buffer);
+      const zip = validateZipSafety(buffer);
       const docXml = zip.readAsText('word/document.xml');
       text = normalizeText(docXml.replace(/<[^>]+>/g, ' '));
     } catch {
@@ -437,7 +471,7 @@ function extractSlideXmlText(xml) {
  * Extract text from PowerPoint (.pptx) buffer
  */
 function parsePptx(buffer) {
-  const zip = new AdmZip(buffer);
+  const zip = validateZipSafety(buffer);
   const slideEntries = getOrderedPptxSlides(zip);
 
   const sections = [];

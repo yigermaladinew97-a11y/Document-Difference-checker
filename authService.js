@@ -108,6 +108,17 @@ function hashPassword(password, salt) {
 }
 
 /**
+ * Constant-time string comparison to prevent timing side-channel attacks
+ */
+function safeStringCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+/**
  * Generate standard RFC-7519 JSON Web Token
  */
 export function generateToken(payload, expiresInSeconds = 86400 * 7) {
@@ -138,7 +149,7 @@ export function verifyToken(token) {
     .update(`${header}.${body}`)
     .digest('base64url');
 
-  if (signature !== expectedSig) return null;
+  if (!safeStringCompare(signature, expectedSig)) return null;
 
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
@@ -309,13 +320,32 @@ export async function authenticateUser({ email, password }) {
     throw new Error('This account was created with Google Sign-In.');
   }
 
+  // 1. Check if account is temporarily locked due to brute-force attempts
+  if (user.lockedUntil && Date.now() < new Date(user.lockedUntil).getTime()) {
+    const remainingMinutes = Math.max(1, Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / (60 * 1000)));
+    throw new Error(`Account is temporarily locked due to multiple failed login attempts. Please try again in ${remainingMinutes} minute(s) or use "Forgot Password".`);
+  }
+
+  // 2. Constant-time password hash verification (prevents timing side-channel attacks)
   const hash = hashPassword(password, user.salt);
-  if (hash !== user.passwordHash) {
+  if (!safeStringCompare(hash, user.passwordHash)) {
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+    if (user.failedLoginAttempts >= 5) {
+      user.lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15-minute security lockout
+    }
+    writeUsers(users);
     throw new Error('Incorrect password. Please check your password and try again.');
   }
 
-  // Ensure user has valid SVG avatar and stats
+  // Reset failed attempts upon successful password verification
   let changed = false;
+  if (user.failedLoginAttempts || user.lockedUntil) {
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+    changed = true;
+  }
+
+  // Ensure user has valid SVG avatar and stats
   if (!user.avatar || user.avatar.includes('dicebear')) {
     user.avatar = generateSvgAvatar(user.name, 'orange');
     changed = true;
@@ -362,7 +392,7 @@ export async function verify2FACode({ tempToken, code }) {
     throw new Error('Too many invalid attempts. For your security, this session was invalidated. Please sign in again.');
   }
 
-  if (entry.code !== cleanCode) {
+  if (!safeStringCompare(entry.code, cleanCode)) {
     entry.attempts++;
     const remaining = 5 - entry.attempts;
     throw new Error(`Invalid verification code. ${remaining} ${remaining === 1 ? 'attempt' : 'attempts'} remaining.`);
@@ -668,7 +698,7 @@ export async function resetPasswordWithCode({ tempToken, code, newPassword }) {
   }
 
   const cleanCode = code.toString().trim().replace(/\s/g, '');
-  if (cleanCode !== challenge.code) {
+  if (!safeStringCompare(cleanCode, challenge.code)) {
     const remaining = 5 - challenge.attempts;
     throw new Error(`Invalid reset code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
   }
@@ -696,6 +726,8 @@ export async function resetPasswordWithCode({ tempToken, code, newPassword }) {
 
   users[userIdx].passwordHash = newPasswordHash;
   users[userIdx].salt = newSalt;
+  users[userIdx].failedLoginAttempts = 0;
+  users[userIdx].lockedUntil = null;
   users[userIdx].updatedAt = new Date().toISOString();
   writeUsers(users);
 

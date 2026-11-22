@@ -53,8 +53,79 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Remove server fingerprinting header
+app.disable('x-powered-by');
+
 // ============================================================================
-// 1. HIGH-PERFORMANCE MIDDLEWARE & SECURITY
+// 1. HARDENED HTTP SECURITY HEADERS (OWASP Top 10 Compliance)
+// ============================================================================
+app.use((req, res, next) => {
+  // Prevent MIME-sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Prevent clickjacking & framing attacks
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // Legacy XSS filter activation
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Strict Referrer disclosure policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Permissions Policy to prevent hardware access abuse
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Strict Transport Security (HSTS) in production
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  next();
+});
+
+// ============================================================================
+// 2. SLIDING-WINDOW RATE LIMITERS (Brute-Force & Denial-of-Service Defense)
+// ============================================================================
+const rateLimitBuckets = new Map();
+
+function createRateLimiter({ windowMs = 60 * 1000, maxRequests = 120, message = 'Too many requests' }) {
+  return (req, res, next) => {
+    // Skip in test runner or internal health checks
+    if (process.env.NODE_ENV === 'test' || req.path === '/api/health') {
+      return next();
+    }
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const key = `${req.baseUrl || req.path}:${ip}`;
+    const now = Date.now();
+
+    let bucket = rateLimitBuckets.get(key);
+    if (!bucket || now > bucket.resetTime) {
+      bucket = { count: 1, resetTime: now + windowMs };
+      rateLimitBuckets.set(key, bucket);
+    } else {
+      bucket.count++;
+      if (bucket.count > maxRequests) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetTime - now) / 1000));
+        res.setHeader('Retry-After', retryAfterSeconds);
+        return res.status(429).json({
+          success: false,
+          error: `${message}. Please try again in ${retryAfterSeconds}s.`
+        });
+      }
+    }
+    next();
+  };
+}
+
+// Background cleanup of expired rate limit keys every 10 minutes
+const rlCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateLimitBuckets.entries()) {
+    if (now > bucket.resetTime) rateLimitBuckets.delete(key);
+  }
+}, 10 * 60 * 1000);
+if (rlCleanupTimer.unref) rlCleanupTimer.unref();
+
+const generalLimiter = createRateLimiter({ windowMs: 60 * 1000, maxRequests: 240, message: 'Too many API requests' });
+const diffLimiter = createRateLimiter({ windowMs: 60 * 1000, maxRequests: 60, message: 'Comparison rate limit reached' });
+const authLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, maxRequests: 30, message: 'Too many authentication attempts' });
+
+// ============================================================================
+// 3. CORE PARSING, COMPRESSION & STATIC DELIVERY
 // ============================================================================
 
 // High-performance gzip/deflate compression
@@ -100,11 +171,45 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
+// Apply general rate limit to all /api endpoints
+app.use('/api', generalLimiter);
+
+// ============================================================================
+// 4. SECURE FILE UPLOAD CONFIGURATION (Whitelist & Path Traversal Defense)
+// ============================================================================
+const ALLOWED_EXTENSIONS = new Set([
+  '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+  '.txt', '.md', '.csv', '.json', '.png', '.jpg', '.jpeg', '.webp', '.svg'
+]);
+
+const DANGEROUS_EXTENSIONS = new Set([
+  '.exe', '.bat', '.cmd', '.sh', '.php', '.pl', '.cgi', '.js',
+  '.vbs', '.jar', '.bin', '.scr', '.pif', '.msi', '.com'
+]);
+
+function secureFileFilter(req, file, cb) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (DANGEROUS_EXTENSIONS.has(ext)) {
+    return cb(new Error(`Security Exception: Uploading executable or script files (${ext}) is strictly prohibited.`));
+  }
+  if (!ALLOWED_EXTENSIONS.has(ext) && ext !== '') {
+    return cb(new Error(`Unsupported file type: "${ext}". Supported formats: PDF, DOCX, XLSX, PPTX, TXT, Images.`));
+  }
+  cb(null, true);
+}
+
+function sanitizeFilename(name, fallback = 'document') {
+  if (!name || typeof name !== 'string') return fallback;
+  const clean = path.basename(name.replace(/[\x00-\x1f\x7f]/g, '').trim());
+  return clean || fallback;
+}
+
 // In-Memory file upload storage (Zero Disk Retention)
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: secureFileFilter
 });
 
 /**
@@ -142,6 +247,7 @@ app.get('/api/formats', (req, res) => {
  */
 app.post(
   '/api/compare',
+  diffLimiter,
   upload.fields([
     { name: 'fileA', maxCount: 1 },
     { name: 'fileB', maxCount: 1 }
@@ -158,9 +264,9 @@ app.post(
 
       let docAContent, docBContent;
 
-      // 1. Ingest Document A
+      // 1. Ingest Document A with sanitized filenames
       if (fileA) {
-        docAContent = await extractDocumentContent(fileA.buffer, fileA.originalname);
+        docAContent = await extractDocumentContent(fileA.buffer, sanitizeFilename(fileA.originalname, 'Document_A'));
       } else if (rawTextA && rawTextA.trim()) {
         docAContent = await extractDocumentContent(Buffer.from(rawTextA, 'utf8'), 'Document_A.txt');
       } else {
@@ -170,9 +276,9 @@ app.post(
         });
       }
 
-      // 2. Ingest Document B
+      // 2. Ingest Document B with sanitized filenames
       if (fileB) {
-        docBContent = await extractDocumentContent(fileB.buffer, fileB.originalname);
+        docBContent = await extractDocumentContent(fileB.buffer, sanitizeFilename(fileB.originalname, 'Document_B'));
       } else if (rawTextB && rawTextB.trim()) {
         docBContent = await extractDocumentContent(Buffer.from(rawTextB, 'utf8'), 'Document_B.txt');
       } else {
@@ -260,6 +366,7 @@ app.post(
  */
 app.post(
   '/api/batch-compare',
+  diffLimiter,
   upload.any(),
   async (req, res) => {
     try {
@@ -459,7 +566,7 @@ function requireAuth(req, res, next) {
 }
 
 // Auth: Sign up
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', authLimiter, async (req, res) => {
   try {
     const { name, email, password, avatar, title, organization } = req.body;
     const result = await createUser({ name, email, password, avatar, title, organization });
@@ -470,7 +577,7 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 
 // Auth: Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     const result = await authenticateUser({ email, password });
@@ -481,7 +588,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Auth: Verify Two-Factor Authentication (2FA) Code
-app.post('/api/auth/verify-2fa', async (req, res) => {
+app.post('/api/auth/verify-2fa', authLimiter, async (req, res) => {
   try {
     const { tempToken, code } = req.body;
     const result = await verify2FACode({ tempToken, code });
@@ -492,7 +599,7 @@ app.post('/api/auth/verify-2fa', async (req, res) => {
 });
 
 // Auth: Resend Two-Factor Authentication (2FA) Code
-app.post('/api/auth/resend-2fa', async (req, res) => {
+app.post('/api/auth/resend-2fa', authLimiter, async (req, res) => {
   try {
     const { tempToken } = req.body;
     const result = await resend2FACode({ tempToken });
@@ -503,7 +610,7 @@ app.post('/api/auth/resend-2fa', async (req, res) => {
 });
 
 // Auth: Forgot Password Request (Sends 6-digit OTP to email)
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     const result = await requestPasswordReset({ email });
@@ -514,7 +621,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // Auth: Reset Password with 6-digit OTP Code
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   try {
     const { tempToken, code, newPassword } = req.body;
     const result = await resetPasswordWithCode({ tempToken, code, newPassword });
@@ -645,6 +752,23 @@ app.get('/api/share/:id', (req, res) => {
     console.error('[API Error /api/share/:id]:', err);
     res.status(500).json({ success: false, error: 'Failed to retrieve shared report.' });
   }
+});
+
+// ============================================================================
+// 5. CENTRALIZED SECURITY & MULTER ERROR HANDLER
+// ============================================================================
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ success: false, error: 'File size limit exceeded (maximum allowed is 50MB per document).' });
+    }
+    return res.status(400).json({ success: false, error: `Upload error: ${err.message}` });
+  }
+  if (err && err.message && err.message.startsWith('Security Exception')) {
+    return res.status(403).json({ success: false, error: err.message });
+  }
+  console.error('[Unhandled Server Error]:', err);
+  res.status(500).json({ success: false, error: err.message || 'Internal server error.' });
 });
 
 // Fallback route

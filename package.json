@@ -16,7 +16,8 @@
     "test:parsers": "node test-parsers.js",
     "test:comparator": "node test-comparator.js",
     "test:ai": "node test-ai.js",
-    "test:server": "node test-server.js"
+    "test:server": "node test-server.js",
+    "test:security": "node test-security.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
