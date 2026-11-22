@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Lock, Mail, User, Eye, EyeOff, CheckCircle2, Shield, ArrowRight, ArrowLeft, RefreshCw, Sparkles, Upload, Trash2, Check, AlertCircle } from 'lucide-react';
-import { loginWithEmail, signupWithEmail, verify2FACode, resend2FACode } from '../utils/authClient';
+import { X, Lock, Mail, User, Eye, EyeOff, CheckCircle2, Shield, ArrowRight, ArrowLeft, RefreshCw, Sparkles, Upload, Trash2, Check, AlertCircle, KeyRound } from 'lucide-react';
+import { loginWithEmail, signupWithEmail, verify2FACode, resend2FACode, requestPasswordReset, resetPasswordWithCode, resendPasswordResetCode } from '../utils/authClient';
 import UserAvatar from './UserAvatar';
 
 export function isValidEmail(val) {
@@ -87,6 +87,7 @@ export default function AuthModal({
   // 2FA State
   const [isTwoFactorStep, setIsTwoFactorStep] = useState(false);
   const [twoFactorData, setTwoFactorData] = useState(null); // { tempToken, email, devCode }
+  const [resetData, setResetData] = useState(null); // { tempToken, email, devCode }
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [resendCountdown, setResendCountdown] = useState(45);
   const [isResending, setIsResending] = useState(false);
@@ -237,9 +238,11 @@ export default function AuthModal({
       digitInputRefs.current[idx + 1]?.focus();
     }
 
-    // Auto-verify when all 6 digits are filled
+    // Auto-verify when all 6 digits are filled in 2FA mode
     if (clean && updated.every((d) => d !== '')) {
-      verifyOtpSubmission(updated.join(''));
+      if (isTwoFactorStep) {
+        verifyOtpSubmission(updated.join(''));
+      }
     }
   };
 
@@ -312,8 +315,91 @@ export default function AuthModal({
   const handleBackToLogin = () => {
     setIsTwoFactorStep(false);
     setTwoFactorData(null);
+    setResetData(null);
     setOtpDigits(['', '', '', '', '', '']);
+    setMode('login');
     setError(null);
+  };
+
+  // Forgot Password: Send 6-digit Code to Email
+  const handleForgotRequestSubmit = async (e) => {
+    e.preventDefault();
+    setEmailTouched(true);
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const res = await requestPasswordReset(email);
+      setResetData({
+        tempToken: res.tempToken,
+        email: res.email,
+        devCode: res.devCode
+      });
+      setOtpDigits(['', '', '', '', '', '']);
+      setPassword('');
+      setMode('forgot_verify');
+      startResendTimer();
+      setTimeout(() => {
+        digitInputRefs.current[0]?.focus();
+      }, 150);
+    } catch (err) {
+      setError(err.message || 'Failed to send password reset code.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Forgot Password: Verify Code & Set New Password
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    const code = otpDigits.join('');
+    if (code.length < 6) {
+      setError('Please enter all 6 digits of your reset code.');
+      return;
+    }
+
+    const strength = evaluatePasswordStrength(password);
+    if (!strength.isStrong) {
+      setError('Please ensure your new password satisfies all 4 security criteria.');
+      return;
+    }
+
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const res = await resetPasswordWithCode(resetData.tempToken, code, password);
+      if (onSuccess) onSuccess(res.user);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Password reset failed. Please check your code.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Resend Password Reset Code
+  const handleResendResetCode = async () => {
+    if (resendCountdown > 0 || isResending || !resetData?.tempToken) return;
+    setIsResending(true);
+    setError(null);
+
+    try {
+      const res = await resendPasswordResetCode(resetData.tempToken);
+      if (res.devCode) {
+        setResetData((prev) => ({ ...prev, devCode: res.devCode }));
+      }
+      startResendTimer();
+    } catch (err) {
+      setError(err.message || 'Failed to resend reset code.');
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -336,6 +422,8 @@ export default function AuthModal({
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {isTwoFactorStep
                 ? 'Two-Factor Authentication'
+                : mode === 'forgot_request' || mode === 'forgot_verify'
+                ? 'Password Recovery'
                 : (reasonMessage || 'Sign in to access your cloud history and export tools')}
             </p>
           </div>
@@ -470,6 +558,279 @@ export default function AuthModal({
                     ? `Resend code in ${resendCountdown}s`
                     : 'Resend security code'}
                 </span>
+              </button>
+            </div>
+          </div>
+        ) : mode === 'forgot_request' ? (
+          /* ===================== FORGOT PASSWORD REQUEST VIEW ===================== */
+          <div className="space-y-4 py-2 animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center">
+              <div className="relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FF5E1E]/10 border border-[#FF5E1E]/20 text-[#FF5E1E] shadow-lg shadow-[#FF5E1E]/10 mb-2">
+                <KeyRound className="w-7 h-7" />
+              </div>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Forgot your password?
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[320px] mx-auto leading-relaxed">
+                Enter your account email and we'll send you a 6-digit verification code to choose a new password.
+              </p>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in space-y-1.5">
+                <div>{error}</div>
+                {error.toLowerCase().includes('create account') && (
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signup'); setError(null); }}
+                    className="inline-flex items-center space-x-1 font-bold text-[#FF5E1E] hover:underline text-[11px]"
+                  >
+                    <span>👉 Switch to "Create Account" with this email</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            <form onSubmit={handleForgotRequestSubmit} className="space-y-3.5">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    Email Address
+                  </label>
+                  {isEmailValid && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center space-x-1">
+                      <Check className="w-3 h-3" />
+                      <span>Valid email</span>
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (!emailTouched && e.target.value.length > 5) setEmailTouched(true);
+                      setError(null);
+                    }}
+                    onBlur={() => {
+                      if (email.trim().length > 0) setEmailTouched(true);
+                    }}
+                    placeholder="name@company.com"
+                    className={`w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-900 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition ${
+                      showEmailError
+                        ? 'border-rose-400 dark:border-rose-500/80 focus:ring-2 focus:ring-rose-500/20'
+                        : isEmailValid
+                        ? 'border-emerald-400 dark:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20'
+                        : 'border-slate-200 dark:border-white/[0.08] focus:ring-2 focus:ring-[#FF5E1E]/30'
+                    }`}
+                  />
+                  {isEmailValid && (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
+                </div>
+                {showEmailError && (
+                  <div className="flex items-center space-x-1.5 mt-1.5 text-[11px] text-rose-500 font-medium animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Please enter a valid email address (e.g. name@domain.com)</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading || !isEmailValid}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                <span>{isLoading ? 'Sending Code...' : 'Send Reset Code'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </form>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setError(null); }}
+                className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-semibold transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Sign In</span>
+              </button>
+            </div>
+          </div>
+        ) : mode === 'forgot_verify' ? (
+          /* ===================== FORGOT PASSWORD VERIFY & RESET VIEW ===================== */
+          <div className="space-y-4 py-2 animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center">
+              <div className="relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FF5E1E]/10 border border-[#FF5E1E]/20 text-[#FF5E1E] shadow-lg shadow-[#FF5E1E]/10 mb-2">
+                <Shield className="w-7 h-7" />
+              </div>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Reset Your Password
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[320px] mx-auto leading-relaxed">
+                Enter the 6-digit code sent to <strong className="text-slate-900 dark:text-slate-200">{resetData?.email}</strong> and your new password.
+              </p>
+            </div>
+
+            {/* Test Mode / Dev Code Instant Pill */}
+            {resetData?.devCode && (
+              <div
+                onClick={() => {
+                  const digits = resetData.devCode.split('');
+                  setOtpDigits(digits);
+                }}
+                className="cursor-pointer group flex items-center justify-between p-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition text-amber-600 dark:text-amber-400"
+                title="Click to automatically paste this test code"
+              >
+                <div className="flex items-center space-x-2 text-xs font-bold">
+                  <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+                  <span>Demo Code: <strong className="font-mono tracking-wider">{resetData.devCode}</strong></span>
+                </div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider bg-amber-500/20 px-2 py-0.5 rounded-full group-hover:scale-105 transition">
+                  Click to Auto-fill &rarr;
+                </span>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium animate-in fade-in">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
+              {/* 6-Digit OTP */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  6-Digit Reset Code
+                </label>
+                <div className="flex items-center justify-between gap-1.5 sm:gap-2" onPaste={handleOtpPaste}>
+                  {otpDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => (digitInputRefs.current[idx] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleDigitChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleDigitKeyDown(idx, e)}
+                      disabled={isLoading}
+                      className="w-11 sm:w-12 h-12 text-center text-xl font-extrabold font-mono rounded-xl bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-white/[0.08] focus:border-[#FF5E1E] dark:focus:border-[#FF5E1E] focus:bg-white dark:focus:bg-slate-950 text-slate-900 dark:text-white focus:outline-none transition shadow-xs focus:ring-4 focus:ring-[#FF5E1E]/15"
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  New Password <span className="text-slate-400 font-normal">(8+ chars, strong)</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder="Create a strong new password"
+                    className={`w-full pl-9 pr-9 py-2 bg-white dark:bg-slate-900 border rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition ${
+                      password.length > 0
+                        ? pwdStrength.isStrong
+                          ? 'border-emerald-400 dark:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20'
+                          : 'border-amber-400 dark:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/[0.08] focus:ring-2 focus:ring-[#FF5E1E]/30'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {/* Password Strength Meter & Interactive Checklist */}
+                <div className="space-y-2 mt-2 pt-1">
+                  {password.length > 0 && (
+                    <div className="space-y-1 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Security rating:</span>
+                        <span className={`font-bold ${pwdStrength.textColor}`}>{pwdStrength.label}</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        {[1, 2, 3, 4].map((step) => (
+                          <div
+                            key={step}
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              step <= pwdStrength.passedCount ? pwdStrength.color : 'bg-transparent'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10.5px]">
+                    <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.minLength ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
+                      {pwdStrength.checks.minLength ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />}
+                      <span>8+ characters</span>
+                    </div>
+                    <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.hasUpper ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
+                      {pwdStrength.checks.hasUpper ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />}
+                      <span>Uppercase (A-Z)</span>
+                    </div>
+                    <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.hasLower ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
+                      {pwdStrength.checks.hasLower ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />}
+                      <span>Lowercase (a-z)</span>
+                    </div>
+                    <div className={`flex items-center space-x-1.5 transition-colors ${pwdStrength.checks.hasNumberOrSpecial ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
+                      {pwdStrength.checks.hasNumberOrSpecial ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 mx-1" />}
+                      <span>Number or symbol</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading || otpDigits.some(d => !d) || !pwdStrength.isStrong}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                <span>{isLoading ? 'Resetting Password...' : 'Save New Password & Log In'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </form>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/[0.06] text-xs">
+              <button
+                type="button"
+                onClick={() => { setMode('forgot_request'); setError(null); }}
+                className="flex items-center space-x-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-semibold transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendResetCode}
+                disabled={resendCountdown > 0 || isResending}
+                className={`font-semibold transition flex items-center space-x-1 ${
+                  resendCountdown > 0 || isResending ? 'text-slate-400 cursor-not-allowed' : 'text-[#FF5E1E] hover:underline'
+                }`}
+              >
+                {isResending && <RefreshCw className="w-3 h-3 animate-spin" />}
+                <span>{resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend code'}</span>
               </button>
             </div>
           </div>
@@ -698,9 +1059,24 @@ export default function AuthModal({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Password {mode === 'signup' && <span className="text-slate-400 font-normal">(8+ characters, strong)</span>}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    Password {mode === 'signup' && <span className="text-slate-400 font-normal">(8+ characters, strong)</span>}
+                  </label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot_request');
+                        setError(null);
+                        setPassword('');
+                      }}
+                      className="text-[11px] font-semibold text-[#FF5E1E] hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input

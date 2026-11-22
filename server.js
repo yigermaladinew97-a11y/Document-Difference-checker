@@ -20,6 +20,9 @@ import {
   authenticateUser,
   verify2FACode,
   resend2FACode,
+  requestPasswordReset,
+  resetPasswordWithCode,
+  resendPasswordResetCode,
   updateUserProfile,
   generateSvgAvatar,
   getUserById,
@@ -476,6 +479,39 @@ app.post('/api/auth/resend-2fa', async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message || 'Failed to resend code.' });
+  }
+});
+
+// Auth: Forgot Password Request (Sends 6-digit OTP to email)
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await requestPasswordReset({ email });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Password reset request failed.' });
+  }
+});
+
+// Auth: Reset Password with 6-digit OTP Code
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { tempToken, code, newPassword } = req.body;
+    const result = await resetPasswordWithCode({ tempToken, code, newPassword });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Password reset failed.' });
+  }
+});
+
+// Auth: Resend Password Reset Code
+app.post('/api/auth/resend-reset-code', async (req, res) => {
+  try {
+    const { tempToken } = req.body;
+    const result = await resendPasswordResetCode({ tempToken });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to resend reset code.' });
   }
 });
 

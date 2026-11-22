@@ -108,6 +108,55 @@ export async function resend2FACode(tempToken) {
   return data;
 }
 
+export async function requestPasswordReset(email) {
+  const res = await fetch('/api/auth/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to request password reset.');
+  }
+
+  return data;
+}
+
+export async function resetPasswordWithCode(tempToken, code, newPassword) {
+  const res = await fetch('/api/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tempToken, code, newPassword })
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to reset password.');
+  }
+
+  if (data.token && data.user) {
+    setAuthSession(data.token, data.user);
+  }
+
+  return data;
+}
+
+export async function resendPasswordResetCode(tempToken) {
+  const res = await fetch('/api/auth/resend-reset-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tempToken })
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to resend code.');
+  }
+
+  return data;
+}
+
 export async function loginWithGoogle(demoData = {}) {
   const payloadName = (demoData.name || 'Yigermal Adinew').trim();
   const payloadEmail = (demoData.email || 'yigermal.adinew@gmail.com').trim().toLowerCase();

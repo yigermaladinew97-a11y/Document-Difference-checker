@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { send2FACodeEmail } from './emailService.js';
+import { send2FACodeEmail, sendPasswordResetEmail } from './emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,12 +41,21 @@ if (!fs.existsSync(CLOUD_HISTORY_FILE)) {
 // Key: tempToken -> { userId, email, name, code, expiresAt, attempts, resendAfter }
 const pending2FA = new Map();
 
-// Periodic cleanup of expired 2FA challenges every 5 minutes
+// In-memory store for pending Password Reset challenges
+// Key: tempToken -> { userId, email, name, code, expiresAt, attempts, resendAfter }
+const pendingPasswordReset = new Map();
+
+// Periodic cleanup of expired challenges every 5 minutes
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [token, data] of pending2FA.entries()) {
     if (now > data.expiresAt) {
       pending2FA.delete(token);
+    }
+  }
+  for (const [token, data] of pendingPasswordReset.entries()) {
+    if (now > data.expiresAt) {
+      pendingPasswordReset.delete(token);
     }
   }
 }, 5 * 60 * 1000);
@@ -571,4 +580,161 @@ export function saveCloudSession(userId, sessionData) {
 export function getCloudSessions(userId) {
   const history = readCloudHistory();
   return history.filter(h => h.userId === userId);
+}
+
+/**
+ * Request Password Reset:
+ * Generates a 6-digit verification code and dispatches via email
+ */
+export async function requestPasswordReset({ email }) {
+  const users = readUsers();
+  const cleanEmail = (email || '').trim().toLowerCase();
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+
+  const user = users.find(u => u.email === cleanEmail);
+  if (!user) {
+    throw new Error('No account found with this email. Please check the spelling or switch to "Create Account".');
+  }
+
+  const code = crypto.randomInt(100000, 999999).toString();
+  const tempToken = `pwd_reset_${Date.now()}_${crypto.randomBytes(16).toString('hex')}`;
+
+  pendingPasswordReset.set(tempToken, {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    code,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    attempts: 0,
+    resendAfter: Date.now() + 45 * 1000 // 45s cooldown
+  });
+
+  const emailResult = await sendPasswordResetEmail({
+    email: user.email,
+    code,
+    name: user.name
+  });
+
+  return {
+    success: true,
+    tempToken,
+    email: user.email,
+    message: `A 6-digit password reset code has been sent to ${user.email}.`,
+    devCode: emailResult.simulated ? code : undefined
+  };
+}
+
+/**
+ * Reset Password using verified 6-digit OTP code
+ */
+export async function resetPasswordWithCode({ tempToken, code, newPassword }) {
+  if (!tempToken || !code) {
+    throw new Error('Verification token and 6-digit reset code are required.');
+  }
+
+  const challenge = pendingPasswordReset.get(tempToken);
+  if (!challenge) {
+    throw new Error('Password reset session has expired or is invalid. Please request a new code.');
+  }
+
+  if (Date.now() > challenge.expiresAt) {
+    pendingPasswordReset.delete(tempToken);
+    throw new Error('Reset code has expired after 10 minutes. Please request a new code.');
+  }
+
+  challenge.attempts += 1;
+
+  if (challenge.attempts > 5) {
+    pendingPasswordReset.delete(tempToken);
+    throw new Error('Too many invalid attempts. Reset session cancelled for security. Please request a new code.');
+  }
+
+  const cleanCode = code.toString().trim().replace(/\s/g, '');
+  if (cleanCode !== challenge.code) {
+    const remaining = 5 - challenge.attempts;
+    throw new Error(`Invalid reset code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
+  }
+
+  // Validate new password strength
+  if (!newPassword || newPassword.length < 8) {
+    throw new Error('New password must be at least 8 characters long.');
+  }
+  const hasUpper = /[A-Z]/.test(newPassword);
+  const hasLower = /[a-z]/.test(newPassword);
+  const hasNumberOrSpecial = /[0-9]|[^A-Za-z0-9]/.test(newPassword);
+
+  if (!hasUpper || !hasLower || !hasNumberOrSpecial) {
+    throw new Error('New password must contain at least one uppercase letter, one lowercase letter, and one number or symbol.');
+  }
+
+  const users = readUsers();
+  const userIdx = users.findIndex(u => u.id === challenge.userId);
+  if (userIdx === -1) {
+    throw new Error('User account not found.');
+  }
+
+  const newSalt = crypto.randomBytes(16).toString('hex');
+  const newPasswordHash = hashPassword(newPassword, newSalt);
+
+  users[userIdx].passwordHash = newPasswordHash;
+  users[userIdx].salt = newSalt;
+  users[userIdx].updatedAt = new Date().toISOString();
+  writeUsers(users);
+
+  // Successfully reset, remove the challenge token
+  pendingPasswordReset.delete(tempToken);
+
+  // Issue full session token so the user is immediately authenticated
+  const { passwordHash: _, salt: __, ...safeUser } = users[userIdx];
+  const token = generateToken({ userId: safeUser.id, email: safeUser.email });
+
+  return {
+    success: true,
+    message: 'Your password has been successfully reset!',
+    token,
+    user: safeUser
+  };
+}
+
+/**
+ * Resend Password Reset Code (with 45s cooldown)
+ */
+export async function resendPasswordResetCode({ tempToken }) {
+  if (!tempToken) {
+    throw new Error('Reset token is required.');
+  }
+
+  const challenge = pendingPasswordReset.get(tempToken);
+  if (!challenge) {
+    throw new Error('Reset session has expired. Please request a new password reset.');
+  }
+
+  const now = Date.now();
+  if (now < challenge.resendAfter) {
+    const waitSeconds = Math.ceil((challenge.resendAfter - now) / 1000);
+    throw new Error(`Please wait ${waitSeconds}s before requesting a new code.`);
+  }
+
+  const newCode = crypto.randomInt(100000, 999999).toString();
+  challenge.code = newCode;
+  challenge.resendAfter = now + 45 * 1000;
+  challenge.expiresAt = now + 10 * 60 * 1000;
+  challenge.attempts = 0;
+
+  const emailResult = await sendPasswordResetEmail({
+    email: challenge.email,
+    code: newCode,
+    name: challenge.name
+  });
+
+  return {
+    success: true,
+    message: `A new reset code has been sent to ${challenge.email}.`,
+    devCode: emailResult.simulated ? newCode : undefined
+  };
 }
