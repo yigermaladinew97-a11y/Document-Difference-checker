@@ -42,6 +42,9 @@ async function runAiTests() {
   console.log(`✓ Engine Mode: ${localAnalysis.mode}`);
   console.log(`✓ Context Score: ${localAnalysis.contextSimilarityPercent}%`);
   console.log(`✓ Summary: "${localAnalysis.executiveSummary}"`);
+  console.log(`✓ Risk Radar Level: ${localAnalysis.riskRadar?.overallRiskLevel} (Score: ${localAnalysis.riskRadar?.riskScore}/100)`);
+  console.log(`✓ Risk Radar Flags (${localAnalysis.riskRadar?.riskFlags?.length || 0}):`);
+  (localAnalysis.riskRadar?.riskFlags || []).forEach(f => console.log(`   [${f.severity}] ${f.category} - ${f.title}: ${f.impact}`));
   console.log(`✓ Key Changes:`);
   localAnalysis.keySemanticChanges.forEach(ch => console.log(`   - ${ch}`));
 

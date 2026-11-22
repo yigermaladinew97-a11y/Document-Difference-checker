@@ -4,6 +4,7 @@ import {
   Scale, 
   Volume2, 
   ShieldAlert, 
+  ShieldCheck,
   FileCheck2,
   CheckCircle2,
   AlertTriangle,
@@ -138,6 +139,107 @@ export default function ExecutiveSummary({ contextAnalysis, summary }) {
           </div>
         </div>
       </div>
+
+      {/* Legal & Financial Risk Radar Card */}
+      {contextAnalysis.riskRadar && (
+        <div className="rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/[0.08] p-5 sm:p-7 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+            <div className="flex items-center space-x-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                contextAnalysis.riskRadar.overallRiskLevel === 'HIGH' || contextAnalysis.riskRadar.overallRiskLevel === 'CRITICAL'
+                  ? 'bg-rose-500/10 text-rose-500'
+                  : contextAnalysis.riskRadar.overallRiskLevel === 'MEDIUM'
+                  ? 'bg-amber-500/10 text-amber-500'
+                  : 'bg-emerald-500/10 text-emerald-500'
+              }`}>
+                {contextAnalysis.riskRadar.overallRiskLevel === 'LOW' ? (
+                  <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+                ) : (
+                  <ShieldAlert className="w-5 h-5 stroke-[2.2]" />
+                )}
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Legal &amp; Commercial Risk Radar</span>
+                  {isAi && (
+                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      Gemini Verified
+                    </span>
+                  )}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Automated risk audit for liability, payment terms, warranties, and scope changes
+                </p>
+              </div>
+            </div>
+
+            {/* Risk Level Badge */}
+            <div className="flex items-center space-x-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border shadow-xs ${
+                contextAnalysis.riskRadar.overallRiskLevel === 'HIGH' || contextAnalysis.riskRadar.overallRiskLevel === 'CRITICAL'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 animate-pulse'
+                  : contextAnalysis.riskRadar.overallRiskLevel === 'MEDIUM'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/50'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50'
+              }`}>
+                {contextAnalysis.riskRadar.overallRiskLevel} RISK EXPOSURE ({contextAnalysis.riskRadar.riskScore}/100)
+              </span>
+            </div>
+          </div>
+
+          {/* Risk Summary Sentence */}
+          {contextAnalysis.riskRadar.riskSummary && (
+            <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed bg-slate-50 dark:bg-slate-950/50 p-3 rounded-2xl border border-slate-100 dark:border-white/[0.04]">
+              {contextAnalysis.riskRadar.riskSummary}
+            </p>
+          )}
+
+          {/* Risk Flags Grid */}
+          {contextAnalysis.riskRadar.riskFlags && contextAnalysis.riskRadar.riskFlags.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {contextAnalysis.riskRadar.riskFlags.map((flag, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3.5 rounded-2xl border text-xs space-y-1.5 transition ${
+                    flag.severity === 'HIGH'
+                      ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-900/40'
+                      : flag.severity === 'MEDIUM'
+                      ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40'
+                      : 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/60 dark:border-white/[0.06]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-white/[0.08] text-slate-700 dark:text-slate-300">
+                      {flag.category}
+                    </span>
+                    <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                      flag.severity === 'HIGH' ? 'text-rose-600 dark:text-rose-400' : flag.severity === 'MEDIUM' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'
+                    }`}>
+                      {flag.severity} Priority
+                    </span>
+                  </div>
+                  <h5 className="font-extrabold text-slate-900 dark:text-white text-xs">
+                    {flag.title}
+                  </h5>
+                  <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                    {flag.impact}
+                  </p>
+                  {flag.clause && (
+                    <div className="pt-1 text-[10px] text-slate-400 font-medium">
+                      Clause / Section: <span className="font-semibold text-slate-600 dark:text-slate-300">{flag.clause}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Zero high-risk legal, financial, or indemnity alterations detected. All changes appear to be within normal editorial scope.</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Key Explanations & Takeaways List */}
       {explanations.length > 0 && (

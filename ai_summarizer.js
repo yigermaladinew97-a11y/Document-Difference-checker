@@ -25,13 +25,131 @@ function cleanJsonResponse(rawText) {
 }
 
 /**
- * Fallback generator when no Gemini API key is provided or on offline mode
+ * Detect Legal, Financial, and Operational Risk Radar Heuristics
  */
+export function detectLocalRiskRadar(textA = '', textB = '', sectionReports = [], stats = {}) {
+  const flags = [];
+  let score = 0;
+
+  const modified = (sectionReports || []).filter(s => s.status === 'MODIFIED');
+  const deleted = (sectionReports || []).filter(s => s.status === 'DELETED');
+  const added = (sectionReports || []).filter(s => s.status === 'ADDED');
+
+  const combinedDiffs = modified.map(m => `${m.title || ''} ${m.description || ''}`).join(' ') + ' ' + deleted.map(d => d.title || '').join(' ');
+  const fullText = `${textA || ''} ${textB || ''}`;
+
+  // 1. Financial & Numerical Commercial Terms
+  const numRegex = /(\$\s*\d+[\d,]*(\.\d+)?|\b\d+[\d,]*(?:\.\d+)?\s*(?:days?|months?|years?|%|USD|EUR|GBP))/gi;
+  const numsA = (textA.match(numRegex) || []).map(s => s.trim().toLowerCase());
+  const numsB = (textB.match(numRegex) || []).map(s => s.trim().toLowerCase());
+  const hasAlteredNumbers = numsA.some(n => !numsB.includes(n)) || numsB.some(n => !numsA.includes(n));
+
+  const hasFinancialKeywords = /\$|\bUSD\b|\bEUR\b|\bfee\b|\bprice\b|\bpayment\b|\binterest\b/i.test(combinedDiffs) || hasAlteredNumbers;
+  if (hasFinancialKeywords && stats.similarityPercent < 100) {
+    score += 35;
+    const examples = numsA.filter(n => !numsB.includes(n)).slice(0, 2);
+    flags.push({
+      category: 'FINANCIAL',
+      severity: 'HIGH',
+      title: 'Monetary Figures or Payment Terms Altered',
+      impact: examples.length > 0
+        ? `Commercial figures or payment milestones were updated (including changes affecting ${examples.join(', ')}).`
+        : 'Payment rates, fees, or monetary obligations were modified between versions.',
+      clause: 'Payment & Commercial Terms'
+    });
+  }
+
+  // 2. Liability, Indemnity & Warranties
+  if (/\bliabilit(y|ies)\b|\bindemnif(y|ication)\b|\bhold harmless\b|\bliquidated damages\b|\bwarrant(y|ies)\b/i.test(combinedDiffs) && stats.similarityPercent < 100) {
+    score += 35;
+    flags.push({
+      category: 'LIABILITY',
+      severity: 'HIGH',
+      title: 'Liability, Indemnity, or Warranty Allocation Modified',
+      impact: 'Core clauses governing legal liability exposure, warranty duration, or indemnification obligations have been altered.',
+      clause: 'Liability & Warranties'
+    });
+  }
+
+  // 3. Termination, Default & Breach Timelines
+  if (/\bterminat(e|ion)\b|\bbreach\b|\bdefault\b|\bcure period\b|\bnotice period\b/i.test(combinedDiffs)) {
+    score += 25;
+    flags.push({
+      category: 'TERMINATION',
+      severity: 'MEDIUM',
+      title: 'Termination, Breach, or Notice Windows Adjusted',
+      impact: 'Terms dictating contract cancellation timelines, breach remedies, or cure periods were adjusted.',
+      clause: 'Termination & Default'
+    });
+  }
+
+  // 4. Deleted Sections (Omitted Rights / Obligations)
+  if (deleted.length > 0) {
+    const isHeavyDeletion = deleted.length >= 3;
+    score += isHeavyDeletion ? 35 : 20;
+    flags.push({
+      category: 'COMPLIANCE',
+      severity: isHeavyDeletion ? 'HIGH' : 'MEDIUM',
+      title: `${deleted.length} Baseline Clause(s) Completely Omitted`,
+      impact: `Clauses present in the original document were deleted in the revision (${deleted.slice(0, 3).map(d => `"${d.title}"`).join(', ')}).`,
+      clause: deleted[0]?.title || 'Contract Scope'
+    });
+  }
+
+  // 5. Intellectual Property & Confidentiality
+  if (/\bintellectual property\b|\bconfidential\b|\btrade secret\b|\bownership\b/i.test(combinedDiffs)) {
+    score += 20;
+    flags.push({
+      category: 'COMPLIANCE',
+      severity: 'MEDIUM',
+      title: 'IP Ownership or Confidentiality Scope Revised',
+      impact: 'Definitions or restrictive covenants regarding proprietary assets and confidential disclosures were modified.',
+      clause: 'Intellectual Property & Confidentiality'
+    });
+  }
+
+  // Zero-diff normalization
+  if (stats.similarityPercent === 100) {
+    score = 0;
+    flags.length = 0;
+  } else if (flags.length === 0 && stats.similarityPercent < 75) {
+    score = 15;
+    flags.push({
+      category: 'OPERATIONAL',
+      severity: 'LOW',
+      title: 'General Contractual & Textual Revisions',
+      impact: 'Phrasing updates detected across multiple sections that should be verified for operational consistency.',
+      clause: 'General Clauses'
+    });
+  }
+
+  score = Math.min(100, Math.max(0, score));
+  let overallRiskLevel = 'LOW';
+  if (score >= 60) overallRiskLevel = 'HIGH';
+  else if (score >= 30) overallRiskLevel = 'MEDIUM';
+
+  let riskSummary = '';
+  if (overallRiskLevel === 'HIGH') {
+    riskSummary = 'High risk exposure detected: Significant adjustments to financial terms, liability, or omitted clauses warrant close counsel review.';
+  } else if (overallRiskLevel === 'MEDIUM') {
+    riskSummary = 'Moderate risk exposure detected: Quantitative metrics, termination windows, or specific clauses were updated.';
+  } else {
+    riskSummary = 'Low risk exposure: Modifications appear to be routine wording enhancements, styling adjustments, or minor editorial revisions.';
+  }
+
+  return {
+    overallRiskLevel,
+    riskScore: score,
+    riskSummary,
+    riskFlags: flags
+  };
+}
+
 /**
  * Fallback generator when no Gemini API key is provided or on offline mode
  * Generates an articulate, human-grade analytical summary and specific change descriptions.
  */
-export function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}) {
+export function generateLocalContextAnalysis(stats, sectionReports = [], summary = {}, textA = '', textB = '') {
   const alerts = [];
   const changes = [];
 
@@ -202,6 +320,8 @@ export function generateLocalContextAnalysis(stats, sectionReports = [], summary
     contextScore = Math.min(99, Math.round(stats.similarityPercent * 1.05 * 10) / 10);
   }
 
+  const riskRadar = detectLocalRiskRadar(textA, textB, sectionReports, stats);
+
   return {
     mode: 'local_fallback',
     contextSimilarityPercent: contextScore,
@@ -209,6 +329,7 @@ export function generateLocalContextAnalysis(stats, sectionReports = [], summary
     executiveSummary,
     explanations,
     structuralBreakdown,
+    riskRadar,
     keySemanticChanges: changes.length > 0 ? changes : ['Minor text adjustments across the document.'],
     criticalAlerts: alerts,
     toneShift
@@ -232,26 +353,23 @@ export async function analyzeDocumentContext({
 
   // If no API key is provided, return rich local fallback immediately
   if (!resolvedKey || resolvedKey.trim() === '') {
-    return generateLocalContextAnalysis(stats, sectionReports, summary);
+    return generateLocalContextAnalysis(stats, sectionReports, summary, textA, textB);
   }
+
+  const localFallback = generateLocalContextAnalysis(stats, sectionReports, summary, textA, textB);
 
   try {
     const genAI = new GoogleGenerativeAI(resolvedKey);
-    // Use gemini-2.5-flash for fastest, high-quality analytical comparison
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.2
-      }
-    });
+    const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    let lastError = null;
+    let result = null;
 
     const sectionsContext = sectionReports && sectionReports.length > 0
       ? `\n\n--- DETAILED SECTION BREAKDOWN (${sectionReports.length} sections) ---\n` +
         sectionReports.slice(0, 40).map(s => `- ${s.title}: [${s.status}] (${s.similarityPercent}% match) -> ${s.description}`).join('\n')
       : '';
 
-    const prompt = `You are an expert document comparison and legal/business contract analyst.
+    const prompt = `You are an expert document comparison, contract audit, and corporate legal analyst.
 Compare the following two documents:
 
 --- DOCUMENT A (ORIGINAL) ---
@@ -261,18 +379,33 @@ ${safeTruncate(textA)}
 ${safeTruncate(textB)}
 ${sectionsContext}
 
-Analyze the contextual, substantive, and meaning differences between them.
-Provide a high-impact, professional executive summary that clearly explains:
-1. What main ideas, provisions, numbers, or sections changed.
-2. The practical difference and real-world impact between Document A and Document B.
-3. Actionable bullet points in keySemanticChanges detailing the exact changes with specific excerpts, values, and affected sections.
+Analyze the contextual, substantive, financial, and legal differences between them.
+Provide:
+1. Executive Summary in plain English (2-3 sentences explaining what changed, what was added/removed, and real-world impact).
+2. Legal & Financial Risk Radar (risk level, risk score 0-100, concise risk summary, and specific risk flags for changes in liability, pricing, termination, IP, or compliance).
+3. Specific Key Semantic Changes (3-6 clear bullet points with exact values, dates, percentages, and section references).
 
 Return a STRICT JSON object matching this exact schema:
 {
-  "contextSimilarityPercent": <number between 0 and 100 representing how closely the core meaning and obligations match, even if wording changed>,
-  "executiveSummary": "<2-4 sentence clear, professional, executive-ready summary of the core differences, what was added/removed, and the overall impact>",
+  "contextSimilarityPercent": <number between 0 and 100 representing core meaning alignment>,
+  "verdictHeadline": "<One strong, executive headline summarizing the primary change>",
+  "executiveSummary": "<2-3 sentence executive-ready summary of core differences and real-world impact>",
+  "riskRadar": {
+    "overallRiskLevel": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+    "riskScore": <integer between 0 and 100>,
+    "riskSummary": "<1-2 sentence summary of legal and financial exposure>",
+    "riskFlags": [
+      {
+        "category": "LIABILITY" | "FINANCIAL" | "TERMINATION" | "COMPLIANCE" | "OPERATIONAL",
+        "severity": "HIGH" | "MEDIUM" | "LOW",
+        "title": "<Short descriptive risk title>",
+        "impact": "<Why this matters to legal, financial, or operational stakeholders>",
+        "clause": "<Section or clause name if identifiable>"
+      }
+    ]
+  },
   "keySemanticChanges": [
-    "<specific bullet point 1 explaining a meaningful change with exact details (e.g. altered prices, dates, liability, names, moved slides)>",
+    "<specific bullet point 1 explaining meaningful change with exact details (monetary numbers, dates, liability, names)>",
     "<specific bullet point 2>",
     "<specific bullet point 3>"
   ],
@@ -282,28 +415,60 @@ Return a STRICT JSON object matching this exact schema:
   "toneShift": "<description of any tone or style shift (e.g. 'Shifted from collaborative to strict legal language' or 'Expanded with additional technical specificity')>"
 }`;
 
-    const result = await model.generateContent(prompt);
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2
+          }
+        });
+        result = await model.generateContent(prompt);
+        if (result && result.response) break;
+      } catch (err) {
+        lastError = err;
+        console.warn(`[AI Context Engine] Model ${modelName} call failed (${err.message}). Trying next candidate...`);
+      }
+    }
+
+    if (!result) {
+      throw lastError || new Error('All candidate Gemini models failed.');
+    }
+
     const responseText = result.response.text();
     const parsed = JSON.parse(cleanJsonResponse(responseText));
-    const localFallback = generateLocalContextAnalysis(stats, sectionReports, summary);
+
+    // Merge AI Risk Radar with fallback if needed
+    const aiRiskRadar = parsed.riskRadar || {};
+    const finalRiskRadar = {
+      overallRiskLevel: aiRiskRadar.overallRiskLevel || localFallback.riskRadar.overallRiskLevel,
+      riskScore: typeof aiRiskRadar.riskScore === 'number' ? Math.min(100, Math.max(0, aiRiskRadar.riskScore)) : localFallback.riskRadar.riskScore,
+      riskSummary: aiRiskRadar.riskSummary || localFallback.riskRadar.riskSummary,
+      riskFlags: Array.isArray(aiRiskRadar.riskFlags) && aiRiskRadar.riskFlags.length > 0
+        ? aiRiskRadar.riskFlags
+        : localFallback.riskRadar.riskFlags
+    };
 
     return {
       mode: 'ai',
       contextSimilarityPercent: Math.min(100, Math.max(0, Number(parsed.contextSimilarityPercent) || stats.similarityPercent)),
       verdictHeadline: parsed.verdictHeadline || localFallback.verdictHeadline,
-      executiveSummary: parsed.executiveSummary || 'AI analysis completed.',
+      executiveSummary: parsed.executiveSummary || localFallback.executiveSummary,
       explanations: (Array.isArray(parsed.explanations) && parsed.explanations.length > 0)
         ? parsed.explanations
         : localFallback.explanations,
       structuralBreakdown: localFallback.structuralBreakdown,
-      keySemanticChanges: Array.isArray(parsed.keySemanticChanges) ? parsed.keySemanticChanges : [],
-      criticalAlerts: Array.isArray(parsed.criticalAlerts) ? parsed.criticalAlerts : [],
-      toneShift: parsed.toneShift || 'Neutral'
+      riskRadar: finalRiskRadar,
+      keySemanticChanges: Array.isArray(parsed.keySemanticChanges) && parsed.keySemanticChanges.length > 0
+        ? parsed.keySemanticChanges
+        : localFallback.keySemanticChanges,
+      criticalAlerts: Array.isArray(parsed.criticalAlerts) ? parsed.criticalAlerts : localFallback.criticalAlerts,
+      toneShift: parsed.toneShift || localFallback.toneShift
     };
   } catch (error) {
     console.warn(`[AI Context Engine] Note: Gemini API call failed (${error.message}). Falling back to local analysis.`);
-    const fallback = generateLocalContextAnalysis(stats, sectionReports, summary);
-    fallback.aiError = error.message;
-    return fallback;
+    localFallback.aiError = error.message;
+    return localFallback;
   }
 }
