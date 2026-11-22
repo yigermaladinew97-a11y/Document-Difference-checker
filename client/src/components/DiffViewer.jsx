@@ -452,10 +452,10 @@ export default function DiffViewer({
               type="button"
               onClick={onExportPdf}
               className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-[#FF5E1E]/10 hover:bg-[#FF5E1E]/20 text-[#FF5E1E] border border-[#FF5E1E]/30 text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition"
-              title="Export Executive PDF Audit Report"
+              title="1-Click Download Executive PDF Audit Report"
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>PDF</span>
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF Report</span>
             </button>
           )}
 

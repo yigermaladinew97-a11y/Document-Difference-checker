@@ -303,6 +303,135 @@ export function generateStandaloneReportHtml(data) {
       font-weight: 500;
     }
 
+    /* Risk Radar */
+    .risk-radar-box {
+      padding: 24px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      margin-bottom: 28px;
+    }
+
+    .risk-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .risk-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .risk-icon-pill {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .risk-title {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #0F172A;
+    }
+
+    .risk-summary-text {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #334155;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      font-weight: 500;
+    }
+
+    .risk-flags-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .risk-flag-card {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .risk-flag-high {
+      background: #FFF1F2;
+      border-color: #FECDD3;
+      color: #9F1239;
+    }
+
+    .risk-flag-medium {
+      background: #FFFBEB;
+      border-color: #FDE68A;
+      color: #92400E;
+    }
+
+    .risk-flag-low {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+      color: #334155;
+    }
+
+    .risk-flag-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .risk-flag-cat {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      background: #FFFFFF;
+      border: 1px solid rgba(0,0,0,0.12);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .risk-flag-sev {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .risk-flag-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+
+    .risk-flag-desc {
+      font-size: 11px;
+      line-height: 1.5;
+      color: #475569;
+    }
+
+    .risk-flag-clause {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #64748B;
+    }
+
     .alerts-box {
       padding: 20px;
       background: #FFF1F2;
@@ -473,7 +602,7 @@ export function generateStandaloneReportHtml(data) {
         padding: 0 !important;
         max-width: 100% !important;
       }
-      .executive-box, .alerts-box, .doc-card, .metric-card, .key-change-item, tr {
+      .executive-box, .alerts-box, .doc-card, .metric-card, .key-change-item, .risk-radar-box, .risk-flag-card, tr {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
@@ -586,6 +715,68 @@ export function generateStandaloneReportHtml(data) {
       ` : ''}
     </div>
 
+    <!-- Legal & Commercial Risk Radar (if present) -->
+    ${contextAnalysis.riskRadar ? `
+    <div class="risk-radar-box">
+      <div class="risk-header">
+        <div class="risk-title-wrap">
+          <div class="risk-icon-pill" style="${
+            contextAnalysis.riskRadar.overallRiskLevel === 'HIGH' || contextAnalysis.riskRadar.overallRiskLevel === 'CRITICAL'
+              ? 'background: #FFE4E6; color: #E11D48;'
+              : contextAnalysis.riskRadar.overallRiskLevel === 'MEDIUM'
+              ? 'background: #FEF3C7; color: #D97706;'
+              : 'background: #D1FAE5; color: #059669;'
+          }">
+            ${contextAnalysis.riskRadar.overallRiskLevel === 'LOW' ? '🛡️' : '⚠️'}
+          </div>
+          <div>
+            <div class="risk-title">Legal & Commercial Risk Radar</div>
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;">Automated exposure evaluation on liability, warranties, payment terms, and scope</div>
+          </div>
+        </div>
+        <span class="badge ${
+          contextAnalysis.riskRadar.overallRiskLevel === 'HIGH' || contextAnalysis.riskRadar.overallRiskLevel === 'CRITICAL'
+            ? 'badge-rose'
+            : contextAnalysis.riskRadar.overallRiskLevel === 'MEDIUM'
+            ? 'badge-amber'
+            : 'badge-emerald'
+        }">
+          ${escapeHtml(contextAnalysis.riskRadar.overallRiskLevel)} RISK EXPOSURE (${contextAnalysis.riskRadar.riskScore || 0}/100)
+        </span>
+      </div>
+
+      ${contextAnalysis.riskRadar.riskSummary ? `
+      <div class="risk-summary-text">
+        ${escapeHtml(contextAnalysis.riskRadar.riskSummary)}
+      </div>
+      ` : ''}
+
+      ${contextAnalysis.riskRadar.riskFlags && contextAnalysis.riskRadar.riskFlags.length > 0 ? `
+      <div class="risk-flags-grid">
+        ${contextAnalysis.riskRadar.riskFlags.map(flag => `
+          <div class="risk-flag-card ${
+            flag.severity === 'HIGH' ? 'risk-flag-high' : flag.severity === 'MEDIUM' ? 'risk-flag-medium' : 'risk-flag-low'
+          }">
+            <div class="risk-flag-top">
+              <span class="risk-flag-cat">${escapeHtml(flag.category)}</span>
+              <span class="risk-flag-sev" style="${
+                flag.severity === 'HIGH' ? 'color: #E11D48;' : flag.severity === 'MEDIUM' ? 'color: #D97706;' : 'color: #64748B;'
+              }">${escapeHtml(flag.severity)} PRIORITY</span>
+            </div>
+            <div class="risk-flag-title">${escapeHtml(flag.title)}</div>
+            <div class="risk-flag-desc">${escapeHtml(flag.impact || flag.explanation || '')}</div>
+            ${flag.clause ? `<div class="risk-flag-clause">Clause: <strong>${escapeHtml(flag.clause)}</strong></div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+      ` : `
+      <div style="font-size: 11px; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 12px; border-radius: 10px; font-weight: 600;">
+        ✓ Zero high-risk legal, financial, or indemnity alterations detected. All changes appear to be within normal editorial scope.
+      </div>
+      `}
+    </div>
+    ` : ''}
+
     <!-- Critical Alerts (if any) -->
     ${contextAnalysis.criticalAlerts && contextAnalysis.criticalAlerts.length > 0 ? `
     <div class="alerts-box">
@@ -650,23 +841,75 @@ export function generateStandaloneReportHtml(data) {
 
 /**
  * Open print window and trigger native print / save as PDF
+ * Includes automatic invisible iframe fallback if browser popup blockers are active
  */
 export function openPrintPdfReport(data) {
   const html = generateStandaloneReportHtml(data);
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Please allow popups to generate the printable PDF report.');
-    return;
-  }
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
+  let printWindow = null;
 
-  // Give fonts and styles a brief moment to render before opening print dialog
-  setTimeout(() => {
-    printWindow.print();
-  }, 400);
+  try {
+    printWindow = window.open('', '_blank');
+  } catch (err) {
+    printWindow = null;
+  }
+
+  if (printWindow && typeof printWindow.document !== 'undefined') {
+    try {
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+
+      setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch (e) {
+          console.warn('Direct print window call failed, attempting iframe print fallback', e);
+        }
+      }, 400);
+      return;
+    } catch (err) {
+      console.warn('Popup write failed, falling back to hidden iframe', err);
+    }
+  }
+
+  // Fallback: If popup blocker blocked window.open, use a dedicated hidden iframe
+  const existingFrame = document.getElementById('docdiff-pdf-print-frame');
+  if (existingFrame && existingFrame.parentNode) {
+    existingFrame.parentNode.removeChild(existingFrame);
+  }
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'docdiff-pdf-print-frame';
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.visibility = 'hidden';
+  document.body.appendChild(iframe);
+
+  const frameDoc = iframe.contentWindow || iframe.contentDocument;
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+
+  if (doc) {
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        }
+      } catch (e) {
+        console.error('Iframe print failed', e);
+        alert('Could not trigger print dialog automatically. Please download the HTML report instead.');
+      }
+    }, 450);
+  }
 }
 
 /**

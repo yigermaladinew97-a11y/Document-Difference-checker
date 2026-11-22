@@ -5,6 +5,7 @@ import {
   Download, 
   FileText, 
   ShieldCheck, 
+  ShieldAlert,
   CheckCircle2, 
   AlertTriangle,
   ArrowRight,
@@ -198,6 +199,93 @@ export default function PdfReportModal({ isOpen, onClose, data }) {
                     <li key={idx}>{a}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Legal & Commercial Risk Radar */}
+            {contextAnalysis.riskRadar && (
+              <div className="p-5 rounded-xl border border-slate-200 bg-white space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                  <div className="flex items-center space-x-2.5">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      contextAnalysis.riskRadar.overallRiskLevel === 'HIGH' || contextAnalysis.riskRadar.overallRiskLevel === 'CRITICAL'
+                        ? 'bg-rose-100 text-rose-600'
+                        : contextAnalysis.riskRadar.overallRiskLevel === 'MEDIUM'
+                        ? 'bg-amber-100 text-amber-600'
+                        : 'bg-emerald-100 text-emerald-600'
+                    }`}>
+                      {contextAnalysis.riskRadar.overallRiskLevel === 'LOW' ? (
+                        <ShieldCheck className="w-4 h-4" />
+                      ) : (
+                        <ShieldAlert className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                        Legal & Commercial Risk Radar
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        Automated exposure evaluation on liability, warranties, payment terms, and scope
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${
+                    contextAnalysis.riskRadar.overallRiskLevel === 'HIGH' || contextAnalysis.riskRadar.overallRiskLevel === 'CRITICAL'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : contextAnalysis.riskRadar.overallRiskLevel === 'MEDIUM'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    {contextAnalysis.riskRadar.overallRiskLevel} RISK EXPOSURE ({contextAnalysis.riskRadar.riskScore || 0}/100)
+                  </span>
+                </div>
+
+                {contextAnalysis.riskRadar.riskSummary && (
+                  <p className="text-[11px] text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed font-medium">
+                    {contextAnalysis.riskRadar.riskSummary}
+                  </p>
+                )}
+
+                {contextAnalysis.riskRadar.riskFlags && contextAnalysis.riskRadar.riskFlags.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {contextAnalysis.riskRadar.riskFlags.map((flag, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-lg border text-[11px] space-y-1 ${
+                          flag.severity === 'HIGH'
+                            ? 'bg-rose-50/70 border-rose-200 text-rose-900'
+                            : flag.severity === 'MEDIUM'
+                            ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+                            : 'bg-slate-50 border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white border border-slate-200/80">
+                            {flag.category}
+                          </span>
+                          <span className={`text-[9px] font-black uppercase tracking-wider ${
+                            flag.severity === 'HIGH' ? 'text-rose-600' : flag.severity === 'MEDIUM' ? 'text-amber-600' : 'text-slate-500'
+                          }`}>
+                            {flag.severity} PRIORITY
+                          </span>
+                        </div>
+                        <p className="font-bold text-slate-900 text-xs">{flag.title}</p>
+                        <p className="text-[10.5px] text-slate-600 leading-relaxed">{flag.impact || flag.explanation}</p>
+                        {flag.clause && (
+                          <p className="text-[9.5px] text-slate-400 font-medium">
+                            Clause: <span className="font-semibold text-slate-600">{flag.clause}</span>
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Zero high-risk legal or financial exposures identified. Changes fall within standard operational bounds.</span>
+                  </div>
+                )}
               </div>
             )}
 

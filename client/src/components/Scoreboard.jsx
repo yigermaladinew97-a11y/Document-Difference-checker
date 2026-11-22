@@ -6,6 +6,7 @@ import {
   MinusCircle, 
   CheckCircle2, 
   FileText,
+  Download,
   Hash,
   ArrowUpRight
 } from 'lucide-react';
@@ -141,10 +142,10 @@ export default function Scoreboard({ metrics, stats, summary, meta, filters, onE
               type="button"
               onClick={onExportPdf}
               className="flex items-center space-x-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95 shrink-0"
-              title="Generate Branded PDF Audit Report"
+              title="1-Click Download Branded PDF Redline & Audit Report"
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>PDF Audit Report</span>
+              <Download className="w-3.5 h-3.5" />
+              <span>Download PDF Report</span>
             </button>
           )}
 
