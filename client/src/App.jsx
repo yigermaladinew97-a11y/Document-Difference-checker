@@ -28,11 +28,9 @@ import {
   Cpu,
   Layers,
   ArrowRight,
-  TrendingUp,
   Award,
   SlidersHorizontal,
   FolderUp,
-  Files,
   ArrowLeft,
   Share2
 } from 'lucide-react';

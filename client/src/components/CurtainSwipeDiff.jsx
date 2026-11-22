@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, Play, Pause, RotateCcw, Columns, Layers } from 'lucide-react';
+import { Sparkles, Play, Pause } from 'lucide-react';
 
 /**
  * CurtainSwipeDiff:

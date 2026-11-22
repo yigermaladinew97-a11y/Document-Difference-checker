@@ -1,3 +1,19 @@
+/**
+ * ============================================================================
+ * Document Parsing & Ingestion Subsystem
+ * ============================================================================
+ * Multi-format document parser that extracts clean text streams, page/slide chunks,
+ * and tabular matrix structures directly from in-memory binary buffers.
+ *
+ * Supported Formats:
+ *  1. PDF (.pdf)         : unpdf + high-speed pdf-parse fallback
+ *  2. Word (.docx)       : Mammoth raw text & paragraph chunker
+ *  3. Excel (.xlsx, .xls): SheetJS tabular CSV & 2D cell matrix
+ *  4. PowerPoint (.pptx) : AdmZip XML parser for slide sequences
+ *  5. Plain Text (.txt)  : Standard UTF-8 decoding
+ * ============================================================================
+ */
+
 import path from 'path';
 import { extractText as extractPdfText } from 'unpdf';
 import pdfParse from 'pdf-parse';

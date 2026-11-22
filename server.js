@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * Document Difference Checker - Enterprise API Server
+ * ============================================================================
+ * Architecture Overview:
+ *  - 100% In-Memory Processing: Zero disk retention for maximum security and privacy.
+ *  - Multi-Format Document Ingestion: PDF, Word (DOCX), Excel (XLSX), PPTX, and TXT.
+ *  - Dual-Engine Diffing: Myers diff algorithm (word-level) + Sørensen-Dice similarity.
+ *  - Legal & Commercial Risk Radar: AI semantic audit with deterministic fallback.
+ *  - Bank-Grade Security: PBKDF2 hashing (SHA-512, 10k iterations), JWT, 2FA OTP.
+ * ============================================================================
+ */
+
 // Polyfill globalThis.Iterator for Node runtimes < 22 where PDF.js expects it
 if (typeof globalThis.Iterator === 'undefined') {
   globalThis.Iterator = class Iterator {};
@@ -40,12 +53,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable high-performance HTTP compression (reduces payload sizes by up to 80%)
+// ============================================================================
+// 1. HIGH-PERFORMANCE MIDDLEWARE & SECURITY
+// ============================================================================
+
+// High-performance gzip/deflate compression
 app.use(compression());
 
-// CORS Configuration:
-// Automatically allows same-origin requests, Render deployed domain, and local development.
-// Additional external domains can be specified via comma-separated CORS_ORIGINS.
+// Dynamic CORS configuration (development & Render deployment)
 const configuredOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map(origin => origin.trim().replace(/\/+$/, ''))
@@ -58,33 +73,25 @@ if (process.env.RENDER_EXTERNAL_URL) {
 
 app.use(cors({
   origin(origin, callback) {
-    // Requests with no origin (e.g. same-origin fetch, curl) are always allowed
     if (!origin) return callback(null, true);
-
     const normalizedOrigin = origin.replace(/\/+$/, '');
-
-    // If no explicit whitelist is configured, allow all origins by default (public web service)
     if (configuredOrigins.length === 0) return callback(null, true);
-
-    // If a whitelist is specified, verify against allowed origins or local development
     if (allowedOrigins.has(normalizedOrigin) || normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')) {
       return callback(null, true);
     }
-
-    // Cleanly reject unauthorized cross-origin requests without throwing an unhandled Express error
     return callback(null, false);
   },
   credentials: true
 }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve frontend static assets with aggressive caching for hashed assets
+// Static client assets with aggressive caching
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1y',
   immutable: true,
   setHeaders: (res, filePath) => {
-    // Never cache index.html so frontend updates are fetched immediately
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
@@ -93,7 +100,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// Configure Multer for in-memory file handling (up to 50MB per file)
+// In-Memory file upload storage (Zero Disk Retention)
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,

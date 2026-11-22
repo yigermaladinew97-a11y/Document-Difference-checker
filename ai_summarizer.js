@@ -1,3 +1,21 @@
+/**
+ * ============================================================================
+ * Contextual Analysis & Legal Risk Radar Subsystem (Dual-Engine)
+ * ============================================================================
+ * Provides an executive-level summary, tone shift analysis, and legal risk audit.
+ *
+ * Dual-Engine Architecture:
+ *  - Primary Engine   : Google Gemini API (gemini-2.0-flash, gemini-1.5-flash, gemini-2.5-flash)
+ *  - Secondary Engine : Local Deterministic Heuristics (100% operational with zero API keys)
+ *
+ * Risk Radar Audit:
+ *  - Financial: Monetary alterations, price adjustments, payment milestone changes
+ *  - Liability: Warranty, indemnity, and liquidated damages obligations
+ *  - Termination: Notice periods, cancellation rights, cure periods
+ *  - Compliance: Baseline clause deletions, scope omissions
+ * ============================================================================
+ */
+
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 dotenv.config();

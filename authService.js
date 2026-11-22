@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * Authentication, Security, & Cloud History Engine
+ * ============================================================================
+ * Security Architecture:
+ *  - PBKDF2 Password Hashing (10,000 iterations, SHA-512, unique random salt)
+ *  - Two-Factor Authentication (2FA) with 6-digit Email OTP & attempt cooldowns
+ *  - Password Reset with secure temporary tokens & rate limits
+ *  - JWT Token Issuance & Verification (HMAC-SHA256)
+ *  - Cloud Comparison Session Persistence
+ * ============================================================================
+ */
+
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';

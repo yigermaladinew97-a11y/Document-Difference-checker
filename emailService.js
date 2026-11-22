@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * Email Delivery & OTP Dispatch Service
+ * ============================================================================
+ * Dispatches 6-digit verification codes for 2FA and password recovery.
+ *
+ * Operational Modes:
+ *  - Production Mode : Authenticated SMTP (Gmail, SendGrid, Mailgun, Amazon SES)
+ *  - Simulation Mode : In-terminal visual card dispatch (100% operational offline)
+ * ============================================================================
+ */
+
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 dotenv.config();

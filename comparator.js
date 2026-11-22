@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * Core Document Comparison & Diffing Engine
+ * ============================================================================
+ * Pipeline Architecture:
+ *  1. Noise Filtering     : Case, punctuation, numbers, whitespace normalization.
+ *  2. Tokenization & Diff : Myers diff algorithm at word-level with spacing preservation.
+ *  3. Similarity Metric   : Sørensen-Dice coefficient: (2 * |A ∩ B|) / (|A| + |B|) * 100.
+ *  4. Section Alignment   : Categorizes blocks as UNCHANGED, MODIFIED, ADDED, DELETED, or MOVED.
+ *  5. Spreadsheet Matrix  : Cell-by-cell coordinate comparison for tabular sheets.
+ * ============================================================================
+ */
+
 import * as Diff from 'diff';
 
 /**

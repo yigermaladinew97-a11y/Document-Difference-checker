@@ -1,14 +1,11 @@
 import React from 'react';
 import { 
   Percent, 
-  Sparkles, 
   PlusCircle, 
   MinusCircle, 
   CheckCircle2, 
-  FileText,
   Download,
-  Hash,
-  ArrowUpRight
+  Hash
 } from 'lucide-react';
 import CountUp from './CountUp';
 import TiltCard from './TiltCard';

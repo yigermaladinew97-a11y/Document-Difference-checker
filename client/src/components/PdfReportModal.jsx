@@ -7,9 +7,7 @@ import {
   ShieldCheck, 
   ShieldAlert,
   CheckCircle2, 
-  AlertTriangle,
-  ArrowRight,
-  ExternalLink
+  AlertTriangle
 } from 'lucide-react';
 import { openPrintPdfReport, downloadHtmlAuditReport } from '../utils/reportGenerator';
 
