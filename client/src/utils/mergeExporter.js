@@ -230,6 +230,7 @@ export function tagTokensWithChangeIds(diffTokens = []) {
     if (token.type === 'unchanged') {
       tagged.push({
         ...token,
+        globalIndex: tagged.length,
         isChange: false,
         changeId: null,
         changeNum: null
@@ -270,6 +271,7 @@ export function tagTokensWithChangeIds(diffTokens = []) {
         tagged.push({
           ...groupTokens[g],
           ...changeMeta,
+          globalIndex: tagged.length,
           isFirstInChange: g === 0
         });
       }

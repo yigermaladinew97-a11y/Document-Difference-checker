@@ -233,7 +233,7 @@ function parseImageFile(buffer, originalname, ext) {
  * Extract text from PDF buffer using modern unpdf (per-page extraction)
  * with automatic, resilient fallback to pdf-parse if unpdf / PDF.js fails.
  */
-async function parsePdf(buffer) {
+async function parsePdf(buffer, originalname = 'document.pdf') {
   // 1. Try modern unpdf only if environment supports it and hasn't failed
   if (!unpdfFailedGlobally) {
     try {
@@ -258,45 +258,65 @@ async function parsePdf(buffer) {
         };
       }
     } catch (err) {
+      if (/password|encrypted|encrypt/i.test(err?.message || '')) {
+        throw new Error(`PDF "${originalname}" is password-protected. Please remove the password or decrypt the document before comparing.`);
+      }
       unpdfFailedGlobally = true;
       console.warn('[PDF Parser] unpdf extraction encountered an issue, permanently switching to fast pdf-parse fallback:', err.message);
     }
   }
 
   // 2. High-speed, universal parser: pdf-parse (runs in all Node versions in ~20-50ms)
-  const pdfData = await pdfParse(buffer);
-  const text = normalizeText(pdfData.text || '');
-  const images = await extractImagesFromPdf(buffer);
+  try {
+    const pdfData = await pdfParse(buffer);
+    const text = normalizeText(pdfData.text || '');
+    const images = await extractImagesFromPdf(buffer);
 
-  // Split by form feeds or generate page sections
-  const pageChunks = text.split(/\f+/).map((p, idx) => ({
-    title: `Page ${idx + 1}`,
-    content: normalizeText(p)
-  })).filter(s => s.content.length > 0);
+    // Split by form feeds or generate page sections
+    const pageChunks = text.split(/\f+/).map((p, idx) => ({
+      title: `Page ${idx + 1}`,
+      content: normalizeText(p)
+    })).filter(s => s.content.length > 0);
 
-  const sections = pageChunks.length > 0
-    ? pageChunks
-    : [{ title: 'Page 1', content: text }];
+    const sections = pageChunks.length > 0
+      ? pageChunks
+      : [{ title: 'Page 1', content: text }];
 
-  return {
-    type: 'pdf',
-    pagesCount: pdfData.numpages || sections.length || 1,
-    sections,
-    text,
-    images
-  };
+    return {
+      type: 'pdf',
+      pagesCount: pdfData.numpages || sections.length || 1,
+      sections,
+      text,
+      images
+    };
+  } catch (err) {
+    if (/password|encrypted|encrypt|PasswordException/i.test(err?.message || err?.name || '')) {
+      throw new Error(`PDF "${originalname}" is password-protected. Please remove the password or decrypt the document before comparing.`);
+    }
+    throw new Error(`Failed to parse PDF "${originalname}". The file may be encrypted or corrupted.`);
+  }
 }
 
 /**
  * Extract text from Word (.docx) buffer
  */
-async function parseDocx(buffer) {
-  validateZipSafety(buffer);
+async function parseDocx(buffer, originalname = 'document.docx') {
+  try {
+    validateZipSafety(buffer);
+  } catch (err) {
+    if (/encrypted|password/i.test(err?.message || '')) {
+      throw new Error(`Word document "${originalname}" is password-protected. Please unlock the file before comparing.`);
+    }
+    throw err;
+  }
   let text = '';
   try {
     const result = await mammoth.extractRawText({ buffer });
     text = normalizeText(result.value);
   } catch (err) {
+    if (/password|encrypted/i.test(err?.message || '')) {
+      throw new Error(`Word document "${originalname}" is password-protected. Please unlock the file before comparing.`);
+    }
     try {
       const zip = validateZipSafety(buffer);
       const docXml = zip.readAsText('word/document.xml');
@@ -325,8 +345,16 @@ async function parseDocx(buffer) {
 /**
  * Extract text from Excel (.xlsx, .xls) buffer
  */
-function parseExcel(buffer) {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+function parseExcel(buffer, originalname = 'spreadsheet.xlsx') {
+  let workbook;
+  try {
+    workbook = XLSX.read(buffer, { type: 'buffer' });
+  } catch (err) {
+    if (/password|encrypted|cannot read/i.test(err?.message || '')) {
+      throw new Error(`Excel spreadsheet "${originalname}" is password-protected. Please unlock the file before comparing.`);
+    }
+    throw new Error(`Failed to parse Excel file "${originalname}": ${err.message}`);
+  }
   const sections = [];
   const fullTextParts = [];
   const sheets = [];
@@ -470,8 +498,16 @@ function extractSlideXmlText(xml) {
 /**
  * Extract text from PowerPoint (.pptx) buffer
  */
-function parsePptx(buffer) {
-  const zip = validateZipSafety(buffer);
+function parsePptx(buffer, originalname = 'presentation.pptx') {
+  let zip;
+  try {
+    zip = validateZipSafety(buffer);
+  } catch (err) {
+    if (/password|encrypted/i.test(err?.message || '')) {
+      throw new Error(`PowerPoint presentation "${originalname}" is password-protected. Please unlock the file before comparing.`);
+    }
+    throw err;
+  }
   const slideEntries = getOrderedPptxSlides(zip);
 
   const sections = [];
@@ -541,22 +577,26 @@ function parsePlainText(buffer, ext) {
  * @param {string} originalname - Original file name (e.g. report.docx)
  */
 export async function extractDocumentContent(buffer, originalname) {
+  if (!buffer || buffer.length === 0) {
+    throw new Error(`Document "${originalname || 'Uploaded file'}" is empty (0 bytes). Please upload a valid document.`);
+  }
+
   const ext = path.extname(originalname || '').toLowerCase();
 
   let parsedResult;
   switch (ext) {
     case '.pdf':
-      parsedResult = await parsePdf(buffer);
+      parsedResult = await parsePdf(buffer, originalname);
       break;
     case '.docx':
-      parsedResult = await parseDocx(buffer);
+      parsedResult = await parseDocx(buffer, originalname);
       break;
     case '.xlsx':
     case '.xls':
-      parsedResult = parseExcel(buffer);
+      parsedResult = parseExcel(buffer, originalname);
       break;
     case '.pptx':
-      parsedResult = parsePptx(buffer);
+      parsedResult = parsePptx(buffer, originalname);
       break;
     case '.txt':
     case '.md':
@@ -576,7 +616,7 @@ export async function extractDocumentContent(buffer, originalname) {
       try {
         parsedResult = parsePlainText(buffer, ext);
       } catch (e) {
-        throw new Error(`Unsupported file format "${ext}". Supported: .pdf, .docx, .xlsx, .pptx, .txt`);
+        throw new Error(`Unsupported file format "${ext}". Supported: .pdf, .docx, .xlsx, .pptx, .txt, .md, .csv, and images.`);
       }
   }
 

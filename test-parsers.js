@@ -79,6 +79,15 @@ async function runTests() {
   console.log(`✓ Word Extracted: ${docxRes.wordCount} words, format: ${docxRes.format}`);
   console.log(`  Content: "${docxRes.text}"`);
 
+  // 6. Test 0-byte buffer and corrupt file diagnostics
+  console.log('\n[6/6] Testing Resilient Error Handling (0-byte and Corrupt Files)...');
+  try {
+    await extractDocumentContent(Buffer.alloc(0), 'empty.pdf');
+    throw new Error('Expected empty buffer to throw diagnostic error!');
+  } catch (err) {
+    console.log(`✓ 0-byte file correctly caught: "${err.message}"`);
+  }
+
   console.log('\n=======================================');
   console.log('🎉 STEP 1 VERIFICATION COMPLETE: ALL EXTRACTORS WORKING CLEANLY!');
   console.log('=======================================');

@@ -24,7 +24,8 @@ import {
   Info,
   Image as ImageIcon,
   Camera,
-  Lock
+  Lock,
+  CheckCircle2
 } from 'lucide-react';
 import NoiseFiltersBar from './NoiseFiltersBar';
 import MergeResolver from './MergeResolver';
@@ -60,6 +61,7 @@ export default function DiffViewer({
   const [filterChangesOnly, setFilterChangesOnly] = useState(false);
   const [wrapText, setWrapText] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [showFilterTray, setShowFilterTray] = useState(false);
   const [isExportingWord, setIsExportingWord] = useState(false);
@@ -265,16 +267,290 @@ export default function DiffViewer({
       .replace(/\n/g, '↵\n');
   };
 
-  const filteredTokens = taggedDiffTokens.filter(token => {
-    if (filterChangesOnly && token.type === 'unchanged') return false;
-    if (searchQuery.trim()) {
-      return token.value.toLowerCase().includes(searchQuery.toLowerCase());
-    }
-    return true;
-  });
+  // Search Matches across all tagged tokens for in-context non-destructive navigation
+  const searchMatches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    const matches = [];
+    taggedDiffTokens.forEach((token) => {
+      if (token.value && token.value.toLowerCase().includes(q)) {
+        matches.push({ tokenIndex: token.globalIndex, tokenId: `diff-token-${token.globalIndex}` });
+      }
+    });
+    return matches;
+  }, [taggedDiffTokens, searchQuery]);
 
-  const tokensDocA = taggedDiffTokens.filter(t => t.type === 'unchanged' || t.type === 'removed');
-  const tokensDocB = taggedDiffTokens.filter(t => t.type === 'unchanged' || t.type === 'added');
+  const scrollToMatch = (matchIdx) => {
+    const match = searchMatches[matchIdx];
+    if (!match) return;
+    const el = document.getElementById(match.tokenId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const handleNextMatch = () => {
+    if (searchMatches.length === 0) return;
+    const next = (currentMatchIndex + 1) % searchMatches.length;
+    setCurrentMatchIndex(next);
+    scrollToMatch(next);
+  };
+
+  const handlePrevMatch = () => {
+    if (searchMatches.length === 0) return;
+    const prev = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+    setCurrentMatchIndex(prev);
+    scrollToMatch(prev);
+  };
+
+  useEffect(() => {
+    if (searchQuery.trim() && searchMatches.length > 0) {
+      setCurrentMatchIndex(0);
+      scrollToMatch(0);
+    }
+  }, [searchQuery]);
+
+  // Non-destructive token display: keep full document paragraph context when searching
+  const filteredTokens = useMemo(() => {
+    if (filterChangesOnly) {
+      return taggedDiffTokens.filter(token => token.type !== 'unchanged');
+    }
+    return taggedDiffTokens;
+  }, [taggedDiffTokens, filterChangesOnly]);
+
+  const tokensDocA = useMemo(() => taggedDiffTokens.filter(t => t.type === 'unchanged' || t.type === 'removed'), [taggedDiffTokens]);
+  const tokensDocB = useMemo(() => taggedDiffTokens.filter(t => t.type === 'unchanged' || t.type === 'added'), [taggedDiffTokens]);
+
+  // Aligned dual-pane block grouping to prevent vertical paragraph drift in Side-by-Side view
+  const alignedBlocks = useMemo(() => {
+    if (!taggedDiffTokens || taggedDiffTokens.length === 0) return [];
+    const blocks = [];
+    let currentBlock = {
+      id: 'block-0',
+      type: 'unchanged',
+      tokensDocA: [],
+      tokensDocB: []
+    };
+
+    for (let i = 0; i < taggedDiffTokens.length; i++) {
+      const token = taggedDiffTokens[i];
+
+      if (token.isChange) {
+        if (currentBlock.tokensDocA.length > 0 || currentBlock.tokensDocB.length > 0) {
+          blocks.push(currentBlock);
+          currentBlock = {
+            id: `block-${blocks.length}`,
+            type: 'unchanged',
+            tokensDocA: [],
+            tokensDocB: []
+          };
+        }
+
+        const changeId = token.changeId;
+        let changeBlock = blocks.find(b => b.changeId === changeId);
+        if (!changeBlock) {
+          changeBlock = {
+            id: `block-change-${changeId}`,
+            type: 'change',
+            changeId: token.changeId,
+            changeNum: token.changeNum,
+            changeType: token.changeType,
+            originalText: token.originalText,
+            newText: token.newText,
+            tokensDocA: [],
+            tokensDocB: []
+          };
+          blocks.push(changeBlock);
+        }
+
+        if (token.type === 'removed') {
+          changeBlock.tokensDocA.push(token);
+        } else if (token.type === 'added') {
+          changeBlock.tokensDocB.push(token);
+        }
+      } else {
+        if (currentBlock.type === 'change' || currentBlock.changeId) {
+          currentBlock = {
+            id: `block-${blocks.length}`,
+            type: 'unchanged',
+            tokensDocA: [],
+            tokensDocB: []
+          };
+        }
+
+        currentBlock.tokensDocA.push(token);
+        currentBlock.tokensDocB.push(token);
+
+        if (token.value && token.value.includes('\n')) {
+          blocks.push(currentBlock);
+          currentBlock = {
+            id: `block-${blocks.length}`,
+            type: 'unchanged',
+            tokensDocA: [],
+            tokensDocB: []
+          };
+        }
+      }
+    }
+
+    if (currentBlock.tokensDocA.length > 0 || currentBlock.tokensDocB.length > 0) {
+      blocks.push(currentBlock);
+    }
+
+    return blocks;
+  }, [taggedDiffTokens]);
+
+  // Unified Token Renderer with Intra-Word Character Precision & In-Context Search Highlights
+  const renderToken = (token, idx, pane = 'unified') => {
+    const tokenIndex = token.globalIndex ?? idx;
+    const tokenId = `diff-token-${tokenIndex}`;
+    const isWs = token.isWhitespace || /^\s+$/.test(token.value);
+    const decision = token.changeId ? (decisions[token.changeId] || 'pending') : 'pending';
+    const isAccepted = decision === 'accepted';
+    const isRejected = decision === 'rejected';
+    const isHovered = token.changeId && hoveredChangeId === token.changeId;
+
+    // Search Match Highlighting
+    const hasSearch = searchQuery.trim().length > 0;
+    const isSearchMatch = hasSearch && token.value && token.value.toLowerCase().includes(searchQuery.toLowerCase());
+    const isActiveSearchMatch = isSearchMatch && searchMatches[currentMatchIndex]?.tokenIndex === tokenIndex;
+
+    let searchHighlightClass = '';
+    if (isActiveSearchMatch) {
+      searchHighlightClass = 'ring-2 ring-[#FF5E1E] ring-offset-1 bg-amber-300 dark:bg-amber-400 text-slate-900 font-bold shadow-sm';
+    } else if (isSearchMatch) {
+      searchHighlightClass = 'bg-amber-100 dark:bg-amber-900/50 text-amber-950 dark:text-amber-100';
+    }
+
+    // Unchanged Token
+    if (token.type === 'unchanged') {
+      if (isSearchMatch) {
+        return (
+          <mark id={tokenId} key={idx} className={`rounded px-0.5 ${searchHighlightClass}`}>
+            {token.value}
+          </mark>
+        );
+      }
+      return <span id={tokenId} key={idx}>{token.value}</span>;
+    }
+
+    // Changed Token (Added or Removed)
+    let markClass = '';
+    let markTitle = '';
+
+    if (token.type === 'added') {
+      if (isAccepted) {
+        markClass = 'diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-b-2 border-emerald-500 font-bold px-1.5 py-0.5 rounded mr-1 select-text shadow-xs';
+        markTitle = `Accepted revision in Change #${token.changeNum}`;
+      } else if (isRejected) {
+        markClass = 'diff-token bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 line-through decoration-rose-400 px-1.5 py-0.5 rounded mr-1 opacity-50 select-text';
+        markTitle = `Rejected in Change #${token.changeNum}`;
+      } else {
+        if (isWs) {
+          markClass = 'diff-token-ws inline-block bg-emerald-200/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-emerald-400 select-all mx-0.5 align-middle';
+          markTitle = `Added whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`;
+        } else {
+          markClass = `diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md border-b-2 border-emerald-500 font-bold mr-1 cursor-pointer transition ${
+            isHovered ? 'ring-2 ring-[#FF5E1E] bg-emerald-200 dark:bg-emerald-900/60' : ''
+          }`;
+          markTitle = `Hover/Click to resolve Change #${token.changeNum}`;
+        }
+      }
+    } else if (token.type === 'removed') {
+      if (isAccepted) {
+        markClass = 'diff-token bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 line-through decoration-slate-400 px-1.5 py-0.5 rounded mr-1 opacity-50 select-text';
+        markTitle = `Replaced by revision in Change #${token.changeNum}`;
+      } else if (isRejected) {
+        markClass = 'diff-token bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-b-2 border-emerald-500 font-bold px-1.5 py-0.5 rounded mr-1 select-text shadow-xs';
+        markTitle = `Original preserved in Change #${token.changeNum}`;
+      } else {
+        if (isWs) {
+          markClass = 'diff-token-ws inline-block bg-rose-200/90 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-rose-400 select-all mx-0.5 align-middle';
+          markTitle = `Removed whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`;
+        } else {
+          markClass = `diff-token bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded-md border-b-2 border-rose-500 font-bold line-through decoration-rose-500/60 mr-1 cursor-pointer transition ${
+            isHovered ? 'ring-2 ring-[#FF5E1E] bg-rose-200 dark:bg-rose-900/60' : ''
+          }`;
+          markTitle = `Hover/Click to resolve Change #${token.changeNum}`;
+        }
+      }
+    }
+
+    if (searchHighlightClass) {
+      markClass += ` ${searchHighlightClass}`;
+    }
+
+    // Token Inner Content (Intra-word sub-diff character precision)
+    let tokenContent = null;
+    const prefix = token.type === 'added' ? '+' : token.type === 'removed' ? '-' : '';
+
+    if (isWs) {
+      tokenContent = <span className="opacity-80 font-bold">{prefix}{renderWhitespaceGlyphs(token.value)}</span>;
+    } else if (token.charDiff && token.charDiff.length > 1 && !isAccepted && !isRejected) {
+      tokenContent = (
+        <span>
+          {prefix}
+          {token.charDiff.map((part, pIdx) => {
+            if (part.type === 'removed') {
+              return (
+                <span key={pIdx} className="bg-rose-600 text-white font-black px-0.5 rounded-xs shadow-xs" title="Exact character modified">
+                  {part.value}
+                </span>
+              );
+            }
+            if (part.type === 'added') {
+              return (
+                <span key={pIdx} className="bg-emerald-600 text-white font-black px-0.5 rounded-xs shadow-xs" title="Exact character modified">
+                  {part.value}
+                </span>
+              );
+            }
+            return <span key={pIdx}>{part.value}</span>;
+          })}
+        </span>
+      );
+    } else {
+      tokenContent = <>{prefix}{token.value}</>;
+    }
+
+    const contentMark = (
+      <mark id={tokenId} className={markClass} title={markTitle}>
+        {tokenContent}
+      </mark>
+    );
+
+    const wrapped = (
+      <span
+        key={idx}
+        onMouseEnter={() => setHoveredChangeId(token.changeId)}
+        onMouseLeave={() => setHoveredChangeId(null)}
+        className="inline"
+      >
+        {contentMark}
+      </span>
+    );
+
+    if (token.isFirstInChange && (pane === 'unified' || (pane === 'left' && token.type === 'removed') || (pane === 'right' && token.type === 'added'))) {
+      return (
+        <InlineChangeAction
+          key={idx}
+          changeId={token.changeId}
+          changeNum={token.changeNum}
+          changeType={token.changeType}
+          originalText={token.originalText}
+          newText={token.newText}
+          decision={decision}
+          onDecision={handleInlineDecision}
+          pane={pane}
+          isHovered={isHovered}
+        >
+          {wrapped}
+        </InlineChangeAction>
+      );
+    }
+
+    return wrapped;
+  };
 
   const handleCopy = () => {
     const textDiff = diffTokens.map(t => {
@@ -443,15 +719,58 @@ export default function DiffViewer({
 
         {/* Right: Search, Export & Copy */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 sm:flex-initial">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative flex-1 sm:flex-initial flex items-center">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search in diff..."
-              className="pl-9 pr-3.5 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] rounded-full text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30 w-full sm:w-44 shadow-sm font-mono"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (e.shiftKey) handlePrevMatch();
+                  else handleNextMatch();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setSearchQuery('');
+                }
+              }}
+              placeholder="Search in diff (Enter = next)..."
+              className="pl-8 pr-20 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/[0.08] rounded-full text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FF5E1E]/30 w-full sm:w-60 shadow-sm font-mono"
             />
+            {searchQuery.trim() && (
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center space-x-0.5">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold">
+                  {searchMatches.length > 0 ? `${currentMatchIndex + 1}/${searchMatches.length}` : '0'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handlePrevMatch}
+                  disabled={searchMatches.length === 0}
+                  className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-30 transition"
+                  title="Previous match (Shift+Enter)"
+                >
+                  <ChevronUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMatch}
+                  disabled={searchMatches.length === 0}
+                  className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-30 transition"
+                  title="Next match (Enter)"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition"
+                  title="Clear search (Esc)"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           <button
@@ -862,342 +1181,74 @@ export default function DiffViewer({
         <div className="relative flex">
           <div className="flex-1 min-w-0">
             {viewMode === 'sideBySide' ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/[0.08]">
-          {/* Doc A */}
-          <div className="flex flex-col bg-slate-50/30 dark:bg-transparent">
-            <div className="px-6 py-3.5 bg-slate-100/70 dark:bg-slate-900/80 border-b border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-800 dark:text-slate-200 truncate flex items-center space-x-2">
-                <FileText className="w-4 h-4 text-[#FF5E1E] shrink-0" />
-                <span className="truncate">{meta?.docA?.filename}</span>
-              </span>
-              <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900">
-                -{stats?.deletedWords || 0} words{stats?.deletedWhitespace > 0 ? ` · -${stats.deletedWhitespace} spaces` : ''}
-              </span>
-            </div>
-            <div
-              ref={leftPaneRef}
-              onScroll={() => handleScroll('left')}
-              className={`p-4 sm:p-6 lg:p-8 max-h-[450px] sm:max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'
-                }`}
-            >
-              {tokensDocA.map((token, idx) => {
-                if (token.type === 'unchanged') {
-                  return <span key={idx}>{token.value}</span>;
-                }
+              <div className="flex flex-col">
+                {/* Sticky Side-by-Side Dual Header */}
+                <div className="sticky top-0 z-10 grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/[0.08] bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.08]">
+                  <div className="px-6 py-3.5 flex items-center justify-between text-xs font-semibold">
+                    <span className="text-slate-800 dark:text-slate-200 truncate flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-[#FF5E1E] shrink-0" />
+                      <span className="truncate">{meta?.docA?.filename}</span>
+                    </span>
+                    <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900">
+                      -{stats?.deletedWords || 0} words{stats?.deletedWhitespace > 0 ? ` · -${stats.deletedWhitespace} spaces` : ''}
+                    </span>
+                  </div>
+                  <div className="px-6 py-3.5 flex items-center justify-between text-xs font-semibold">
+                    <span className="text-slate-800 dark:text-slate-200 truncate flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span className="truncate">{meta?.docB?.filename}</span>
+                    </span>
+                    <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-900">
+                      +{stats?.addedWords || 0} words{stats?.addedWhitespace > 0 ? ` · +${stats.addedWhitespace} spaces` : ''}
+                    </span>
+                  </div>
+                </div>
 
-                // Removed token in Doc A
-                const isWs = token.isWhitespace || /^\s+$/.test(token.value);
-                const decision = decisions[token.changeId] || 'pending';
-                const isAccepted = decision === 'accepted';
-                const isRejected = decision === 'rejected';
-                const isHovered = hoveredChangeId === token.changeId;
-
-                let markClass = '';
-                let markTitle = '';
-
-                if (isAccepted) {
-                  markClass = 'diff-token bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 line-through decoration-slate-400 px-1.5 py-0.5 rounded mr-1 opacity-50 select-text';
-                  markTitle = `Replaced by revision in Change #${token.changeNum}`;
-                } else if (isRejected) {
-                  markClass = 'diff-token bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-b-2 border-emerald-500 font-bold px-1.5 py-0.5 rounded mr-1 select-text shadow-xs';
-                  markTitle = `Original preserved in Change #${token.changeNum}`;
-                } else {
-                  if (isWs) {
-                    markClass = 'diff-token-ws inline-block bg-rose-200/90 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-rose-400 select-all mx-0.5 align-middle';
-                    markTitle = `Removed whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`;
-                  } else {
-                    markClass = `diff-token bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded-md border-b-2 border-rose-500 font-bold line-through decoration-rose-500/60 mr-1 cursor-pointer transition ${
-                      isHovered ? 'ring-2 ring-[#FF5E1E] bg-rose-200 dark:bg-rose-900/60' : ''
-                    }`;
-                    markTitle = `Hover/Click to resolve Change #${token.changeNum}`;
-                  }
-                }
-
-                const content = isWs ? (
-                  <mark className={markClass} title={markTitle}>
-                    <span className="opacity-80 font-bold">{renderWhitespaceGlyphs(token.value)}</span>
-                  </mark>
-                ) : (
-                  <mark className={markClass} title={markTitle}>
-                    {token.value}
-                  </mark>
-                );
-
-                const wrapped = (
-                  <span
-                    key={idx}
-                    onMouseEnter={() => setHoveredChangeId(token.changeId)}
-                    onMouseLeave={() => setHoveredChangeId(null)}
-                    className="inline"
-                  >
-                    {content}
-                  </span>
-                );
-
-                if (token.isFirstInChange) {
-                  return (
-                    <InlineChangeAction
-                      key={idx}
-                      changeId={token.changeId}
-                      changeNum={token.changeNum}
-                      changeType={token.changeType}
-                      originalText={token.originalText}
-                      newText={token.newText}
-                      decision={decision}
-                      onDecision={handleInlineDecision}
-                      pane="left"
-                      isHovered={isHovered}
-                    >
-                      {wrapped}
-                    </InlineChangeAction>
-                  );
-                }
-
-                return wrapped;
-              })}
-            </div>
-          </div>
-
-          {/* Doc B */}
-          <div className="flex flex-col bg-slate-50/30 dark:bg-transparent">
-            <div className="px-6 py-3.5 bg-slate-100/70 dark:bg-slate-900/80 border-b border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-800 dark:text-slate-200 truncate flex items-center space-x-2">
-                <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span className="truncate">{meta?.docB?.filename}</span>
-              </span>
-              <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-900">
-                +{stats?.addedWords || 0} words{stats?.addedWhitespace > 0 ? ` · +${stats.addedWhitespace} spaces` : ''}
-              </span>
-            </div>
-            <div
-              ref={rightPaneRef}
-              onScroll={() => handleScroll('right')}
-              className={`p-4 sm:p-6 lg:p-8 max-h-[450px] sm:max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'
-                }`}
-            >
-              {tokensDocB.map((token, idx) => {
-                if (token.type === 'unchanged') {
-                  return <span key={idx}>{token.value}</span>;
-                }
-
-                // Added token in Doc B
-                const isWs = token.isWhitespace || /^\s+$/.test(token.value);
-                const decision = decisions[token.changeId] || 'pending';
-                const isAccepted = decision === 'accepted';
-                const isRejected = decision === 'rejected';
-                const isHovered = hoveredChangeId === token.changeId;
-
-                let markClass = '';
-                let markTitle = '';
-
-                if (isAccepted) {
-                  markClass = 'diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-b-2 border-emerald-500 font-bold px-1.5 py-0.5 rounded mr-1 select-text shadow-xs';
-                  markTitle = `Accepted revision in Change #${token.changeNum}`;
-                } else if (isRejected) {
-                  markClass = 'diff-token bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 line-through decoration-rose-400 px-1.5 py-0.5 rounded mr-1 opacity-50 select-text';
-                  markTitle = `Rejected in Change #${token.changeNum}`;
-                } else {
-                  if (isWs) {
-                    markClass = 'diff-token-ws inline-block bg-emerald-200/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-emerald-400 select-all mx-0.5 align-middle';
-                    markTitle = `Added whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`;
-                  } else {
-                    markClass = `diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md border-b-2 border-emerald-500 font-bold mr-1 cursor-pointer transition ${
-                      isHovered ? 'ring-2 ring-[#FF5E1E] bg-emerald-200 dark:bg-emerald-900/60' : ''
-                    }`;
-                    markTitle = `Hover/Click to resolve Change #${token.changeNum}`;
-                  }
-                }
-
-                const content = isWs ? (
-                  <mark className={markClass} title={markTitle}>
-                    <span className="opacity-80 font-bold">+{renderWhitespaceGlyphs(token.value)}</span>
-                  </mark>
-                ) : (
-                  <mark className={markClass} title={markTitle}>
-                    +{token.value}
-                  </mark>
-                );
-
-                const wrapped = (
-                  <span
-                    key={idx}
-                    onMouseEnter={() => setHoveredChangeId(token.changeId)}
-                    onMouseLeave={() => setHoveredChangeId(null)}
-                    className="inline"
-                  >
-                    {content}
-                  </span>
-                );
-
-                if (token.isFirstInChange) {
-                  return (
-                    <InlineChangeAction
-                      key={idx}
-                      changeId={token.changeId}
-                      changeNum={token.changeNum}
-                      changeType={token.changeType}
-                      originalText={token.originalText}
-                      newText={token.newText}
-                      decision={decision}
-                      onDecision={handleInlineDecision}
-                      pane="right"
-                      isHovered={isHovered}
-                    >
-                      {wrapped}
-                    </InlineChangeAction>
-                  );
-                }
-
-                return wrapped;
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Unified View */
-        <div className="p-8 max-h-[650px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono whitespace-pre-wrap select-text text-slate-800 dark:text-slate-300 bg-white dark:bg-slate-900/40">
-          {filteredTokens.map((token, idx) => {
-            if (token.type === 'unchanged') {
-              return <span key={idx}>{token.value}</span>;
-            }
-
-            const isWs = token.isWhitespace || /^\s+$/.test(token.value);
-            const decision = decisions[token.changeId] || 'pending';
-            const isAccepted = decision === 'accepted';
-            const isRejected = decision === 'rejected';
-            const isHovered = hoveredChangeId === token.changeId;
-
-            let markClass = '';
-            let markTitle = '';
-
-            if (token.type === 'added') {
-              if (isAccepted) {
-                markClass = 'diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-b-2 border-emerald-500 font-bold px-1.5 py-0.5 rounded mr-1 select-text shadow-xs';
-                markTitle = `Accepted revision in Change #${token.changeNum}`;
-              } else if (isRejected) {
-                markClass = 'diff-token bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 line-through decoration-rose-400 px-1.5 py-0.5 rounded mr-1 opacity-50 select-text';
-                markTitle = `Rejected in Change #${token.changeNum}`;
-              } else {
-                if (isWs) {
-                  markClass = 'diff-token-ws inline-block bg-emerald-200/90 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-emerald-400 select-all mx-0.5 align-middle';
-                  markTitle = `Added whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`;
-                } else {
-                  markClass = `diff-token bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-md border-b-2 border-emerald-500 font-bold mr-1 cursor-pointer transition ${
-                    isHovered ? 'ring-2 ring-[#FF5E1E] bg-emerald-200 dark:bg-emerald-900/60' : ''
-                  }`;
-                  markTitle = `Hover/Click to resolve Change #${token.changeNum}`;
-                }
-              }
-
-              const content = isWs ? (
-                <mark className={markClass} title={markTitle}>
-                  <span className="opacity-80 font-bold">+{renderWhitespaceGlyphs(token.value)}</span>
-                </mark>
-              ) : (
-                <mark className={markClass} title={markTitle}>
-                  +{token.value}
-                </mark>
-              );
-
-              const wrapped = (
-                <span
-                  key={idx}
-                  onMouseEnter={() => setHoveredChangeId(token.changeId)}
-                  onMouseLeave={() => setHoveredChangeId(null)}
-                  className="inline"
+                {/* Aligned Dual-Pane Scroll Area with Spacer Padding */}
+                <div
+                  ref={leftPaneRef}
+                  className={`max-h-[450px] sm:max-h-[600px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono select-text divide-y divide-slate-100/70 dark:divide-white/[0.04]`}
                 >
-                  {content}
-                </span>
-              );
+                  {alignedBlocks.map((block, bIdx) => (
+                    <div
+                      key={block.id || bIdx}
+                      className={`grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-white/[0.06] transition-colors ${
+                        block.type === 'change' ? 'bg-slate-50/40 dark:bg-slate-900/20' : 'hover:bg-slate-50/20 dark:hover:bg-slate-900/10'
+                      }`}
+                    >
+                      {/* Left Column (Doc A) */}
+                      <div className={`p-4 sm:p-6 text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'}`}>
+                        {block.tokensDocA.length > 0 ? (
+                          block.tokensDocA.map((token, tIdx) => renderToken(token, tIdx, 'left'))
+                        ) : (
+                          <div className="py-2 px-3 rounded-xl bg-slate-100/50 dark:bg-slate-900/30 border border-dashed border-slate-200 dark:border-white/[0.08] text-[11px] text-slate-400 font-mono select-none flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                            <span className="truncate font-sans italic">[No corresponding text in Doc A · Added in Doc B]</span>
+                          </div>
+                        )}
+                      </div>
 
-              if (token.isFirstInChange) {
-                return (
-                  <InlineChangeAction
-                    key={idx}
-                    changeId={token.changeId}
-                    changeNum={token.changeNum}
-                    changeType={token.changeType}
-                    originalText={token.originalText}
-                    newText={token.newText}
-                    decision={decision}
-                    onDecision={handleInlineDecision}
-                    pane="unified"
-                    isHovered={isHovered}
-                  >
-                    {wrapped}
-                  </InlineChangeAction>
-                );
-              }
-
-              return wrapped;
-            }
-
-            if (token.type === 'removed') {
-              if (isAccepted) {
-                markClass = 'diff-token bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 line-through decoration-slate-400 px-1.5 py-0.5 rounded mr-1 opacity-50 select-text';
-                markTitle = `Replaced by revision in Change #${token.changeNum}`;
-              } else if (isRejected) {
-                markClass = 'diff-token bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-b-2 border-emerald-500 font-bold px-1.5 py-0.5 rounded mr-1 select-text shadow-xs';
-                markTitle = `Original preserved in Change #${token.changeNum}`;
-              } else {
-                if (isWs) {
-                  markClass = 'diff-token-ws inline-block bg-rose-200/90 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 px-1 py-0.5 rounded text-[11px] font-mono border border-dashed border-rose-400 select-all mx-0.5 align-middle';
-                  markTitle = `Removed whitespace (${token.value.length} char${token.value.length > 1 ? 's' : ''})`;
-                } else {
-                  markClass = `diff-token bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-1.5 py-0.5 rounded-md border-b-2 border-rose-500 font-bold line-through decoration-rose-500/60 mr-1 cursor-pointer transition ${
-                    isHovered ? 'ring-2 ring-[#FF5E1E] bg-rose-200 dark:bg-rose-900/60' : ''
-                  }`;
-                  markTitle = `Hover/Click to resolve Change #${token.changeNum}`;
-                }
-              }
-
-              const content = isWs ? (
-                <mark className={markClass} title={markTitle}>
-                  <span className="opacity-80 font-bold">-{renderWhitespaceGlyphs(token.value)}</span>
-                </mark>
-              ) : (
-                <mark className={markClass} title={markTitle}>
-                  -{token.value}
-                </mark>
-              );
-
-              const wrapped = (
-                <span
-                  key={idx}
-                  onMouseEnter={() => setHoveredChangeId(token.changeId)}
-                  onMouseLeave={() => setHoveredChangeId(null)}
-                  className="inline"
-                >
-                  {content}
-                </span>
-              );
-
-              if (token.isFirstInChange) {
-                return (
-                  <InlineChangeAction
-                    key={idx}
-                    changeId={token.changeId}
-                    changeNum={token.changeNum}
-                    changeType={token.changeType}
-                    originalText={token.originalText}
-                    newText={token.newText}
-                    decision={decision}
-                    onDecision={handleInlineDecision}
-                    pane="unified"
-                    isHovered={isHovered}
-                  >
-                    {wrapped}
-                  </InlineChangeAction>
-                );
-              }
-
-              return wrapped;
-            }
-
-            return <span key={idx}>{token.value}</span>;
-          })}
-        </div>
-      )}
+                      {/* Right Column (Doc B) */}
+                      <div className={`p-4 sm:p-6 text-slate-800 dark:text-slate-300 ${wrapText ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'}`}>
+                        {block.tokensDocB.length > 0 ? (
+                          block.tokensDocB.map((token, tIdx) => renderToken(token, tIdx, 'right'))
+                        ) : (
+                          <div className="py-2 px-3 rounded-xl bg-slate-100/50 dark:bg-slate-900/30 border border-dashed border-slate-200 dark:border-white/[0.08] text-[11px] text-slate-400 font-mono select-none flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
+                            <span className="truncate font-sans italic">[Deleted in Doc B · Retained in Doc A]</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Unified View */
+              <div className="p-8 max-h-[650px] overflow-y-auto leading-relaxed text-xs sm:text-sm font-mono whitespace-pre-wrap select-text text-slate-800 dark:text-slate-300 bg-white dark:bg-slate-900/40">
+                {filteredTokens.map((token, idx) => renderToken(token, idx, 'unified'))}
+              </div>
+            )}
           </div>
 
           {/* Diff Mini-Map Change Radar Gutter */}

@@ -221,6 +221,29 @@ async function runComparatorTests() {
     throw new Error('Expected section status to be MODIFIED when Normalize Spaces is OFF!');
   }
 
+  // Test Case 8: Intra-Word Sub-Diff Precision (character-level diffing inside modified words/numbers)
+  console.log('\n[Test 8/8] Testing Intra-Word Character Precision Sub-Diffs...');
+  const charDiffDocA = {
+    filename: 'quote_v1.txt',
+    format: 'txt',
+    wordCount: 4,
+    text: 'Software development environment'
+  };
+  const charDiffDocB = {
+    filename: 'quote_v2.txt',
+    format: 'txt',
+    wordCount: 4,
+    text: 'Software developer environment'
+  };
+  const charDiffRes = compareDocuments(charDiffDocA, charDiffDocB);
+  const intraTokens = charDiffRes.diffTokens.filter(t => t.charDiff && t.charDiff.length > 1);
+  console.log(`✓ Intra-word diff tokens detected: ${intraTokens.length}`);
+  if (intraTokens.length === 0) {
+    throw new Error('Expected at least one token with intra-word charDiff!');
+  }
+  const removedWord = intraTokens.find(t => t.type === 'removed');
+  console.log(`✓ Removed word sub-diff: "${removedWord.value}" ➔ ${JSON.stringify(removedWord.charDiff)}`);
+
   console.log('\n=======================================');
   console.log('🎉 STEP 2 VERIFICATION COMPLETE: COMPARATOR WORKING ACCURATELY!');
   console.log('=======================================');

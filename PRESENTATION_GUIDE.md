@@ -153,12 +153,21 @@ Evaluators and professors look for practical business logic, resource protection
 3. **Zero-Flicker System-Adaptive Theming**:
    - On first visit, the app detects `window.matchMedia('(prefers-color-scheme: dark)')` to automatically match the visitor's device environment.
    - A pre-hydration head script in `index.html` eliminates white-flash on Dark Mode devices, with dynamic OS event listeners and persistent manual overrides.
+4. **4 Core Functionality Upgrades (Precision & Resilience)**:
+   - **Resilient Error Diagnostics**: Gracefully intercepts encrypted/password-protected PDFs/DOCX/XLSX/PPTX and 0-byte/empty files with clear, human-readable guidance instead of throwing internal server 500 errors.
+   - **Intra-Word / Character-Level Highlight Precision**: When numbers or words are modified (e.g., `$185,000` ➔ `$189,000` or typos), computes character diffs and visually highlights the exact changed character/digit with high-contrast emphasis inside the word.
+   - **In-Context Search & Match Navigator**: Search no longer destructively removes non-matching paragraphs. All document context remains intact while matches are highlighted with counter (`Match X of Y`), `↑` / `↓` buttons, and `Enter` / `Shift+Enter` keyboard shortcuts smoothly scrolling to each match.
+   - **Side-by-Side Dual-Pane Visual Alignment**: Aligns Doc A and Doc B block-by-block with stylish spacer padding (`[No corresponding text in Doc A · Added in Doc B]` / `[Deleted in Doc B · Retained in Doc A]`), completely eliminating vertical paragraph drift.
 
 ### 💡 Top Evaluator Viva Questions:
 * **Q: "Why didn't you persist comparison history for anonymous users in local storage?"**
   > **Answer:** *"For strict enterprise privacy and zero-leakage compliance. Storing confidential employment contracts or financial sheets in browser storage on a public computer exposes private data to subsequent users. By enforcing ephemeral in-memory processing for guests, we guarantee zero disk retention until the user registers an authenticated account."*
 * **Q: "What is the rationale behind gating PDF and Word downloads behind authentication?"**
   > **Answer:** *"It follows modern SaaS Product-Led Growth (PLG): we give visitors immediate value by letting them inspect diffs with zero initial signup friction. However, generating and downloading permanent business deliverables (branded audit PDFs, tracked redlines) consumes compute resources and represents core intellectual value, so gating them drives user conversion while preventing bot scraping and abuse."*
+* **Q: "How does your side-by-side view handle paragraphs when one document has deleted text?"**
+  > **Answer:** *"Most naive diff engines suffer from vertical paragraph drift where pane A scrolls ahead of pane B. We implemented an aligned block architecture with spacer padding: whenever one document contains a pure addition or deletion, the opposing pane renders a synchronized spacer block, guaranteeing 100% horizontal paragraph alignment across the entire document."*
+* **Q: "How does the diff engine handle small numeric or intra-word changes like currency amounts or typos?"**
+  > **Answer:** *"Rather than just flagging the entire word as replaced, our engine enriches adjacent diff tokens with character-level sub-diffs (`Diff.diffChars`). This allows the UI to highlight the exact modified digit (e.g. the '9' in '$189,000' vs '$185,000') with bold, high-contrast badges within the word."*
 
 ---
 

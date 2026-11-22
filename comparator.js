@@ -1123,6 +1123,43 @@ export function compareDocumentImages(imagesA = [], imagesB = []) {
 }
 
 /**
+ * Enrich replacement tokens with character-level sub-diffs.
+ * When a removed word is adjacent to an added word (e.g. $185,000 -> $189,000 or spelling typo),
+ * computes sub-token character diffs so the UI can highlight the exact changed character/digits.
+ */
+export function enrichIntraWordCharDiffs(tokens = []) {
+  if (!tokens || tokens.length < 2) return tokens;
+
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const cur = tokens[i];
+    const next = tokens[i + 1];
+
+    if (cur.type === 'removed' && next.type === 'added' && !cur.isWhitespace && !next.isWhitespace) {
+      const valA = cur.value;
+      const valB = next.value;
+
+      // Only compute sub-word character diff if both strings are short words/phrases (<= 80 chars)
+      if (valA.length > 0 && valB.length > 0 && valA.length <= 80 && valB.length <= 80) {
+        const charDiffs = Diff.diffChars(valA, valB);
+        // Only apply if there is at least one shared unchanged segment of at least 2 chars (common prefix, suffix, or root)
+        const hasCommon = charDiffs.some(p => !p.added && !p.removed && p.value.length >= 2);
+        if (hasCommon) {
+          cur.charDiff = charDiffs.filter(p => !p.added).map(p => ({
+            value: p.value,
+            type: p.removed ? 'removed' : 'unchanged'
+          }));
+          next.charDiff = charDiffs.filter(p => !p.removed).map(p => ({
+            value: p.value,
+            type: p.added ? 'added' : 'unchanged'
+          }));
+        }
+      }
+    }
+  }
+  return tokens;
+}
+
+/**
  * Compare two extracted document objects
  * @param {Object} docA - Extracted content of Document A { text, sections, format, filename }
  * @param {Object} docB - Extracted content of Document B { text, sections, format, filename }
@@ -1151,12 +1188,12 @@ export function compareDocuments(docA, docB, options = {}) {
   // 1. Detailed Word-level Diffs with options (using high-performance hybrid diff)
   const wordDiffs = hybridDiffWords(textA, textB, diffOpts);
 
-  // Format diff tokens for easy frontend rendering
-  const formattedDiffs = wordDiffs.map(part => ({
+  // Format diff tokens for easy frontend rendering with intra-word character precision
+  const formattedDiffs = enrichIntraWordCharDiffs(wordDiffs.map(part => ({
     value: part.value,
     type: part.added ? 'added' : part.removed ? 'removed' : 'unchanged',
     isWhitespace: /^\s+$/.test(part.value)
-  }));
+  })));
 
   // 2. Compute similarity stats & percentages
   const stats = calculateWordSimilarity(textA, textB, wordDiffs, filterOpts);
