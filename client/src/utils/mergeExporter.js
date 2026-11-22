@@ -1,9 +1,7 @@
-import { Document, Paragraph, TextRun, Packer, HeadingLevel, AlignmentType } from 'docx';
-
 /**
  * Builds array of Docx Paragraph elements preserving redline strike/underline tokens across line breaks
  */
-function buildRedlineParagraphs(diffTokens = []) {
+function buildRedlineParagraphs(diffTokens = [], { Paragraph, TextRun }) {
   const paragraphs = [];
   let currentRuns = [];
 
@@ -80,8 +78,11 @@ function buildRedlineParagraphs(diffTokens = []) {
 /**
  * Export full legal redline comparison to Microsoft Word (.docx)
  * with strikethrough deletions, underlined additions, and professional audit cover metadata.
+ * Dynamically imports 'docx' on-demand to keep the initial page bundle light and fast.
  */
 export async function exportRedlineDocx(diffTokens = [], meta = {}, stats = {}) {
+  const { Document, Paragraph, TextRun, Packer, HeadingLevel, AlignmentType } = await import('docx');
+
   const docAName = meta?.docA?.filename || 'Document A';
   const docBName = meta?.docB?.filename || 'Document B';
   const similarity = stats?.similarityPercent ?? 100;
@@ -89,7 +90,7 @@ export async function exportRedlineDocx(diffTokens = [], meta = {}, stats = {}) 
   const deletedWords = stats?.deletedWords ?? 0;
   const nowStr = new Date().toLocaleString();
 
-  const contentParagraphs = buildRedlineParagraphs(diffTokens);
+  const contentParagraphs = buildRedlineParagraphs(diffTokens, { Paragraph, TextRun });
 
   const doc = new Document({
     sections: [

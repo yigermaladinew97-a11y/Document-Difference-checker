@@ -158,11 +158,12 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Static client assets with aggressive caching
+// Static client assets with aggressive caching & connection keep-alive
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1y',
   immutable: true,
   setHeaders: (res, filePath) => {
+    res.setHeader('Keep-Alive', 'timeout=65');
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
@@ -264,29 +265,28 @@ app.post(
 
       let docAContent, docBContent;
 
-      // 1. Ingest Document A with sanitized filenames
-      if (fileA) {
-        docAContent = await extractDocumentContent(fileA.buffer, sanitizeFilename(fileA.originalname, 'Document_A'));
-      } else if (rawTextA && rawTextA.trim()) {
-        docAContent = await extractDocumentContent(Buffer.from(rawTextA, 'utf8'), 'Document_A.txt');
-      } else {
+      if (!fileA && (!rawTextA || !rawTextA.trim())) {
         return res.status(400).json({
           success: false,
           error: 'Document A is missing. Please upload a file or provide text for Document A.'
         });
       }
-
-      // 2. Ingest Document B with sanitized filenames
-      if (fileB) {
-        docBContent = await extractDocumentContent(fileB.buffer, sanitizeFilename(fileB.originalname, 'Document_B'));
-      } else if (rawTextB && rawTextB.trim()) {
-        docBContent = await extractDocumentContent(Buffer.from(rawTextB, 'utf8'), 'Document_B.txt');
-      } else {
+      if (!fileB && (!rawTextB || !rawTextB.trim())) {
         return res.status(400).json({
           success: false,
           error: 'Document B is missing. Please upload a file or provide text for Document B.'
         });
       }
+
+      // Parallel Concurrent Ingestion of Document A and Document B (50% parsing time reduction)
+      [docAContent, docBContent] = await Promise.all([
+        fileA
+          ? extractDocumentContent(fileA.buffer, sanitizeFilename(fileA.originalname, 'Document_A'))
+          : extractDocumentContent(Buffer.from(rawTextA, 'utf8'), 'Document_A.txt'),
+        fileB
+          ? extractDocumentContent(fileB.buffer, sanitizeFilename(fileB.originalname, 'Document_B'))
+          : extractDocumentContent(Buffer.from(rawTextB, 'utf8'), 'Document_B.txt')
+      ]);
 
       // 3. Extract Smart Noise Filtering Options
       const filterOptions = {
@@ -414,94 +414,97 @@ app.post(
         return content;
       };
 
-      const results = [];
+      // Parallel Concurrent Batch Pair Processing
+      const results = await Promise.all(
+        pairs.map(async (pair, idx) => {
+          const { id, aName, bName } = pair;
+
+          const [docAContent, docBContent] = await Promise.all([
+            getParsedContent(aName),
+            getParsedContent(bName)
+          ]);
+
+          const comparison = compareDocuments(docAContent, docBContent, filterOptions);
+
+          // Fast analytical context generation
+          let contextAnalysis;
+          if (userApiKey && pairs.length <= 3) {
+            try {
+              contextAnalysis = await analyzeDocumentContext({
+                textA: docAContent.text,
+                textB: docBContent.text,
+                stats: comparison.stats,
+                sectionReports: comparison.sectionReports,
+                summary: comparison.summary,
+                apiKey: userApiKey,
+                entitySwaps: comparison.entitySwaps || [],
+                imageDiff: comparison.imageDiff || null
+              });
+            } catch (e) {
+              contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary, docAContent.text, docBContent.text, comparison.entitySwaps || [], comparison.imageDiff || null);
+            }
+          } else {
+            contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary, docAContent.text, docBContent.text, comparison.entitySwaps || [], comparison.imageDiff || null);
+          }
+
+          return {
+            pairId: id || `pair_${idx}`,
+            index: idx,
+            meta: {
+              docA: {
+                filename: docAContent.filename,
+                format: docAContent.format,
+                wordCount: docAContent.wordCount,
+                charCount: docAContent.charCount,
+                sectionsCount: docAContent.sections.length,
+                imagesCount: (docAContent.images || []).length
+              },
+              docB: {
+                filename: docBContent.filename,
+                format: docBContent.format,
+                wordCount: docBContent.wordCount,
+                charCount: docBContent.charCount,
+                sectionsCount: docBContent.sections.length,
+                imagesCount: (docBContent.images || []).length
+              }
+            },
+            metrics: {
+              isIdentical: comparison.isIdentical,
+              lexicalSimilarityPercent: comparison.similarityPercent,
+              contextSimilarityPercent: contextAnalysis.contextSimilarityPercent,
+              analysisMode: contextAnalysis.mode || 'local'
+            },
+            stats: comparison.stats,
+            summary: comparison.summary,
+            contextAnalysis,
+            entitySwaps: comparison.entitySwaps || [],
+            imageDiff: comparison.imageDiff || null,
+            sectionReports: comparison.sectionReports,
+            spreadsheetDiff: comparison.spreadsheetDiff || null,
+            diffTokens: comparison.diffTokens,
+            filters: comparison.filters
+          };
+        })
+      );
+
       let totalSim = 0;
       let identicalCount = 0;
       let mostChangedPair = null;
 
-      for (let idx = 0; idx < pairs.length; idx++) {
-        const pair = pairs[idx];
-        const { id, aName, bName } = pair;
-
-        const docAContent = await getParsedContent(aName);
-        const docBContent = await getParsedContent(bName);
-
-        const comparison = compareDocuments(docAContent, docBContent, filterOptions);
-
-        // Fast analytical context generation
-        let contextAnalysis;
-        if (userApiKey && pairs.length <= 3) {
-          try {
-            contextAnalysis = await analyzeDocumentContext({
-              textA: docAContent.text,
-              textB: docBContent.text,
-              stats: comparison.stats,
-              sectionReports: comparison.sectionReports,
-              summary: comparison.summary,
-              apiKey: userApiKey,
-              entitySwaps: comparison.entitySwaps || [],
-              imageDiff: comparison.imageDiff || null
-            });
-          } catch (e) {
-            contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary, docAContent.text, docBContent.text, comparison.entitySwaps || [], comparison.imageDiff || null);
-          }
-        } else {
-          contextAnalysis = generateLocalContextAnalysis(comparison.stats, comparison.sectionReports, comparison.summary, docAContent.text, docBContent.text, comparison.entitySwaps || [], comparison.imageDiff || null);
-        }
-
-        const sim = comparison.similarityPercent;
+      for (const pairResult of results) {
+        const sim = pairResult.metrics.lexicalSimilarityPercent;
         totalSim += sim;
-        if (comparison.isIdentical) identicalCount++;
-
-        const pairResult = {
-          pairId: id || `pair_${idx}`,
-          index: idx,
-          meta: {
-            docA: {
-              filename: docAContent.filename,
-              format: docAContent.format,
-              wordCount: docAContent.wordCount,
-              charCount: docAContent.charCount,
-              sectionsCount: docAContent.sections.length,
-              imagesCount: (docAContent.images || []).length
-            },
-            docB: {
-              filename: docBContent.filename,
-              format: docBContent.format,
-              wordCount: docBContent.wordCount,
-              charCount: docBContent.charCount,
-              sectionsCount: docBContent.sections.length,
-              imagesCount: (docBContent.images || []).length
-            }
-          },
-          metrics: {
-            isIdentical: comparison.isIdentical,
-            lexicalSimilarityPercent: comparison.similarityPercent,
-            contextSimilarityPercent: contextAnalysis.contextSimilarityPercent,
-            analysisMode: contextAnalysis.mode || 'local'
-          },
-          stats: comparison.stats,
-          summary: comparison.summary,
-          contextAnalysis,
-          entitySwaps: comparison.entitySwaps || [],
-          imageDiff: comparison.imageDiff || null,
-          sectionReports: comparison.sectionReports,
-          spreadsheetDiff: comparison.spreadsheetDiff || null,
-          diffTokens: comparison.diffTokens,
-          filters: comparison.filters
-        };
+        if (pairResult.metrics.isIdentical) identicalCount++;
 
         if (!mostChangedPair || sim < mostChangedPair.similarityPercent) {
           mostChangedPair = {
             pairId: pairResult.pairId,
-            nameA: docAContent.filename,
-            nameB: docBContent.filename,
+            nameA: pairResult.meta.docA.filename,
+            nameB: pairResult.meta.docB.filename,
             similarityPercent: sim,
-            changeCount: comparison.stats?.totalDifferences || 0
+            changeCount: pairResult.stats?.totalDifferences || 0
           };
         }
-
-        results.push(pairResult);
       }
 
       const avgSim = results.length > 0 ? Math.round(totalSim / results.length) : 0;

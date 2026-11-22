@@ -347,7 +347,8 @@ export default function DiffViewer({
         }
 
         const changeId = token.changeId;
-        let changeBlock = blocks.find(b => b.changeId === changeId);
+        const lastBlock = blocks[blocks.length - 1];
+        let changeBlock = lastBlock && lastBlock.changeId === changeId ? lastBlock : null;
         if (!changeBlock) {
           changeBlock = {
             id: `block-change-${changeId}`,

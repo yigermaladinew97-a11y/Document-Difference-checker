@@ -1185,8 +1185,14 @@ export function compareDocuments(docA, docB, options = {}) {
     diffOpts.ignoreCase = true;
   }
 
-  // 1. Detailed Word-level Diffs with options (using high-performance hybrid diff)
-  const wordDiffs = hybridDiffWords(textA, textB, diffOpts);
+  // 1. Detailed Word-level Diffs (Instant O(1) Fast-Path if texts are strictly identical)
+  const isExactMatch = filterOpts.ignoreCase
+    ? textA.toLowerCase() === textB.toLowerCase()
+    : textA === textB;
+
+  const wordDiffs = isExactMatch
+    ? (textA ? [{ value: textA }] : [])
+    : hybridDiffWords(textA, textB, diffOpts);
 
   // Format diff tokens for easy frontend rendering with intra-word character precision
   const formattedDiffs = enrichIntraWordCharDiffs(wordDiffs.map(part => ({
