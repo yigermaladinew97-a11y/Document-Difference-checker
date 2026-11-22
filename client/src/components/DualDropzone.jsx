@@ -12,7 +12,8 @@ import {
   ArrowRight,
   Shield,
   Layers,
-  Zap
+  Zap,
+  Camera
 } from 'lucide-react';
 import TiltCard from './TiltCard';
 import NoiseFiltersBar from './NoiseFiltersBar';
@@ -56,6 +57,7 @@ export default function DualDropzone({
     if (ext === 'DOCX' || ext === 'DOC') color = 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800';
     if (ext === 'XLSX' || ext === 'XLS' || ext === 'CSV') color = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800';
     if (ext === 'PPTX' || ext === 'PPT') color = 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800';
+    if (['PNG', 'JPG', 'JPEG', 'WEBP', 'SVG'].includes(ext)) color = 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800';
 
     return (
       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${color}`}>
@@ -75,6 +77,11 @@ export default function DualDropzone({
       case 'csv': return <FileSpreadsheet className="w-8 h-8 text-emerald-500" />;
       case 'pptx':
       case 'ppt': return <Presentation className="w-8 h-8 text-amber-500" />;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+      case 'webp':
+      case 'svg': return <Camera className="w-8 h-8 text-purple-500" />;
       default: return <FileCode className="w-8 h-8 text-[#FF5E1E]" />;
     }
   };
@@ -115,8 +122,59 @@ export default function DualDropzone({
 
   const isReady = (fileA || (textA && textA.trim())) && (fileB || (textB && textB.trim()));
 
+  const handleSelectSample = (key) => {
+    if (onLoadSample) {
+      onLoadSample(key);
+      setTabA('text');
+      setTabB('text');
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* 1-Click Interactive Demo Presets */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-3xl bg-white/90 dark:bg-[#111726] border border-slate-200/80 dark:border-white/[0.08] shadow-card gap-3">
+        <div className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+          <Sparkles className="w-4 h-4 text-[#FF5E1E]" />
+          <span>Quick Demo Presets:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleSelectSample('contract')}
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-[#FFF4EF] dark:bg-slate-800 dark:hover:bg-[#FF5E1E]/15 text-slate-700 dark:text-slate-300 hover:text-[#FF5E1E] border border-slate-200/60 dark:border-white/[0.06] transition hover:scale-105 active:scale-95 flex items-center space-x-1.5 cursor-pointer shadow-xs"
+          >
+            <FileText className="w-3.5 h-3.5 text-blue-500" />
+            <span>Legal Contract</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSelectSample('identitySwap')}
+            className="px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 transition hover:scale-105 active:scale-95 flex items-center space-x-1.5 shadow-xs cursor-pointer animate-pulse hover:animate-none"
+            title="Demonstrate high-similarity identity swap detection"
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span>🚨 Identity Swap Demo</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSelectSample('spreadsheet')}
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-[#FFF4EF] dark:bg-slate-800 dark:hover:bg-[#FF5E1E]/15 text-slate-700 dark:text-slate-300 hover:text-[#FF5E1E] border border-slate-200/60 dark:border-white/[0.06] transition hover:scale-105 active:scale-95 flex items-center space-x-1.5 cursor-pointer shadow-xs"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Financial Ledger</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSelectSample('tech')}
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-[#FFF4EF] dark:bg-slate-800 dark:hover:bg-[#FF5E1E]/15 text-slate-700 dark:text-slate-300 hover:text-[#FF5E1E] border border-slate-200/60 dark:border-white/[0.06] transition hover:scale-105 active:scale-95 flex items-center space-x-1.5 cursor-pointer shadow-xs"
+          >
+            <FileCode className="w-3.5 h-3.5 text-purple-500" />
+            <span>API Architecture</span>
+          </button>
+        </div>
+      </div>
+
       {/* Dual 3D Tilt Cards Container */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
         {/* Central Floating Swap Button with Hover Physics */}
@@ -220,7 +278,7 @@ export default function DualDropzone({
                   <input
                     ref={fileInputRefA}
                     type="file"
-                    accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.json,.csv"
+                    accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.json,.csv,.png,.jpg,.jpeg,.webp,.svg"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) setFileA(e.target.files[0]);
@@ -232,7 +290,7 @@ export default function DualDropzone({
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#FF5E1E] transition-colors">
                     Drop original document here, or <span className="underline underline-offset-4">browse</span>
                   </p>
-                  <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, or TXT</p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, Images, or TXT</p>
                 </div>
               )
             ) : (
@@ -349,7 +407,7 @@ export default function DualDropzone({
                   <input
                     ref={fileInputRefB}
                     type="file"
-                    accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.json,.csv"
+                    accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.json,.csv,.png,.jpg,.jpeg,.webp,.svg"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) setFileB(e.target.files[0]);
@@ -361,7 +419,7 @@ export default function DualDropzone({
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#FF5E1E] transition-colors">
                     Drop revised document here, or <span className="underline underline-offset-4">browse</span>
                   </p>
-                  <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, or TXT</p>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Supports PDF, Word, Excel, PPTX, Images, or TXT</p>
                 </div>
               )
             ) : (

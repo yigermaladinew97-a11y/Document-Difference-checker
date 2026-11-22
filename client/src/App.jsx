@@ -76,6 +76,41 @@ SKU-1002,Cloud SaaS,$120.00,650,$78,000.00
 SKU-1003,Professional Services,$250.00,80,$20,000.00
 SKU-1005,Enterprise AI Platform,$899.00,25,$22,475.00`
   },
+  identitySwap: {
+    name: 'Identity Swap Alert (Alice ➔ Bob)',
+    a: `# Senior Software Architect Employment Agreement
+
+This Executive Employment Agreement is entered into between Acme Cloud Global Inc. ("Company") and Alice Walker ("Executive").
+
+1. Position and Duties
+Alice Walker shall serve as Lead Enterprise Architect, reporting directly to the Chief Technology Officer. In this role, Alice Walker shall oversee enterprise systems architecture, security compliance, and cloud migration frameworks.
+
+2. Compensation and Incentives
+Company agrees to compensate Alice Walker an annual base salary of $185,000 USD, payable bi-weekly. Alice Walker shall be eligible for an annual executive performance bonus of up to 25% of base compensation.
+
+3. Intellectual Property Assignment
+Alice Walker agrees that all inventions, source code, patentable workflows, and trade secrets developed during employment shall remain the sole and exclusive property of Acme Cloud Global Inc.
+
+IN WITNESS WHEREOF, the parties hereto have executed this Agreement:
+Executive Signature: Alice Walker
+Acme Cloud Global Representative: Marcus Vance, VP Engineering`,
+    b: `# Senior Software Architect Employment Agreement
+
+This Executive Employment Agreement is entered into between Acme Cloud Global Inc. ("Company") and Bob Jenkins ("Executive").
+
+1. Position and Duties
+Bob Jenkins shall serve as Lead Enterprise Architect, reporting directly to the Chief Technology Officer. In this role, Bob Jenkins shall oversee enterprise systems architecture, security compliance, and cloud migration frameworks.
+
+2. Compensation and Incentives
+Company agrees to compensate Bob Jenkins an annual base salary of $185,000 USD, payable bi-weekly. Bob Jenkins shall be eligible for an annual executive performance bonus of up to 25% of base compensation.
+
+3. Intellectual Property Assignment
+Bob Jenkins agrees that all inventions, source code, patentable workflows, and trade secrets developed during employment shall remain the sole and exclusive property of Acme Cloud Global Inc.
+
+IN WITNESS WHEREOF, the parties hereto have executed this Agreement:
+Executive Signature: Bob Jenkins
+Acme Cloud Global Representative: Marcus Vance, VP Engineering`
+  },
   tech: {
     name: 'API Architecture Spec',
     a: `# API v1.0 Architecture Specification

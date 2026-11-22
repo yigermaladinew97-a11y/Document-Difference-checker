@@ -106,14 +106,38 @@ When sharing your screen, walk through the files in this logical order:
 ### Q5: *"Can you run your automated tests right now?"*
 > **Answer**:  
 > *"Yes, we have a unified automated test command. I can run `npm test`."*  
-> *(Run `npm test` in the terminal — all 6 test suites will pass in ~3 seconds).*
+> *(Run `npm test` in the terminal — all 7 test suites covering parsers, comparator, AI risk radar, auth, 2FA, password recovery, and identity/image diff will pass in ~3 seconds).*
 
 ---
 
-## 🚀 5. Quick Commands for Live Demo
+## 🎯 6. How to Demo the Identity Name Swap & Embedded Image Diff (Showstopper Feature)
+
+Evaluators love security and edge-case intelligence. Here is your 60-second live demonstration script:
+
+### 🎭 Step-by-Step Live Demo Script:
+1. **Open the App:** Navigate to `http://localhost:3000`.
+2. **Click the Preset:** Click the animated red button: **`🚨 Identity Swap Demo`**.
+   - Explain to the audience: *"Here we have an executive contract. Notice that Document A is for 'Alice Walker' and Document B is for 'Bob Jenkins'. Every other clause, salary figure, and IP obligation is virtually identical."*
+3. **Click Compare:** Click the glowing **Compare** button.
+4. **Point to the Results:**
+   - **The Dilemma:** Point out that standard lexical similarity is **~95%**! In traditional diff tools, this passes as green/safe with a false sense of security.
+   - **The Sentinel:** Point to the prominent **`🚨 Critical Alert: Identity & Party Name Substitution`** card.
+   - Explain: *"DocDiff Pro's entity sentinel detected that although the contract is 95% identical, the core signatory and employee name has been systematically swapped from 'Alice Walker' to 'Bob Jenkins' across 4 clauses. The system automatically elevates the Risk Radar to HIGH/CRITICAL and flags template plagiarism or candidate reassignment."*
+5. **Show Image Diffing:**
+   - Mention: *"In addition to text, DocDiff Pro inspects embedded media in Word documents (`word/media/`), PowerPoint (`ppt/media/`), PDFs, and standalone photos. If someone swaps an executive portrait, ID photo, or diagram, the system flags the image hash mismatch and provides side-by-side visual inspection."*
+
+### 💡 Top Evaluator Questions About This Feature:
+* **Q: "How does the algorithm know that 'Alice Walker' is a person or party name and not just regular edited text?"**
+  > **Answer:** *"In `comparator.js`, `detectEntitySwaps()` clusters contiguous removed and added diff tokens. It runs linguistic checks (`isProperEntityName`) verifying capitalized proper nouns, checks for multi-token party patterns (e.g. FirstName LastName), and filters out common grammar stopwords. If a proper entity is systematically substituted across a document with high similarity, it flags it as an identity swap."*
+* **Q: "Does extracting embedded images from DOCX/PPTX require Microsoft Word or external tools installed?"**
+  > **Answer:** *"No external binaries or Office installations are required. OpenXML documents (.docx, .pptx) are internally ZIP packages. We use `adm-zip` in `parsers.js` to read binary streams directly from `word/media/` and `ppt/media/` in memory, compute SHA-256 fingerprints, and generate base64 previews with zero disk writes."*
+
+---
+
+## 🚀 7. Quick Commands for Live Demo
 
 ```bash
-# 1. Run full test suite (Shows green checkmarks across all engines)
+# 1. Run full test suite (Shows green checkmarks across all 7 engines)
 npm test
 
 # 2. Start the local server

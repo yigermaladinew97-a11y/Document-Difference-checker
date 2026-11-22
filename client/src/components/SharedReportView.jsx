@@ -145,6 +145,8 @@ export default function SharedReportView({
       <ExecutiveSummary
         contextAnalysis={comparisonData.contextAnalysis}
         summary={comparisonData.summary}
+        entitySwaps={comparisonData.entitySwaps}
+        imageDiff={comparisonData.imageDiff}
       />
 
       {/* 3. Section Breakdown */}
@@ -165,6 +167,8 @@ export default function SharedReportView({
         onExportPdf={() => setIsPdfModalOpen(true)}
         initialDecisions={comparisonData.decisions || {}}
         spreadsheetDiff={comparisonData.spreadsheetDiff}
+        imageDiff={comparisonData.imageDiff}
+        entitySwaps={comparisonData.entitySwaps}
         currentUser={null}
         onRequestAuth={() => {}}
         readOnly={true}
