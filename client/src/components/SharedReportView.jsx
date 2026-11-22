@@ -107,7 +107,7 @@ export default function SharedReportView({
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <h2 className="text-sm font-bold text-white tracking-tight">
                 Verified Public Shared Report
               </h2>

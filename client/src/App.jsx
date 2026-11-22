@@ -502,7 +502,6 @@ export default function App() {
             {/* Hero Section (Matching Cambased Display Style) */}
         <div className="max-w-4xl mx-auto text-center space-y-5">
           <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-[#FFF4EF] dark:bg-[#FF5E1E]/15 border border-[#FFD6C4] dark:border-[#FF5E1E]/30 text-xs font-bold text-[#FF5E1E] shadow-sm hover:scale-105 transition-transform cursor-default">
-            <span className="w-2 h-2 rounded-full bg-[#FF5E1E] animate-ping" />
             <span>AI & Word-Level Enterprise Document Diff</span>
           </div>
 
