@@ -17,6 +17,30 @@ dotenv.config();
 let cachedTransporter = null;
 
 /**
+ * Parse sender email from EMAIL_FROM (e.g. '"ydiff" <user@gmail.com>' -> 'user@gmail.com')
+ */
+function parseSenderEmail(rawFrom, fallbackEmail) {
+  if (rawFrom) {
+    const match = rawFrom.match(/<([^>]+)>/);
+    if (match && match[1]) return match[1].trim();
+    if (rawFrom.includes('@')) return rawFrom.trim();
+  }
+  return fallbackEmail || '';
+}
+
+/**
+ * Returns the active email delivery mode without exposing any credentials
+ */
+export function getEmailDeliveryMode() {
+  if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim()) return 'brevo';
+  if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) return 'resend';
+  if (process.env.SMTP_USER && process.env.SMTP_PASS && (process.env.SMTP_HOST || process.env.SMTP_SERVICE === 'gmail')) {
+    return 'smtp';
+  }
+  return 'demo';
+}
+
+/**
  * Returns a configured Nodemailer transporter or null if SMTP is not configured
  */
 function getTransporter() {
@@ -28,11 +52,18 @@ function getTransporter() {
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
+  const timeouts = {
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 10000
+  };
+
   // Gmail-specific simplified transport
   if (user && pass && (host?.toLowerCase().includes('gmail') || process.env.SMTP_SERVICE === 'gmail')) {
     cachedTransporter = nodemailer.createTransport({
       service: 'gmail',
-      auth: { user, pass }
+      auth: { user, pass },
+      ...timeouts
     });
     return cachedTransporter;
   }
@@ -43,12 +74,112 @@ function getTransporter() {
       host,
       port,
       secure,
-      auth: { user, pass }
+      auth: { user, pass },
+      ...timeouts
     });
     return cachedTransporter;
   }
 
   return null;
+}
+
+/**
+ * Shared email dispatcher: tries Brevo (HTTPS) -> Resend (HTTPS) -> SMTP (8s timeout) -> Simulation
+ */
+async function dispatchEmail({ to, subject, text, html, tag = 'Email Service' }) {
+  const cleanEmail = (to || '').trim().toLowerCase();
+
+  // 1. Try Brevo HTTPS API (Port 443, works on Render free tier & sends to any inbox without custom domain)
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  if (brevoApiKey && brevoApiKey.trim()) {
+    const senderEmail = parseSenderEmail(
+      process.env.EMAIL_FROM,
+      process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER
+    );
+    if (!senderEmail) {
+      console.warn(`[${tag}] BREVO_API_KEY is set, but EMAIL_FROM or BREVO_SENDER_EMAIL is missing.`);
+    } else {
+      try {
+        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': brevoApiKey.trim(),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            sender: { name: 'ydiff', email: senderEmail },
+            to: [{ email: cleanEmail }],
+            subject,
+            textContent: text,
+            htmlContent: html
+          })
+        });
+
+        const resData = await res.json().catch(() => ({}));
+        if (res.ok && resData.messageId) {
+          console.log(`[${tag}] ✅ Real email delivered via Brevo to ${cleanEmail} (ID: ${resData.messageId})`);
+          return { success: true, simulated: false, messageId: resData.messageId };
+        }
+        console.warn(`[${tag}] Brevo API error (${res.status}):`, resData);
+      } catch (err) {
+        console.warn(`[${tag}] Brevo API call failed (${err.message}). Trying next provider...`);
+      }
+    }
+  }
+
+  // 2. Try Resend HTTPS API
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey && resendApiKey.trim()) {
+    try {
+      const from = process.env.EMAIL_FROM || 'ydiff <onboarding@resend.dev>';
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from,
+          to: [cleanEmail],
+          subject,
+          text,
+          html
+        })
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok && resData.id) {
+        console.log(`[${tag}] ✅ Real email delivered via Resend to ${cleanEmail} (ID: ${resData.id})`);
+        return { success: true, simulated: false, messageId: resData.id };
+      }
+      console.warn(`[${tag}] Resend API error (${res.status}):`, resData);
+    } catch (err) {
+      console.warn(`[${tag}] Resend API call failed (${err.message}). Trying SMTP fallback...`);
+    }
+  }
+
+  // 3. Try SMTP via Nodemailer (8s timeout)
+  const transporter = getTransporter();
+  if (transporter) {
+    try {
+      const from = process.env.EMAIL_FROM || '"ydiff" <security@ydiff.io>';
+      const info = await transporter.sendMail({
+        from,
+        to: cleanEmail,
+        subject,
+        text,
+        html
+      });
+
+      console.log(`[${tag}] ✅ Real email delivered via SMTP to ${cleanEmail} (MessageId: ${info.messageId})`);
+      return { success: true, simulated: false, messageId: info.messageId };
+    } catch (err) {
+      console.warn(`[${tag}] ⚠️ Failed to send via SMTP (${err.message}). Falling back to simulation mode.`);
+    }
+  }
+
+  return { success: true, simulated: true };
 }
 
 /**
@@ -146,63 +277,22 @@ function build2FAEmailHtml({ name = 'there', code }) {
  */
 export async function send2FACodeEmail({ email, code, name = 'User' }) {
   const cleanEmail = (email || '').trim().toLowerCase();
-
   const firstName = (name || 'there').trim().split(/\s+/)[0];
   const plainTextBody = `Hey ${firstName},\n\nSomeone just tried to sign in to your ydiff workspace. To keep your documents and comparisons safe, enter this 6-digit number code to confirm it's really you:\n\n${code}\n\nActive for 1 minute — if time runs out, just request a fresh code on the sign-in screen.\n\nDidn't try to sign in? You can safely ignore this email and your account will stay protected.\n\n— ydiff`;
 
-  // 1. Try Resend API if RESEND_API_KEY is configured (Easiest, 1-click cloud email service)
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey && resendApiKey.trim()) {
-    try {
-      const from = process.env.EMAIL_FROM || 'ydiff <onboarding@resend.dev>';
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from,
-          to: [cleanEmail],
-          subject: `${code} — your ydiff verification code`,
-          text: plainTextBody,
-          html: build2FAEmailHtml({ name, code, email: cleanEmail })
-        })
-      });
+  const result = await dispatchEmail({
+    to: cleanEmail,
+    subject: `${code} — your ydiff verification code`,
+    text: plainTextBody,
+    html: build2FAEmailHtml({ name, code, email: cleanEmail }),
+    tag: '2FA Email Service'
+  });
 
-      const resData = await res.json();
-      if (res.ok && resData.id) {
-        console.log(`[2FA Email Service] ✅ Real email delivered via Resend to ${cleanEmail} (ID: ${resData.id})`);
-        return { success: true, simulated: false, messageId: resData.id };
-      } else {
-        console.warn(`[2FA Email Service] Resend API responded with error:`, resData);
-      }
-    } catch (err) {
-      console.warn(`[2FA Email Service] Resend API call failed (${err.message}). Trying SMTP fallback...`);
-    }
+  if (!result.simulated) {
+    return result;
   }
 
-  // 2. Try SMTP via Nodemailer if configured
-  const transporter = getTransporter();
-  if (transporter) {
-    try {
-      const from = process.env.EMAIL_FROM || '"ydiff" <security@ydiff.io>';
-      const info = await transporter.sendMail({
-        from,
-        to: cleanEmail,
-        subject: `${code} — your ydiff verification code`,
-        text: plainTextBody,
-        html: build2FAEmailHtml({ name, code, email: cleanEmail })
-      });
-
-      console.log(`[2FA Email Service] ✅ Real email delivered to ${cleanEmail} (MessageId: ${info.messageId})`);
-      return { success: true, simulated: false, messageId: info.messageId };
-    } catch (err) {
-      console.warn(`[2FA Email Service] ⚠️ Failed to send via SMTP (${err.message}). Falling back to simulation mode.`);
-    }
-  }
-
-  // Simulation mode (Local dev or when SMTP is not configured)
+  // Simulation mode (Local dev or when email provider is not configured)
   console.log(`\n======================================================`);
   console.log(`✉️ [2FA Email Service - SIMULATION MODE]`);
   console.log(`   To: ${cleanEmail}`);
@@ -304,56 +394,16 @@ function buildPasswordResetEmailHtml({ name = 'User', code, email }) {
 export async function sendPasswordResetEmail({ email, code, name = 'User' }) {
   const cleanEmail = (email || '').trim().toLowerCase();
 
-  // 1. Try Resend API if configured
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey && resendApiKey.trim()) {
-    try {
-      const from = process.env.EMAIL_FROM || 'Ydiff Security <onboarding@resend.dev>';
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from,
-          to: [cleanEmail],
-          subject: `${code} is your Ydiff password reset code`,
-          text: `Your Ydiff password reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— Ydiff Studio`,
-          html: buildPasswordResetEmailHtml({ name, code, email: cleanEmail })
-        })
-      });
+  const result = await dispatchEmail({
+    to: cleanEmail,
+    subject: `${code} — your ydiff password reset code`,
+    text: `Your ydiff password reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— ydiff`,
+    html: buildPasswordResetEmailHtml({ name, code, email: cleanEmail }),
+    tag: 'Password Reset Email'
+  });
 
-      const resData = await res.json();
-      if (res.ok && resData.id) {
-        console.log(`[Password Reset Email] ✅ Real email delivered via Resend to ${cleanEmail} (ID: ${resData.id})`);
-        return { success: true, simulated: false, messageId: resData.id };
-      } else {
-        console.warn(`[Password Reset Email] Resend API responded with error:`, resData);
-      }
-    } catch (err) {
-      console.warn(`[Password Reset Email] Resend API call failed (${err.message}). Trying SMTP fallback...`);
-    }
-  }
-
-  // 2. Try SMTP via Nodemailer if configured
-  const transporter = getTransporter();
-  if (transporter) {
-    try {
-      const from = process.env.EMAIL_FROM || '"Ydiff Security" <security@ydiff.io>';
-      const info = await transporter.sendMail({
-        from,
-        to: cleanEmail,
-        subject: `${code} is your Ydiff password reset code`,
-        text: `Your Ydiff password reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— Ydiff Studio`,
-        html: buildPasswordResetEmailHtml({ name, code, email: cleanEmail })
-      });
-
-      console.log(`[Password Reset Email] ✅ Real email delivered to ${cleanEmail} (MessageId: ${info.messageId})`);
-      return { success: true, simulated: false, messageId: info.messageId };
-    } catch (err) {
-      console.warn(`[Password Reset Email] ⚠️ Failed to send via SMTP (${err.message}). Falling back to simulation mode.`);
-    }
+  if (!result.simulated) {
+    return result;
   }
 
   // Simulation mode

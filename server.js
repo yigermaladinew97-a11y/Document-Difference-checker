@@ -44,6 +44,7 @@ import {
   getCloudSessions
 } from './authService.js';
 import { createShareReport, getShareReport } from './shareService.js';
+import { getEmailDeliveryMode } from './emailService.js';
 
 dotenv.config();
 
@@ -220,6 +221,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
+    emailMode: getEmailDeliveryMode(),
     supportedFormats: ['.pdf', '.docx', '.xlsx', '.xls', '.pptx', '.txt', '.md', '.csv', '.json']
   });
 });
