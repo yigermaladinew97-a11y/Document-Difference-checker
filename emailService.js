@@ -32,6 +32,7 @@ function parseSenderEmail(rawFrom, fallbackEmail) {
  * Returns the active email delivery mode without exposing any credentials
  */
 export function getEmailDeliveryMode() {
+  if (process.env.EMAIL_WEBHOOK_URL && process.env.EMAIL_WEBHOOK_URL.trim()) return 'webhook';
   if (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim()) return 'brevo';
   if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.trim()) return 'resend';
   if (process.env.SMTP_USER && process.env.SMTP_PASS && (process.env.SMTP_HOST || process.env.SMTP_SERVICE === 'gmail')) {
@@ -88,6 +89,40 @@ function getTransporter() {
  */
 async function dispatchEmail({ to, subject, text, html, tag = 'Email Service' }) {
   const cleanEmail = (to || '').trim().toLowerCase();
+
+  // 0. Try HTTPS Mail Webhook (e.g. Google Apps Script Web App — sends via your own Gmail over Port 443, never blocked by Render or DMARC)
+  const webhookUrl = process.env.EMAIL_WEBHOOK_URL;
+  if (webhookUrl && webhookUrl.trim()) {
+    try {
+      const res = await fetch(webhookUrl.trim(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        redirect: 'follow',
+        body: JSON.stringify({
+          secret: process.env.EMAIL_WEBHOOK_SECRET || '',
+          to: cleanEmail,
+          subject,
+          text,
+          html,
+          senderName: 'ydiff'
+        })
+      });
+
+      const textBody = await res.text();
+      let resData = {};
+      try {
+        resData = JSON.parse(textBody);
+      } catch (_) {}
+
+      if (res.ok && resData.success) {
+        console.log(`[${tag}] ✅ Real email delivered via HTTPS Mail Webhook to ${cleanEmail}`);
+        return { success: true, simulated: false, messageId: resData.messageId || `webhook_${Date.now()}` };
+      }
+      console.warn(`[${tag}] Mail Webhook error (${res.status}):`, textBody.slice(0, 300));
+    } catch (err) {
+      console.warn(`[${tag}] Mail Webhook call failed (${err.message}). Trying next provider...`);
+    }
+  }
 
   // 1. Try Brevo HTTPS API (Port 443, works on Render free tier & sends to any inbox without custom domain)
   const brevoApiKey = process.env.BREVO_API_KEY;
