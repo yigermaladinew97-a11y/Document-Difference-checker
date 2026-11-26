@@ -1,4 +1,4 @@
-# 🎓 DocDiff Pro - Code Presentation & Architecture Guide
+# 🎓 Ydiff Pro - Code Presentation & Architecture Guide
 
 > **Speaker's Cheat Sheet & Presentation Notes**  
 > Use this guide to walk through your code with confidence during your project demonstration, technical interview, or viva examination.
@@ -7,7 +7,7 @@
 
 ## ⚡ 1. The 30-Second Elevator Pitch (Start with this)
 
-> *"DocDiff Pro is an enterprise document intelligence and comparison platform. It ingests multi-format documents—PDFs, Word documents, Excel spreadsheets, PowerPoint decks, and text files—and performs instant, word-level redline diffing directly in memory. It combines the deterministic precision of the Myers diff algorithm and the Sørensen-Dice similarity metric with Google Gemini AI for automated legal and financial risk radar auditing. It requires zero disk retention, ensuring complete data privacy."*
+> *"Ydiff Pro is an enterprise document intelligence and comparison platform. It ingests multi-format documents—PDFs, Word documents, Excel spreadsheets, PowerPoint decks, and text files—and performs instant, word-level redline diffing directly in memory. It combines the deterministic precision of the Myers diff algorithm and the Sørensen-Dice similarity metric with Google Gemini AI for automated legal and financial risk radar auditing. It requires zero disk retention, ensuring complete data privacy."*
 
 ---
 
@@ -122,9 +122,9 @@ Evaluators love security and edge-case intelligence. Here is your 60-second live
 4. **Point to the Results:**
    - **The Dilemma:** Point out that standard lexical similarity is **~95%**! In traditional diff tools, this passes as green/safe with a false sense of security.
    - **The Sentinel:** Point to the prominent **`🚨 Critical Alert: Identity & Party Name Substitution`** card.
-   - Explain: *"DocDiff Pro's entity sentinel detected that although the contract is 95% identical, the core signatory and employee name has been systematically swapped from 'Alice Walker' to 'Bob Jenkins' across 4 clauses. The system automatically elevates the Risk Radar to HIGH/CRITICAL and flags template plagiarism or candidate reassignment."*
+   - Explain: *"Ydiff Pro's entity sentinel detected that although the contract is 95% identical, the core signatory and employee name has been systematically swapped from 'Alice Walker' to 'Bob Jenkins' across 4 clauses. The system automatically elevates the Risk Radar to HIGH/CRITICAL and flags template plagiarism or candidate reassignment."*
 5. **Show Image Diffing:**
-   - Mention: *"In addition to text, DocDiff Pro inspects embedded media in Word documents (`word/media/`), PowerPoint (`ppt/media/`), PDFs, and standalone photos. If someone swaps an executive portrait, ID photo, or diagram, the system flags the image hash mismatch and provides side-by-side visual inspection."*
+   - Mention: *"In addition to text, Ydiff Pro inspects embedded media in Word documents (`word/media/`), PowerPoint (`ppt/media/`), PDFs, and standalone photos. If someone swaps an executive portrait, ID photo, or diagram, the system flags the image hash mismatch and provides side-by-side visual inspection."*
 
 ### 💡 Top Evaluator Questions About This Feature:
 * **Q: "How does the algorithm know that 'Alice Walker' is a person or party name and not just regular edited text?"**

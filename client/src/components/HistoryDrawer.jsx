@@ -418,7 +418,7 @@ export default function HistoryDrawer({
           {/* Footer Info Strip */}
           <div className="p-4 border-t border-slate-100 dark:border-white/[0.06] bg-slate-50/50 dark:bg-slate-900/40 text-center text-[11px] text-slate-400 font-medium">
             {currentUser
-              ? `Synchronized with your DocDiff account (${currentUser.email}). Safe & encrypted.`
+              ? `Synchronized with your Ydiff account (${currentUser.email}). Safe & encrypted.`
               : "Stored privately in this browser's IndexedDB. Sign in or create a free account to sync across devices."}
           </div>
         </div>

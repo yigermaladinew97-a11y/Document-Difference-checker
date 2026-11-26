@@ -582,7 +582,7 @@ export default function DiffViewer({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `DocDiff_Report_${Date.now()}.json`;
+    a.download = `Ydiff_Report_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

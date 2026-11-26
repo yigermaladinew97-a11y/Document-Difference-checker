@@ -46,7 +46,7 @@ export default function Navbar({
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
-                Doc<span className="text-[#FF5E1E]">Diff</span>
+                Y<span className="text-[#FF5E1E]">diff</span>
               </span>
               <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-[#FF5E1E]/10 text-[#FF5E1E] border border-[#FF5E1E]/20">
                 PRO
@@ -339,7 +339,7 @@ export default function Navbar({
                   </div>
 
                   <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.06] px-2 text-[10px] text-slate-400 flex items-center justify-between font-mono">
-                    <span>DocDiff PRO v1.0</span>
+                    <span>Ydiff PRO v1.0</span>
                     <span className="text-emerald-500 font-bold">● 100% In-Memory Safe</span>
                   </div>
                 </div>

@@ -413,7 +413,7 @@ export default function AuthModal({
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-extrabold text-lg text-slate-900 dark:text-white">
-                Doc<span className="text-[#FF5E1E]">Diff</span> Studio
+                Y<span className="text-[#FF5E1E]">diff</span> Studio
               </span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FF5E1E]/10 text-[#FF5E1E] border border-[#FF5E1E]/20">
                 PRO ACCOUNT

@@ -154,7 +154,7 @@ async function runTests() {
   // Test 5: Import sessions from JSON backup
   console.log('\n[Test 5/5] Testing JSON Backup Import...');
   const mockBackupJson = JSON.stringify({
-    app: 'DocDiff Studio',
+    app: 'Ydiff Studio',
     version: '2.0',
     count: 2,
     sessions: [

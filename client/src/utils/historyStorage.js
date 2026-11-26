@@ -208,7 +208,7 @@ export async function clearAllSessions() {
 export async function exportHistoryToJson() {
   const sessions = await getAllSessions();
   const backup = {
-    app: 'DocDiff Studio',
+    app: 'Ydiff Studio',
     version: '2.0',
     exportedAt: new Date().toISOString(),
     count: sessions.length,
@@ -219,7 +219,7 @@ export async function exportHistoryToJson() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `DocDiff_History_Backup_${Date.now()}.json`;
+  a.download = `Ydiff_History_Backup_${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

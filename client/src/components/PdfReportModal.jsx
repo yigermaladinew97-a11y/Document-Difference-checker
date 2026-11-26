@@ -116,10 +116,10 @@ export default function PdfReportModal({
             <div className="flex items-start justify-between pb-6 border-b-2 border-slate-100">
               <div className="flex items-center space-x-3.5">
                 <div className="w-11 h-11 rounded-xl bg-[#FFF4EF] text-[#FF5E1E] font-black text-xl flex items-center justify-center border border-[#FFE2D4]">
-                  D
+                  Y
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900">DocDiff Pro</h2>
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900">Ydiff Pro</h2>
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Executive Audit Report</p>
                 </div>
               </div>
@@ -420,7 +420,7 @@ export default function PdfReportModal({
 
             {/* Footer */}
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-              <span>DocDiff Pro Executive Deliverable</span>
+              <span>Ydiff Pro Executive Deliverable</span>
               <span>Official Verification Stamp Active</span>
             </div>
           </div>

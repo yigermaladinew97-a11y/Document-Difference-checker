@@ -963,7 +963,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-              Doc<span className="text-[#FF5E1E]">Diff</span>
+              Y<span className="text-[#FF5E1E]">diff</span>
             </span>
             <span className="text-slate-400">&bull; Enterprise Document Intelligence</span>
           </div>

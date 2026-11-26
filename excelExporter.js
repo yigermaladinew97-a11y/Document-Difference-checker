@@ -11,8 +11,8 @@ import ExcelJS from 'exceljs';
  */
 export async function generateAnnotatedExcel(spreadsheetDiff = [], meta = {}, stats = {}) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'DocDiff Studio';
-  workbook.lastModifiedBy = 'DocDiff Studio';
+  workbook.creator = 'Ydiff Studio';
+  workbook.lastModifiedBy = 'Ydiff Studio';
   workbook.created = new Date();
   workbook.modified = new Date();
 

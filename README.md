@@ -1,4 +1,4 @@
-# DocDiff Pro &bull; Intelligent Document Difference Checker 📄🔍
+# Ydiff Pro &bull; Intelligent Document Difference Checker 📄🔍
 
 An enterprise-grade, multi-format document comparison system that analyzes both **exact word-by-word differences** and **semantic/contextual meaning** across PDFs, Word documents, Excel spreadsheets, PowerPoint presentations, and text files.
 

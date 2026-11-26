@@ -64,7 +64,7 @@ function build2FAEmailHtml({ name = 'User', code, email }) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${code} is your DocDiff verification code</title>
+  <title>${code} is your Ydiff verification code</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0F172A; -webkit-font-smoothing: antialiased;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #F8FAFC; padding: 40px 15px;">
@@ -76,7 +76,7 @@ function build2FAEmailHtml({ name = 'User', code, email }) {
           <tr>
             <td style="padding-bottom: 24px;">
               <span style="font-size: 19px; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
-                Doc<span style="color: #FF5E1E;">Diff</span> Studio
+                Y<span style="color: #FF5E1E;">diff</span> Studio
               </span>
             </td>
           </tr>
@@ -94,7 +94,7 @@ function build2FAEmailHtml({ name = 'User', code, email }) {
           <tr>
             <td style="padding-bottom: 20px;">
               <p style="margin: 0; font-size: 14px; color: #475569; line-height: 1.6;">
-                Please enter the following 6-digit verification code to sign in to your DocDiff account (<strong>${email}</strong>):
+                Please enter the following 6-digit verification code to sign in to your Ydiff account (<strong>${email}</strong>):
               </p>
             </td>
           </tr>
@@ -123,7 +123,7 @@ function build2FAEmailHtml({ name = 'User', code, email }) {
           <tr>
             <td style="border-top: 1px solid #F1F5F9; padding-top: 20px;">
               <p style="margin: 0; font-size: 11px; color: #94A3B8; line-height: 1.5;">
-                DocDiff &bull; Intelligent Document Comparison &amp; Revision Tracking
+                Ydiff &bull; Intelligent Document Comparison &amp; Revision Tracking
               </p>
             </td>
           </tr>
@@ -149,7 +149,7 @@ export async function send2FACodeEmail({ email, code, name = 'User' }) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey && resendApiKey.trim()) {
     try {
-      const from = process.env.EMAIL_FROM || 'DocDiff Security <onboarding@resend.dev>';
+      const from = process.env.EMAIL_FROM || 'Ydiff Security <onboarding@resend.dev>';
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -159,8 +159,8 @@ export async function send2FACodeEmail({ email, code, name = 'User' }) {
         body: JSON.stringify({
           from,
           to: [cleanEmail],
-          subject: `${code} is your DocDiff verification code`,
-          text: `Your DocDiff verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— DocDiff Studio`,
+          subject: `${code} is your Ydiff verification code`,
+          text: `Your Ydiff verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— Ydiff Studio`,
           html: build2FAEmailHtml({ name, code, email: cleanEmail })
         })
       });
@@ -181,12 +181,12 @@ export async function send2FACodeEmail({ email, code, name = 'User' }) {
   const transporter = getTransporter();
   if (transporter) {
     try {
-      const from = process.env.EMAIL_FROM || '"DocDiff Security" <security@docdiff.io>';
+      const from = process.env.EMAIL_FROM || '"Ydiff Security" <security@ydiff.io>';
       const info = await transporter.sendMail({
         from,
         to: cleanEmail,
-        subject: `${code} is your DocDiff verification code`,
-        text: `Your DocDiff verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— DocDiff Studio`,
+        subject: `${code} is your Ydiff verification code`,
+        text: `Your Ydiff verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— Ydiff Studio`,
         html: build2FAEmailHtml({ name, code, email: cleanEmail })
       });
 
@@ -220,7 +220,7 @@ function buildPasswordResetEmailHtml({ name = 'User', code, email }) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${code} is your DocDiff password reset code</title>
+  <title>${code} is your Ydiff password reset code</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0F172A; -webkit-font-smoothing: antialiased;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #F8FAFC; padding: 40px 15px;">
@@ -232,7 +232,7 @@ function buildPasswordResetEmailHtml({ name = 'User', code, email }) {
           <tr>
             <td style="padding-bottom: 24px;">
               <span style="font-size: 19px; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
-                Doc<span style="color: #FF5E1E;">Diff</span> Studio
+                Y<span style="color: #FF5E1E;">diff</span> Studio
               </span>
             </td>
           </tr>
@@ -250,7 +250,7 @@ function buildPasswordResetEmailHtml({ name = 'User', code, email }) {
           <tr>
             <td style="padding-bottom: 20px;">
               <p style="margin: 0; font-size: 14px; color: #475569; line-height: 1.6;">
-                We received a request to reset the password for your DocDiff account (<strong>${email}</strong>). Enter this 6-digit verification code to choose a new password:
+                We received a request to reset the password for your Ydiff account (<strong>${email}</strong>). Enter this 6-digit verification code to choose a new password:
               </p>
             </td>
           </tr>
@@ -279,7 +279,7 @@ function buildPasswordResetEmailHtml({ name = 'User', code, email }) {
           <tr>
             <td style="border-top: 1px solid #F1F5F9; padding-top: 20px;">
               <p style="margin: 0; font-size: 11px; color: #94A3B8; line-height: 1.5;">
-                DocDiff &bull; Intelligent Document Comparison &amp; Revision Tracking
+                Ydiff &bull; Intelligent Document Comparison &amp; Revision Tracking
               </p>
             </td>
           </tr>
@@ -303,7 +303,7 @@ export async function sendPasswordResetEmail({ email, code, name = 'User' }) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey && resendApiKey.trim()) {
     try {
-      const from = process.env.EMAIL_FROM || 'DocDiff Security <onboarding@resend.dev>';
+      const from = process.env.EMAIL_FROM || 'Ydiff Security <onboarding@resend.dev>';
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -313,8 +313,8 @@ export async function sendPasswordResetEmail({ email, code, name = 'User' }) {
         body: JSON.stringify({
           from,
           to: [cleanEmail],
-          subject: `${code} is your DocDiff password reset code`,
-          text: `Your DocDiff password reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— DocDiff Studio`,
+          subject: `${code} is your Ydiff password reset code`,
+          text: `Your Ydiff password reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— Ydiff Studio`,
           html: buildPasswordResetEmailHtml({ name, code, email: cleanEmail })
         })
       });
@@ -335,12 +335,12 @@ export async function sendPasswordResetEmail({ email, code, name = 'User' }) {
   const transporter = getTransporter();
   if (transporter) {
     try {
-      const from = process.env.EMAIL_FROM || '"DocDiff Security" <security@docdiff.io>';
+      const from = process.env.EMAIL_FROM || '"Ydiff Security" <security@ydiff.io>';
       const info = await transporter.sendMail({
         from,
         to: cleanEmail,
-        subject: `${code} is your DocDiff password reset code`,
-        text: `Your DocDiff password reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— DocDiff Studio`,
+        subject: `${code} is your Ydiff password reset code`,
+        text: `Your Ydiff password reset code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not make this request, you can safely ignore this email.\n\n— Ydiff Studio`,
         html: buildPasswordResetEmailHtml({ name, code, email: cleanEmail })
       });
 
