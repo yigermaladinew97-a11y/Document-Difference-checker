@@ -90,14 +90,17 @@ export default function AuthModal({
   const [resetData, setResetData] = useState(null); // { tempToken, email, devCode }
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [resendCountdown, setResendCountdown] = useState(45);
+  const [codeExpiryCountdown, setCodeExpiryCountdown] = useState(60);
   const [isResending, setIsResending] = useState(false);
   const digitInputRefs = useRef([]);
   const timerRef = useRef(null);
+  const expiryTimerRef = useRef(null);
   const signupFileInputRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (expiryTimerRef.current) clearInterval(expiryTimerRef.current);
     };
   }, []);
 
@@ -108,6 +111,20 @@ export default function AuthModal({
       setResendCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startExpiryTimer = () => {
+    setCodeExpiryCountdown(60);
+    if (expiryTimerRef.current) clearInterval(expiryTimerRef.current);
+    expiryTimerRef.current = setInterval(() => {
+      setCodeExpiryCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(expiryTimerRef.current);
           return 0;
         }
         return prev - 1;
@@ -195,6 +212,7 @@ export default function AuthModal({
         setIsTwoFactorStep(true);
         setError(null);
         startResendTimer();
+        startExpiryTimer();
         setTimeout(() => {
           digitInputRefs.current[0]?.focus();
         }, 150);
@@ -274,9 +292,13 @@ export default function AuthModal({
   };
 
   const verifyOtpSubmission = async (codeToVerify) => {
-    const code = codeToVerify || otpDigits.join('');
-    if (code.length < 6) {
-      setError('Please enter all 6 digits of your verification code.');
+    const code = (codeToVerify || otpDigits.join('')).replace(/\D/g, '');
+    if (codeExpiryCountdown === 0) {
+      setError('Your 1-minute verification code has expired. Please click "Resend security code" for a new one.');
+      return;
+    }
+    if (!/^\d{6}$/.test(code)) {
+      setError('Please enter all 6 digits (numbers only) of your verification code.');
       return;
     }
 
@@ -301,10 +323,16 @@ export default function AuthModal({
 
     try {
       const res = await resend2FACode(twoFactorData.tempToken);
-      if (res.devCode) {
-        setTwoFactorData((prev) => ({ ...prev, devCode: res.devCode }));
-      }
+      setTwoFactorData((prev) => ({
+        ...prev,
+        devCode: res.devCode || undefined
+      }));
+      setOtpDigits(['', '', '', '', '', '']);
       startResendTimer();
+      startExpiryTimer();
+      setTimeout(() => {
+        digitInputRefs.current[0]?.focus();
+      }, 100);
     } catch (err) {
       setError(err.message || 'Failed to resend verification code.');
     } finally {
@@ -515,16 +543,46 @@ export default function AuthModal({
                   />
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-2">
-                Tip: You can paste the 6-digit code directly
-              </p>
+              <div className="flex items-center justify-between text-[11px] mt-2 px-1">
+                <span className="text-slate-400 dark:text-slate-500">
+                  6-digit numbers only
+                </span>
+                {codeExpiryCountdown > 0 ? (
+                  <span className={`font-mono font-semibold ${
+                    codeExpiryCountdown <= 15
+                      ? 'text-amber-500 animate-pulse'
+                      : 'text-emerald-600 dark:text-emerald-400'
+                  }`}>
+                    Active for {codeExpiryCountdown}s
+                  </span>
+                ) : (
+                  <span className="font-semibold text-rose-500">
+                    Code expired (1 min limit)
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* Expired Code Resend Prompt */}
+            {codeExpiryCountdown === 0 && (
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between gap-2">
+                <span>Your 1-minute code expired. Request a fresh one:</span>
+                <button
+                  type="button"
+                  onClick={handleResend2FA}
+                  disabled={isResending}
+                  className="shrink-0 px-3 py-1.5 rounded-xl bg-[#FF5E1E] hover:bg-[#E04A0E] text-white font-bold text-[11px] transition"
+                >
+                  {isResending ? 'Sending...' : 'Resend Code'}
+                </button>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
               type="button"
               onClick={() => verifyOtpSubmission()}
-              disabled={isLoading || otpDigits.some((d) => !d)}
+              disabled={isLoading || codeExpiryCountdown === 0 || otpDigits.some((d) => !d)}
               className="w-full py-2.5 px-4 rounded-xl bg-[#FF5E1E] hover:bg-[#E04A0E] text-white text-xs font-bold transition shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 flex items-center justify-center space-x-2"
             >
               <span>{isLoading ? 'Verifying Code...' : 'Confirm & Log In'}</span>

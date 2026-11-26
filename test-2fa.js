@@ -30,8 +30,20 @@ async function run2FATests() {
   const signupCode = signupRes.devCode;
   const signupToken = signupRes.tempToken;
 
-  // [2/6] Test Invalid Code Rejection & Attempt Counter
-  console.log('\n[2/6] Testing Invalid 2FA Code Rejection & Attempt Counter...');
+  // [2/7] Test Non-Numeric Code Rejection (Numbers Only Enforcement)
+  console.log('\n[2/7] Testing Non-Numeric 2FA Code Rejection (Numbers Only)...');
+  let nonNumericCaught = false;
+  try {
+    await verify2FACode({ tempToken: signupToken, code: 'abc123' });
+  } catch (err) {
+    nonNumericCaught = true;
+    assert.match(err.message, /6 numbers only/i, 'Error must enforce numbers-only 6-digit code');
+    console.log(`✓ Non-numeric code rejected: "${err.message}"`);
+  }
+  assert.strictEqual(nonNumericCaught, true, 'Non-numeric code must throw error');
+
+  // [3/7] Test Invalid Code Rejection & Attempt Counter
+  console.log('\n[3/7] Testing Invalid 2FA Code Rejection & Attempt Counter...');
   let errorCaught = false;
   try {
     await verify2FACode({ tempToken: signupToken, code: '000000' });
@@ -42,8 +54,8 @@ async function run2FATests() {
   }
   assert.strictEqual(errorCaught, true, 'Invalid code must throw error');
 
-  // [3/6] Test 2FA Rate-Limiting on Resend
-  console.log('\n[3/6] Testing 2FA Resend Rate-Limiting (45s cooldown)...');
+  // [4/7] Test 2FA Rate-Limiting on Resend
+  console.log('\n[4/7] Testing 2FA Resend Rate-Limiting (45s cooldown)...');
   let rateLimitCaught = false;
   try {
     await resend2FACode({ tempToken: signupToken });

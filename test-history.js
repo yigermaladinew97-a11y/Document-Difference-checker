@@ -48,7 +48,7 @@ class MockObjectStore {
     }, 5);
     return req;
   }
-  createIndex() {}
+  createIndex() { }
 }
 
 const inMemoryStore = new Map();

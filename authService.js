@@ -58,11 +58,15 @@ const pending2FA = new Map();
 // Key: tempToken -> { userId, email, name, code, expiresAt, attempts, resendAfter }
 const pendingPasswordReset = new Map();
 
+// 2FA code active lifetime: 1 minute (60 seconds); grace window before session purge: 15 minutes
+const TWO_FA_TTL_MS = 60 * 1000;
+const TWO_FA_SESSION_GRACE_MS = 15 * 60 * 1000;
+
 // Periodic cleanup of expired challenges every 5 minutes
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [token, data] of pending2FA.entries()) {
-    if (now > data.expiresAt) {
+    if (now > data.expiresAt + TWO_FA_SESSION_GRACE_MS) {
       pending2FA.delete(token);
     }
   }
@@ -279,7 +283,7 @@ export async function initiate2FALogin(user) {
     name: user.name,
     code,
     createdAt: Date.now(),
-    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    expiresAt: Date.now() + TWO_FA_TTL_MS, // Active for 1 minute
     attempts: 0,
     resendAfter: Date.now() + 45 * 1000 // 45 seconds rate limit
   });
@@ -377,14 +381,18 @@ export async function verify2FACode({ tempToken, code }) {
   const cleanToken = tempToken.trim();
   const cleanCode = String(code).trim().replace(/\s+/g, '');
 
+  if (!/^\d{6}$/.test(cleanCode)) {
+    throw new Error('Verification code must contain 6 numbers only.');
+  }
+
   const entry = pending2FA.get(cleanToken);
   if (!entry) {
     throw new Error('Verification session has expired or is invalid. Please sign in again.');
   }
 
   if (Date.now() > entry.expiresAt) {
-    pending2FA.delete(cleanToken);
-    throw new Error('Verification code has expired. Please request a new code.');
+    // Keep entry in pending2FA so the user can click Resend to receive a fresh 1-minute code
+    throw new Error('Your 1-minute verification code has expired. Please click Resend to get a new code.');
   }
 
   if (entry.attempts >= 5) {
@@ -432,10 +440,10 @@ export async function resend2FACode({ tempToken }) {
     throw new Error(`Please wait ${secondsLeft}s before requesting a new code.`);
   }
 
-  // Generate new 6-digit code and refresh expiry
+  // Generate new 6-digit numeric code and refresh 1-minute expiry
   const newCode = crypto.randomInt(100000, 999999).toString();
   entry.code = newCode;
-  entry.expiresAt = now + 10 * 60 * 1000;
+  entry.expiresAt = now + TWO_FA_TTL_MS;
   entry.resendAfter = now + 45 * 1000;
   entry.attempts = 0;
 
